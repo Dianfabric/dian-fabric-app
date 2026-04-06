@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --gold-dark: #8B6914;
+  --gold-mid: #B8956A;
+  --gold-light: #C49A6C;
+  --warm-bg: #FAFAFA;
+}
+
+@theme inline {
+  --color-background: #FAFAFA;
+  --color-foreground: #1a1a1a;
+  --font-sans: var(--font-pretendard);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 50%, var(--gold-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold-light));
+}
+
+.upload-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.upload-hover:hover {
+  border-color: var(--gold-light);
+  box-shadow: 0 16px 48px rgba(139, 105, 20, 0.08);
+  transform: translateY(-4px);
+}
+
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+html { scroll-behavior: smooth; }

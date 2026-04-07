@@ -4,9 +4,14 @@ import { useState, useCallback } from "react";
 type Props = {
   onUpload: (file: File) => void;
   isLoading?: boolean;
+  statusMessage?: string;
 };
 
-export default function ImageUploader({ onUpload, isLoading }: Props) {
+export default function ImageUploader({
+  onUpload,
+  isLoading,
+  statusMessage,
+}: Props) {
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -67,12 +72,29 @@ export default function ImageUploader({ onUpload, isLoading }: Props) {
             className="max-h-48 rounded-xl object-contain"
           />
           {isLoading ? (
-            <div className="flex items-center gap-2 text-[#8B6914] text-sm font-semibold">
-              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              AI가 분석 중입니다...
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-[#8B6914] text-sm font-semibold">
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                {statusMessage || "AI가 분석 중입니다..."}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-400">
@@ -96,7 +118,9 @@ export default function ImageUploader({ onUpload, isLoading }: Props) {
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold mb-2">이미지를 드래그하거나 클릭</h3>
+          <h3 className="text-xl font-bold mb-2">
+            이미지를 드래그하거나 클릭
+          </h3>
           <p className="text-sm text-gray-400">
             레퍼런스 이미지, 인테리어 사진, 핀터레스트 이미지 모두 OK
           </p>

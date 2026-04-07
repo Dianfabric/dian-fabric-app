@@ -1,34 +1,80 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImageUploader from "@/components/ImageUploader";
 import FabricCard from "@/components/FabricCard";
 import type { SearchResult } from "@/lib/types";
+import type { ModelLoadingStatus } from "@/lib/clip-client";
 
 export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalFabrics, setTotalFabrics] = useState(0);
   const [searched, setSearched] = useState(false);
+  const [modelStatus, setModelStatus] = useState<ModelLoadingStatus>({
+    status: "idle",
+  });
+  const [statusMessage, setStatusMessage] = useState("");
+
+  // 페이지 로드 시 모델 미리 로딩 시작 (백그라운드)
+  useEffect(() => {
+    const preload = async () => {
+      try {
+        const { getClipEmbedding } = await import("@/lib/clip-client");
+        // 모델 사전 로딩을 위해 빈 이미지로는 호출하지 않음
+        // isModelLoaded()로 상태만 체크
+        const { isModelLoaded } = await import("@/lib/clip-client");
+        if (!isModelLoaded()) {
+          setStatusMessage("AI 모델을 준비하고 있습니다...");
+        }
+      } catch {
+        // 사전 로딩 실패는 무시 (검색 시 다시 시도)
+      }
+    };
+    preload();
+  }, []);
 
   const handleUpload = async (file: File) => {
     setIsLoading(true);
     setSearched(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
+    setResults([]);
 
+    try {
+      // Step 1: 브라우저에서 CLIP 임베딩 생성
+      const { getClipEmbedding } = await import("@/lib/clip-client");
+
+      const embedding = await getClipEmbedding(file, (status) => {
+        setModelStatus(status);
+        if (status.status === "loading") {
+          setStatusMessage(status.message);
+        }
+      });
+
+      setStatusMessage("유사 원단 검색 중...");
+
+      // Step 2: 임베딩 벡터를 서버로 전송 → pgvector 검색
       const res = await fetch("/api/search", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ embedding }),
       });
 
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "검색 실패");
+      }
+
       if (data.results) {
         setResults(data.results);
         setTotalFabrics(data.total);
       }
+
+      setStatusMessage("");
     } catch (err) {
       console.error("검색 오류:", err);
+      setStatusMessage(
+        err instanceof Error ? err.message : "검색 중 오류가 발생했습니다"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +95,11 @@ export default function SearchPage() {
 
         {/* Upload */}
         <div className="max-w-[680px] mx-auto mb-12">
-          <ImageUploader onUpload={handleUpload} isLoading={isLoading} />
+          <ImageUploader
+            onUpload={handleUpload}
+            isLoading={isLoading}
+            statusMessage={statusMessage}
+          />
         </div>
 
         {/* Results */}
@@ -69,7 +119,10 @@ export default function SearchPage() {
             {isLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl overflow-hidden border border-gray-100"
+                  >
                     <div className="aspect-square bg-gray-100 animate-pulse" />
                     <div className="p-4 space-y-2">
                       <div className="h-4 bg-gray-100 rounded animate-pulse w-2/3" />

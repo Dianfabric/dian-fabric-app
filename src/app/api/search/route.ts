@@ -1,119 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
+// Vercel 서버리스 함수 설정: 첫 호출 시 모델 로딩에 시간 필요
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 /**
- * 원단 유사도 검색 API (HuggingFace CLIP ViT-B/32 + pgvector)
+ * 원단 유사도 검색 API (Transformers.js CLIP ViT-B/32 + pgvector)
  *
- * 흐름: 이미지 업로드 → HuggingFace openai/clip-vit-base-patch32로 벡터 변환
+ * 흐름: 이미지 업로드 → Transformers.js로 CLIP 임베딩 직접 생성 (서버 내 실행)
  *       → Supabase pgvector 코사인 유사도 검색
  *
  * DB 임베딩: sentence-transformers clip-ViT-B-32로 생성 (동일 모델, 512차원)
- * HuggingFace Inference API는 토큰 없이도 공개 모델 사용 가능 (속도 제한만 있음)
+ * Transformers.js는 동일한 openai/clip-vit-base-patch32 모델의 ONNX 버전 사용
+ * 외부 API 불필요 - 서버에서 직접 실행하여 정확도 보장
  */
 
-async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
-  const HF_API_TOKEN = process.env.HF_API_TOKEN; // 선택 사항 - 없어도 동작
+// 모델 싱글톤 (서버리스 함수 인스턴스 내에서 재사용)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let processorPromise: Promise<any> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let modelPromise: Promise<any> | null = null;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/octet-stream",
-  };
+async function loadModel() {
+  if (!processorPromise || !modelPromise) {
+    // 동적 import (Transformers.js는 ESM)
+    const { AutoProcessor, CLIPVisionModelWithProjection, env } =
+      await import("@xenova/transformers");
 
-  // 토큰이 있으면 사용 (더 높은 rate limit), 없으면 무인증으로 요청
-  if (HF_API_TOKEN) {
-    headers["Authorization"] = `Bearer ${HF_API_TOKEN}`;
+    // 로컬 모델 비활성화, 원격에서 다운로드
+    env.allowLocalModels = false;
+    // Vercel 서버리스에서 /tmp에 캐시
+    env.cacheDir = "/tmp/transformers-cache";
+
+    console.log("CLIP 모델 로딩 시작...");
+
+    processorPromise = AutoProcessor.from_pretrained(
+      "Xenova/clip-vit-base-patch32"
+    );
+    modelPromise = CLIPVisionModelWithProjection.from_pretrained(
+      "Xenova/clip-vit-base-patch32",
+      { quantized: false } // fp32로 정확도 극대화 (DB 임베딩과 일치)
+    );
   }
 
-  console.log(`CLIP API 호출 시작 (토큰: ${HF_API_TOKEN ? "있음" : "없음 - 무인증 모드"})`);
-
-  // Buffer를 Uint8Array로 변환 (fetch body 호환)
-  const bodyData = new Uint8Array(imageBuffer);
-
-  // HuggingFace Inference API - openai/clip-vit-base-patch32
-  // feature-extraction 파이프라인으로 이미지 임베딩 추출
-  const response = await fetch(
-    "https://api-inference.huggingface.co/pipeline/feature-extraction/openai/clip-vit-base-patch32",
-    {
-      method: "POST",
-      headers,
-      body: bodyData,
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-
-    // 모델 로딩 중 (cold start) - 재시도
-    if (response.status === 503) {
-      console.log("HuggingFace 모델 로딩 중... 20초 후 재시도");
-      await new Promise((resolve) => setTimeout(resolve, 20000));
-
-      const retryResponse = await fetch(
-        "https://api-inference.huggingface.co/pipeline/feature-extraction/openai/clip-vit-base-patch32",
-        {
-          method: "POST",
-          headers,
-          body: bodyData,
-        }
-      );
-
-      if (!retryResponse.ok) {
-        const retryError = await retryResponse.text();
-        throw new Error(`HuggingFace API 재시도 실패: ${retryResponse.status} - ${retryError}`);
-      }
-
-      const retryData = await retryResponse.json();
-      console.log(`HuggingFace 재시도 응답 형태: ${JSON.stringify(retryData).slice(0, 300)}`);
-      return extractAndNormalize(retryData);
-    }
-
-    throw new Error(`HuggingFace API 오류: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  console.log(`HuggingFace 응답 형태: type=${typeof data}, isArray=${Array.isArray(data)}, preview=${JSON.stringify(data).slice(0, 300)}`);
-  return extractAndNormalize(data);
+  const [processor, model] = await Promise.all([
+    processorPromise,
+    modelPromise,
+  ]);
+  console.log("CLIP 모델 로딩 완료");
+  return { processor, model };
 }
 
-// HuggingFace 응답에서 512차원 임베딩 벡터 추출 및 정규화
-function extractAndNormalize(data: unknown): number[] {
-  let vector: number[];
+async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
+  const { RawImage } = await import("@xenova/transformers");
+  const { processor, model } = await loadModel();
 
-  if (Array.isArray(data)) {
-    if (Array.isArray(data[0])) {
-      if (Array.isArray(data[0][0])) {
-        // 3중 중첩: [[[...512...]]] → 첫 번째 시퀀스 토큰 (CLS)
-        // CLIP ViT는 [batch, seq_len, hidden] 형태로 반환할 수 있음
-        const sequence = data[0] as number[][];
-        // CLS 토큰 (첫 번째)이 이미지 전체 표현
-        vector = sequence[0] as number[];
-        console.log(`3중 중첩 배열: batch=${data.length}, seq=${sequence.length}, dim=${vector.length}`);
-      } else {
-        // 2중 중첩: [[...512...]]
-        vector = data[0] as number[];
-        console.log(`2중 중첩 배열: outer=${data.length}, dim=${vector.length}`);
-      }
-    } else if (typeof data[0] === "number") {
-      // 플랫 배열: [...512...]
-      vector = data as number[];
-      console.log(`플랫 배열: dim=${vector.length}`);
-    } else {
-      throw new Error(`알 수 없는 HF 응답 형식: ${JSON.stringify(data).slice(0, 200)}`);
-    }
-  } else {
-    throw new Error(`알 수 없는 HF 응답 타입: ${typeof data}`);
-  }
+  // Buffer → RawImage 변환 (Uint8Array로 변환 후 Blob 생성)
+  const uint8Array = new Uint8Array(imageBuffer);
+  const blob = new Blob([uint8Array]);
+  const image = await RawImage.fromBlob(blob);
 
-  console.log(`추출된 벡터 차원: ${vector.length}`);
+  // 이미지 전처리 (CLIP 프로세서가 리사이즈, 정규화 등 처리)
+  const imageInputs = await processor(image);
 
-  // 512차원이 아닌 경우 (예: 768차원 hidden state) 경고
-  if (vector.length !== 512) {
-    console.warn(`경고: 벡터 차원이 ${vector.length}입니다 (예상: 512). DB 임베딩과 불일치할 수 있습니다.`);
-  }
+  // CLIP 비전 모델로 임베딩 생성
+  const output = await model(imageInputs);
+
+  // image_embeds: 512차원 벡터 (projection head 통과 후)
+  const embeddings = output.image_embeds;
+  const vector: number[] = Array.from(embeddings.data as Float32Array);
+
+  console.log(`CLIP 임베딩 생성 완료: ${vector.length}차원`);
 
   // L2 정규화 (sentence-transformers와 동일)
   const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
   if (norm > 0) {
-    vector = vector.map((val) => val / norm);
+    return vector.map((val) => val / norm);
   }
 
   return vector;
@@ -135,37 +98,19 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
 
-    // CLIP 임베딩 생성 (HuggingFace - openai/clip-vit-base-patch32, 무인증 가능)
+    // CLIP 임베딩 생성 (Transformers.js - 서버 내 직접 실행)
     let queryEmbedding: number[];
     try {
       queryEmbedding = await getClipEmbedding(imageBuffer);
     } catch (clipError) {
-      console.error("CLIP API error:", clipError);
-
-      // CLIP API 실패 시 폴백: 랜덤 결과 반환
-      const supabase = createServiceClient();
-      const { data: fabrics } = await supabase
-        .from("fabrics")
-        .select("*")
-        .not("embedding", "is", null)
-        .not("image_url", "is", null)
-        .limit(100);
-
-      const shuffled = (fabrics || []).sort(() => Math.random() - 0.5);
-      const results = shuffled.slice(0, 10).map((f, i) => ({
-        ...f,
-        similarity: parseFloat(
-          (0.85 - i * 0.03 + Math.random() * 0.01).toFixed(4)
-        ),
-        embedding: undefined,
-      }));
-      results.sort((a, b) => b.similarity - a.similarity);
-
-      return NextResponse.json({
-        results,
-        total: results.length,
-        note: "CLIP API 연결 실패로 임시 결과를 표시합니다. 잠시 후 다시 시도해주세요.",
-      });
+      console.error("CLIP 모델 오류:", clipError);
+      return NextResponse.json(
+        {
+          error:
+            "AI 모델 로딩 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        },
+        { status: 503 }
+      );
     }
 
     // Supabase pgvector 코사인 유사도 검색

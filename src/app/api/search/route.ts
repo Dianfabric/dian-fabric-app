@@ -25,6 +25,9 @@ async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
 
   console.log(`CLIP API 호출 시작 (토큰: ${HF_API_TOKEN ? "있음" : "없음 - 무인증 모드"})`);
 
+  // Buffer를 Uint8Array로 변환 (fetch body 호환)
+  const bodyData = new Uint8Array(imageBuffer);
+
   // HuggingFace Inference API - openai/clip-vit-base-patch32
   // feature-extraction 파이프라인으로 이미지 임베딩 추출
   const response = await fetch(
@@ -32,7 +35,7 @@ async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
     {
       method: "POST",
       headers,
-      body: imageBuffer,
+      body: bodyData,
     }
   );
 
@@ -49,7 +52,7 @@ async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
         {
           method: "POST",
           headers,
-          body: imageBuffer,
+          body: bodyData,
         }
       );
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-declare module "@xenova/transformers" {
+declare module "@huggingface/transformers" {
   export class AutoProcessor {
     static from_pretrained(model: string, options?: any): Promise<any>;
   }
@@ -11,10 +11,13 @@ declare module "@xenova/transformers" {
   export class RawImage {
     static fromBlob(blob: Blob): Promise<RawImage>;
     static read(url: string): Promise<RawImage>;
+    width: number;
+    height: number;
   }
 
   export const env: {
     allowLocalModels: boolean;
-    cacheDir: string;
+    cacheDir?: string;
+    backends?: any;
   };
 }

@@ -2,153 +2,112 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
 /**
- * 원단 유사도 검색 API (Replicate CLIP ViT-B/32 + pgvector)
+ * 원단 유사도 검색 API (HuggingFace CLIP ViT-B/32 + pgvector)
  *
- * 흐름: 이미지 업로드 → Replicate lucataco/clip-vit-base-patch32로 벡터 변환
+ * 흐름: 이미지 업로드 → HuggingFace openai/clip-vit-base-patch32로 벡터 변환
  *       → Supabase pgvector 코사인 유사도 검색
  *
- * DB 임베딩도 동일한 clip-ViT-B-32 (openai/clip-vit-base-patch32) 모델로 생성되어 100% 호환
+ * DB 임베딩: sentence-transformers clip-ViT-B-32로 생성 (동일 모델, 512차원)
+ * HuggingFace Inference API는 토큰 없이도 공개 모델 사용 가능 (속도 제한만 있음)
  */
 
 async function getClipEmbedding(imageBuffer: Buffer): Promise<number[]> {
-  const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+  const HF_API_TOKEN = process.env.HF_API_TOKEN; // 선택 사항 - 없어도 동작
 
-  if (!REPLICATE_API_TOKEN) {
-    throw new Error("REPLICATE_API_TOKEN이 설정되지 않았습니다");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/octet-stream",
+  };
+
+  // 토큰이 있으면 사용 (더 높은 rate limit), 없으면 무인증으로 요청
+  if (HF_API_TOKEN) {
+    headers["Authorization"] = `Bearer ${HF_API_TOKEN}`;
   }
 
-  // 이미지를 base64 data URI로 변환
-  const base64Image = imageBuffer.toString("base64");
-  const mimeType = detectMimeType(imageBuffer);
-  const dataUri = `data:${mimeType};base64,${base64Image}`;
+  console.log(`CLIP API 호출 시작 (토큰: ${HF_API_TOKEN ? "있음" : "없음 - 무인증 모드"})`);
 
-  // Replicate API - lucataco/clip-vit-base-patch32 (동일한 openai/clip-vit-base-patch32 모델)
-  // "Prefer: wait" 헤더로 동기 실행 (최대 60초 대기)
+  // HuggingFace Inference API - openai/clip-vit-base-patch32
+  // feature-extraction 파이프라인으로 이미지 임베딩 추출
   const response = await fetch(
-    "https://api.replicate.com/v1/models/lucataco/clip-vit-base-patch32/predictions",
+    "https://api-inference.huggingface.co/pipeline/feature-extraction/openai/clip-vit-base-patch32",
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
-        "Content-Type": "application/json",
-        Prefer: "wait",
-      },
-      body: JSON.stringify({
-        input: {
-          image: dataUri,
-        },
-      }),
+      headers,
+      body: imageBuffer,
     }
   );
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Replicate API 오류: ${response.status} - ${errorText}`);
+
+    // 모델 로딩 중 (cold start) - 재시도
+    if (response.status === 503) {
+      console.log("HuggingFace 모델 로딩 중... 20초 후 재시도");
+      await new Promise((resolve) => setTimeout(resolve, 20000));
+
+      const retryResponse = await fetch(
+        "https://api-inference.huggingface.co/pipeline/feature-extraction/openai/clip-vit-base-patch32",
+        {
+          method: "POST",
+          headers,
+          body: imageBuffer,
+        }
+      );
+
+      if (!retryResponse.ok) {
+        const retryError = await retryResponse.text();
+        throw new Error(`HuggingFace API 재시도 실패: ${retryResponse.status} - ${retryError}`);
+      }
+
+      const retryData = await retryResponse.json();
+      console.log(`HuggingFace 재시도 응답 형태: ${JSON.stringify(retryData).slice(0, 300)}`);
+      return extractAndNormalize(retryData);
+    }
+
+    throw new Error(`HuggingFace API 오류: ${response.status} - ${errorText}`);
   }
 
-  const prediction = await response.json();
-
-  // Replicate 응답 처리
-  if (prediction.status === "failed") {
-    throw new Error(`Replicate 예측 실패: ${prediction.error}`);
-  }
-
-  // 아직 처리 중이면 폴링
-  if (prediction.status !== "succeeded") {
-    const result = await pollPrediction(prediction.urls.get, REPLICATE_API_TOKEN);
-    return extractEmbedding(result);
-  }
-
-  return extractEmbedding(prediction.output);
+  const data = await response.json();
+  console.log(`HuggingFace 응답 형태: type=${typeof data}, isArray=${Array.isArray(data)}, preview=${JSON.stringify(data).slice(0, 300)}`);
+  return extractAndNormalize(data);
 }
 
-// Replicate 예측 완료까지 폴링
-async function pollPrediction(url: string, token: string): Promise<unknown> {
-  for (let i = 0; i < 30; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Replicate 폴링 오류: ${response.status}`);
-    }
-
-    const prediction = await response.json();
-
-    if (prediction.status === "succeeded") {
-      return prediction.output;
-    }
-    if (prediction.status === "failed") {
-      throw new Error(`Replicate 예측 실패: ${prediction.error}`);
-    }
-  }
-  throw new Error("Replicate 응답 시간 초과");
-}
-
-// Replicate 출력에서 임베딩 벡터 추출
-function extractEmbedding(output: unknown): number[] {
+// HuggingFace 응답에서 512차원 임베딩 벡터 추출 및 정규화
+function extractAndNormalize(data: unknown): number[] {
   let vector: number[];
 
-  if (Array.isArray(output)) {
-    // 출력이 직접 배열인 경우
-    if (Array.isArray(output[0])) {
-      // 중첩 배열 [[...]]
-      vector = output[0] as number[];
-    } else if (typeof output[0] === "number") {
-      // 플랫 배열 [...]
-      vector = output as number[];
-    } else {
-      // 객체 배열에서 embedding 필드 찾기
-      const item = output[0] as Record<string, unknown>;
-      if (item.embedding && Array.isArray(item.embedding)) {
-        vector = item.embedding as number[];
+  if (Array.isArray(data)) {
+    if (Array.isArray(data[0])) {
+      if (Array.isArray(data[0][0])) {
+        // 3중 중첩: [[[...512...]]] → 첫 번째 시퀀스 토큰 (CLS)
+        // CLIP ViT는 [batch, seq_len, hidden] 형태로 반환할 수 있음
+        const sequence = data[0] as number[][];
+        // CLS 토큰 (첫 번째)이 이미지 전체 표현
+        vector = sequence[0] as number[];
+        console.log(`3중 중첩 배열: batch=${data.length}, seq=${sequence.length}, dim=${vector.length}`);
       } else {
-        throw new Error(`알 수 없는 Replicate 출력 형식: ${JSON.stringify(output).slice(0, 200)}`);
+        // 2중 중첩: [[...512...]]
+        vector = data[0] as number[];
+        console.log(`2중 중첩 배열: outer=${data.length}, dim=${vector.length}`);
       }
-    }
-  } else if (typeof output === "object" && output !== null) {
-    const obj = output as Record<string, unknown>;
-    // { embedding: [...] } 또는 { image_embedding: [...] } 형식
-    const embeddingField = obj.embedding || obj.image_embedding || obj.image_features;
-    if (Array.isArray(embeddingField)) {
-      vector = (Array.isArray((embeddingField as unknown[])[0]))
-        ? (embeddingField as number[][])[0]
-        : embeddingField as number[];
+    } else if (typeof data[0] === "number") {
+      // 플랫 배열: [...512...]
+      vector = data as number[];
+      console.log(`플랫 배열: dim=${vector.length}`);
     } else {
-      throw new Error(`알 수 없는 Replicate 출력 형식: ${JSON.stringify(output).slice(0, 200)}`);
+      throw new Error(`알 수 없는 HF 응답 형식: ${JSON.stringify(data).slice(0, 200)}`);
     }
   } else {
-    throw new Error(`알 수 없는 Replicate 출력 형식: ${typeof output}`);
+    throw new Error(`알 수 없는 HF 응답 타입: ${typeof data}`);
   }
 
-  console.log(`CLIP 벡터 차원: ${vector.length}`);
-  return normalizeVector(vector);
-}
+  console.log(`추출된 벡터 차원: ${vector.length}`);
 
-// 이미지 MIME 타입 감지
-function detectMimeType(buffer: Buffer): string {
-  if (buffer[0] === 0xff && buffer[1] === 0xd8) return "image/jpeg";
-  if (buffer[0] === 0x89 && buffer[1] === 0x50) return "image/png";
-  if (buffer[0] === 0x47 && buffer[1] === 0x49) return "image/gif";
-  if (buffer[0] === 0x52 && buffer[1] === 0x49) return "image/webp";
-  return "image/jpeg"; // 기본값
-}
-
-// 벡터 정규화 (L2 norm) - sentence-transformers와 동일한 방식
-function normalizeVector(data: number[] | number[][]): number[] {
-  // HuggingFace는 중첩 배열로 반환할 수 있음
-  let vector: number[] = Array.isArray(data[0])
-    ? (data as number[][])[0]
-    : (data as number[]);
-
-  // 512차원 확인
+  // 512차원이 아닌 경우 (예: 768차원 hidden state) 경고
   if (vector.length !== 512) {
-    console.warn(`벡터 차원: ${vector.length} (예상: 512)`);
+    console.warn(`경고: 벡터 차원이 ${vector.length}입니다 (예상: 512). DB 임베딩과 불일치할 수 있습니다.`);
   }
 
-  // L2 정규화
+  // L2 정규화 (sentence-transformers와 동일)
   const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
   if (norm > 0) {
     vector = vector.map((val) => val / norm);
@@ -173,7 +132,7 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const imageBuffer = Buffer.from(arrayBuffer);
 
-    // CLIP 임베딩 생성 (Replicate - lucataco/clip-vit-base-patch32)
+    // CLIP 임베딩 생성 (HuggingFace - openai/clip-vit-base-patch32, 무인증 가능)
     let queryEmbedding: number[];
     try {
       queryEmbedding = await getClipEmbedding(imageBuffer);
@@ -202,7 +161,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         results,
         total: results.length,
-        note: "CLIP API 연결 실패로 임시 결과를 표시합니다. REPLICATE_API_TOKEN을 확인해주세요.",
+        note: "CLIP API 연결 실패로 임시 결과를 표시합니다. 잠시 후 다시 시도해주세요.",
       });
     }
 

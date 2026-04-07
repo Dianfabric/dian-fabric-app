@@ -1,51 +1,34 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ImageUploader from "@/components/ImageUploader";
 import FabricCard from "@/components/FabricCard";
 import type { SearchResult } from "@/lib/types";
-import type { ModelLoadingStatus } from "@/lib/clip-client";
 
 export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalFabrics, setTotalFabrics] = useState(0);
   const [searched, setSearched] = useState(false);
-  const [modelStatus, setModelStatus] = useState<ModelLoadingStatus>({
-    status: "idle",
-  });
   const [statusMessage, setStatusMessage] = useState("");
-
-  // 페이지 로드 시 모델 미리 로딩 시작 (백그라운드)
-  useEffect(() => {
-    const preload = async () => {
-      try {
-        const { getClipEmbedding } = await import("@/lib/clip-client");
-        // 모델 사전 로딩을 위해 빈 이미지로는 호출하지 않음
-        // isModelLoaded()로 상태만 체크
-        const { isModelLoaded } = await import("@/lib/clip-client");
-        if (!isModelLoaded()) {
-          setStatusMessage("AI 모델을 준비하고 있습니다...");
-        }
-      } catch {
-        // 사전 로딩 실패는 무시 (검색 시 다시 시도)
-      }
-    };
-    preload();
-  }, []);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleUpload = async (file: File) => {
     setIsLoading(true);
     setSearched(true);
     setResults([]);
+    setErrorMessage("");
 
     try {
       // Step 1: 브라우저에서 CLIP 임베딩 생성
+      setStatusMessage("AI 모델 준비 중...");
+
       const { getClipEmbedding } = await import("@/lib/clip-client");
 
       const embedding = await getClipEmbedding(file, (status) => {
-        setModelStatus(status);
         if (status.status === "loading") {
           setStatusMessage(status.message);
+        } else if (status.status === "error") {
+          setErrorMessage(status.message);
         }
       });
 
@@ -55,7 +38,11 @@ export default function SearchPage() {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ embedding }),
+        body: JSON.stringify({
+          embedding,
+          matchThreshold: 1.5,
+          matchCount: 20,
+        }),
       });
 
       const data = await res.json();
@@ -72,9 +59,10 @@ export default function SearchPage() {
       setStatusMessage("");
     } catch (err) {
       console.error("검색 오류:", err);
-      setStatusMessage(
-        err instanceof Error ? err.message : "검색 중 오류가 발생했습니다"
-      );
+      const msg =
+        err instanceof Error ? err.message : "검색 중 오류가 발생했습니다";
+      setErrorMessage(msg);
+      setStatusMessage("");
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +88,14 @@ export default function SearchPage() {
             isLoading={isLoading}
             statusMessage={statusMessage}
           />
+
+          {/* 에러 메시지 표시 */}
+          {errorMessage && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+              <p className="font-semibold mb-1">오류 발생</p>
+              <p>{errorMessage}</p>
+            </div>
+          )}
         </div>
 
         {/* Results */}
@@ -141,12 +137,12 @@ export default function SearchPage() {
                   />
                 ))}
               </div>
-            ) : (
+            ) : !errorMessage ? (
               <div className="text-center py-20 text-gray-400">
                 <p className="text-lg">검색 결과가 없습니다</p>
                 <p className="text-sm mt-2">다른 이미지로 시도해보세요</p>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>

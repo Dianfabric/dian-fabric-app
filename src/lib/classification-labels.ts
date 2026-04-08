@@ -1,42 +1,14 @@
 /**
- * CLIP 벡터 기반 원단 자동 분류 스크립트
+ * CLIP 텍스트-이미지 분류용 라벨 정의
+ * 각 카테고리에 5~8개 프롬프트로 앙상블. 시각적 특징을 구체적으로 묘사.
  *
- * 각 원단의 임베딩 벡터를 카테고리/색상 텍스트 임베딩과 비교하여
- * pattern_detail(패턴 상세), category(색상) 컬럼을 자동 업데이트
- *
- * 실행: node scripts/classify-fabrics.mjs
+ * 참고: 인터넷 리서치 기반으로 패턴별 고유 시각적 특징 반영
+ * - 하운드투스 vs 헤링본: 뾰족한 별 체크 vs 엇갈린 V자 지그재그
+ * - 부클: 3D 루프 질감 (기하학 패턴 없음)
+ * - 스트라이프 vs 체크: 한 방향 vs 교차 격자
  */
 
-import { createClient } from "@supabase/supabase-js";
-import { AutoTokenizer, CLIPTextModelWithProjection, env } from "@huggingface/transformers";
-
-env.allowLocalModels = false;
-
-// ─── Supabase 설정 (.env.local에서 읽기) ───
-import { readFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = resolve(__dirname, "../.env.local");
-const envContent = readFileSync(envPath, "utf-8");
-const envVars = {};
-envContent.split("\n").forEach((line) => {
-  const [key, ...vals] = line.split("=");
-  if (key && vals.length) envVars[key.trim()] = vals.join("=").trim();
-});
-
-const SUPABASE_URL = envVars.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = envVars.SUPABASE_SERVICE_KEY;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("❌ .env.local에서 Supabase 키를 찾을 수 없습니다");
-  process.exit(1);
-}
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-// ─── 분류 라벨 정의 (강화된 프롬프트) ───
-// 각 카테고리에 5~8개 프롬프트로 앙상블. 시각적 특징을 구체적으로 묘사.
-const PATTERN_LABELS = {
+export const PATTERN_LABELS: Record<string, string[]> = {
   "무지": [
     "a solid color fabric with no pattern, smooth uniform single tone",
     "plain monochrome upholstery fabric, flat even texture without any design",
@@ -149,7 +121,7 @@ const PATTERN_LABELS = {
   ],
 };
 
-const COLOR_LABELS = {
+export const COLOR_LABELS: Record<string, string[]> = {
   "화이트": [
     "pure white bright clean fabric, snow white color",
     "white colored textile material, bright and clean without any tint",
@@ -232,197 +204,11 @@ const COLOR_LABELS = {
   ],
 };
 
-// ─── 유틸 ───
-function cosineSimilarity(a, b) {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+// DB CHECK 제약조건에 맞는 fabric_type 값
+export const ALLOWED_FABRIC_TYPES = ["무지", "벨벳", "패턴", "스웨이드", "인조가죽"];
 
-function l2Normalize(vec) {
-  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
-  return norm > 0 ? vec.map((v) => v / norm) : vec;
-}
-
-async function getTextEmbedding(tokenizer, model, text) {
-  const inputs = tokenizer(text, { padding: true, truncation: true });
-  const output = await model(inputs);
-  const rawData = output.text_embeds?.data || output.text_embeddings?.data;
-  if (!rawData) throw new Error("텍스트 임베딩 추출 실패");
-  return l2Normalize(Array.from(rawData));
-}
-
-// ─── 메인 ───
-async function main() {
-  console.log("=== CLIP 벡터 기반 원단 자동 분류 ===\n");
-
-  // 1. CLIP 텍스트 모델 로드
-  console.log("[1/4] CLIP 텍스트 모델 로딩...");
-  const tokenizer = await AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch32");
-  const model = await CLIPTextModelWithProjection.from_pretrained(
-    "Xenova/clip-vit-base-patch32",
-    { dtype: "q8" }
-  );
-  console.log("  ✓ 모델 로드 완료\n");
-
-  // 2. 카테고리/색상 텍스트 임베딩 생성
-  console.log("[2/4] 카테고리 & 색상 텍스트 임베딩 생성...");
-
-  const patternEmbeddings = {};
-  for (const [label, texts] of Object.entries(PATTERN_LABELS)) {
-    // 여러 텍스트의 임베딩 평균으로 더 정확하게
-    const embeddings = await Promise.all(
-      texts.map((t) => getTextEmbedding(tokenizer, model, t))
-    );
-    const avg = embeddings[0].map((_, i) =>
-      embeddings.reduce((sum, emb) => sum + emb[i], 0) / embeddings.length
-    );
-    patternEmbeddings[label] = l2Normalize(avg);
-  }
-  console.log(`  ✓ 패턴 ${Object.keys(patternEmbeddings).length}개 라벨 준비`);
-
-  const colorEmbeddings = {};
-  for (const [label, texts] of Object.entries(COLOR_LABELS)) {
-    const embeddings = await Promise.all(
-      texts.map((t) => getTextEmbedding(tokenizer, model, t))
-    );
-    const avg = embeddings[0].map((_, i) =>
-      embeddings.reduce((sum, emb) => sum + emb[i], 0) / embeddings.length
-    );
-    colorEmbeddings[label] = l2Normalize(avg);
-  }
-  console.log(`  ✓ 색상 ${Object.keys(colorEmbeddings).length}개 라벨 준비\n`);
-
-  // 3. Supabase에서 원단 데이터 가져오기
-  console.log("[3/4] Supabase에서 원단 데이터 로드...");
-
-  let allFabrics = [];
-  let page = 0;
-  const pageSize = 1000; // Supabase 최대 1000
-
-  while (true) {
-    const from = page * pageSize;
-    const to = from + pageSize - 1;
-    console.log(`  로딩 중... (${from}~${to})`);
-
-    const { data, error } = await supabase
-      .from("fabrics")
-      .select("id, name, color_code, embedding, fabric_type, pattern_detail, category")
-      .not("embedding", "is", null)
-      .range(from, to);
-
-    if (error) {
-      console.error("  DB 오류:", error.message);
-      break;
-    }
-    if (!data || data.length === 0) break;
-    allFabrics = allFabrics.concat(data);
-    console.log(`  → ${data.length}개 로드 (총 ${allFabrics.length}개)`);
-    if (data.length < pageSize) break; // 마지막 페이지
-    page++;
-  }
-
-  console.log(`  ✓ 총 ${allFabrics.length}개 원단 로드 완료\n`);
-
-  // 4. 분류 실행
-  console.log("[4/4] 분류 시작...\n");
-
-  let updated = 0;
-  let errors = 0;
-
-  for (let i = 0; i < allFabrics.length; i++) {
-    const fabric = allFabrics[i];
-
-    // embedding은 string으로 올 수 있음 (pgvector)
-    let embedding = fabric.embedding;
-    if (typeof embedding === "string") {
-      embedding = JSON.parse(embedding.replace(/^\[/, "[").replace(/\]$/, "]"));
-    }
-    if (!Array.isArray(embedding) || embedding.length !== 512) {
-      console.log(`  ⚠ ${fabric.name}: 임베딩 형식 오류 (스킵)`);
-      errors++;
-      continue;
-    }
-
-    const normalizedEmb = l2Normalize(embedding);
-
-    // 패턴 분류
-    let bestPattern = "";
-    let bestPatternScore = -1;
-    for (const [label, textEmb] of Object.entries(patternEmbeddings)) {
-      const score = cosineSimilarity(normalizedEmb, textEmb);
-      if (score > bestPatternScore) {
-        bestPatternScore = score;
-        bestPattern = label;
-      }
-    }
-
-    // 색상 분류 (다중 태깅: 1등 대비 95% 이상이면 모두 포함, 최대 3개)
-    const colorScores = [];
-    for (const [label, textEmb] of Object.entries(colorEmbeddings)) {
-      const score = cosineSimilarity(normalizedEmb, textEmb);
-      colorScores.push({ label, score });
-    }
-    colorScores.sort((a, b) => b.score - a.score);
-
-    const topColorScore = colorScores[0].score;
-    const COLOR_THRESHOLD_RATIO = 0.95; // 1등 대비 95% 이상이면 포함
-    const MAX_COLORS = 3;
-    const matchedColors = colorScores
-      .filter((c) => c.score >= topColorScore * COLOR_THRESHOLD_RATIO)
-      .slice(0, MAX_COLORS)
-      .map((c) => c.label);
-
-    // DB CHECK 제약조건:
-    //   fabric_type: 무지, 벨벳, 패턴, 스웨이드, 인조가죽 (5개만)
-    //   pattern_detail: 제한 없음
-    //   notes: 제한 없음 → 색상 저장용 (쉼표 구분 다중 태깅)
-    const ALLOWED_TYPES = ["무지", "벨벳", "패턴", "스웨이드", "인조가죽"];
-    const SUB_PATTERNS = [
-      "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-      "추상", "자연", "동물", "식물", "큰패턴"
-    ];
-
-    const isSubPattern = SUB_PATTERNS.includes(bestPattern);
-    let fabricType = isSubPattern ? "패턴" : bestPattern;
-    if (!ALLOWED_TYPES.includes(fabricType)) {
-      fabricType = "무지";
-    }
-    const patternDetail = isSubPattern ? bestPattern : null;
-    const colorStr = matchedColors.join(","); // "베이지,브라운" 형식
-
-    const updateData = {
-      fabric_type: fabricType,
-      pattern_detail: patternDetail,
-      notes: colorStr,
-      auto_classified: true,
-    };
-
-    const { error: updateError } = await supabase
-      .from("fabrics")
-      .update(updateData)
-      .eq("id", fabric.id);
-
-    if (updateError) {
-      console.log(`  ✗ ${fabric.name}: 업데이트 실패 - ${updateError.message}`);
-      errors++;
-    } else {
-      updated++;
-      const progress = `[${i + 1}/${allFabrics.length}]`;
-      console.log(
-        `  ${progress} ${fabric.name} → 종류: ${fabricType}${patternDetail ? ` (${patternDetail})` : ""} | 색상: ${colorStr} (${(bestPatternScore * 100).toFixed(1)}%)`
-      );
-    }
-  }
-
-  console.log(`\n=== 분류 완료 ===`);
-  console.log(`  ✓ 업데이트: ${updated}개`);
-  console.log(`  ✗ 오류: ${errors}개`);
-  console.log(`  총: ${allFabrics.length}개\n`);
-}
-
-main().catch(console.error);
+// 패턴 하위 카테고리 (fabric_type = "패턴"으로 설정됨)
+export const SUB_PATTERN_TYPES = [
+  "부클", "하운드투스", "스트라이프", "체크", "헤링본",
+  "추상", "자연", "동물", "식물", "큰패턴",
+];

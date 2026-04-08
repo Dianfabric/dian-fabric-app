@@ -29,6 +29,14 @@ export default function Navbar() {
           >
             원단 목록
           </Link>
+          <Link
+            href="/training"
+            className={`transition-colors hover:text-gray-900 ${
+              pathname === "/training" ? "text-gray-900" : ""
+            }`}
+          >
+            AI 학습
+          </Link>
         </div>
 
         <Link

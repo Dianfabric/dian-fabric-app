@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
   if (type) query = query.eq("fabric_type", type);
   if (subtype) query = query.eq("pattern_detail", subtype);
   if (usage) query = query.contains("usage_types", [usage]);
-  if (color) query = query.eq("notes", color);
+  if (color) query = query.ilike("notes", `%${color}%`);
 
   const { data, count, error } = await query;
 

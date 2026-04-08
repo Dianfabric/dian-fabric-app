@@ -6,22 +6,38 @@ export const dynamic = "force-dynamic";
 /**
  * 레퍼런스 강화 퀴즈 API
  *
- * GET: 아직 검증 안 된 원단 중 무작위 20개 가져오기
+ * GET: 미검증 원단 가져오기 (카테고리/서브타입 필터 지원)
+ *   - ?category=패턴  → fabric_type = '패턴' 인 원단
+ *   - ?subtype=헤링본  → pattern_detail = '헤링본' 인 원단
+ *   - 둘 다 없으면 전체 무작위
  * POST: 사용자의 분류 결과 저장 (manually_verified = true)
  */
 
-// GET: 무작위 미검증 원단 20개
-export async function GET() {
+// GET: 미검증 원단 20개 (카테고리/서브타입 필터)
+export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category");
+  const subtype = searchParams.get("subtype");
 
-  // 미검증 + 임베딩 있는 원단 중 무작위 20개
-  // Supabase에서 랜덤 정렬은 없으므로, 전체 ID를 가져와서 셔플
-  const { data: ids, error: idError } = await supabase
+  // 기본 쿼리: 미검증 + 이미지 있는 원단
+  let query = supabase
     .from("fabrics")
     .select("id")
     .eq("manually_verified", false)
     .not("embedding", "is", null)
     .not("image_url", "is", null);
+
+  // 카테고리 필터
+  if (subtype) {
+    // 서브패턴 필터 (e.g. 헤링본, 부클 등)
+    query = query.eq("pattern_detail", subtype);
+  } else if (category && category !== "전체 (무작위)") {
+    // 메인 카테고리 필터
+    query = query.eq("fabric_type", category);
+  }
+
+  const { data: ids, error: idError } = await query;
 
   if (idError) {
     return NextResponse.json({ error: idError.message }, { status: 500 });

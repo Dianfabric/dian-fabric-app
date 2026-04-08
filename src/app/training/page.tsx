@@ -65,6 +65,13 @@ export default function TrainingPage() {
   const rejectedIdsRef = useRef<string[]>([]);
   const [reclassifyDone, setReclassifyDone] = useState(false);
 
+  // 재분류 결과
+  const [reclassifyResult, setReclassifyResult] = useState<{
+    classified: number;
+    referenceCount: number;
+    error?: string;
+  } | null>(null);
+
   /* ───────── 라벨 ───────── */
 
   const focusLabel = selectedSubtype || (selectedCategory !== "전체 (무작위)" ? selectedCategory : null);
@@ -313,12 +320,6 @@ export default function TrainingPage() {
 
 
   /* ───────── 재분류 실행 ───────── */
-
-  const [reclassifyResult, setReclassifyResult] = useState<{
-    classified: number;
-    referenceCount: number;
-    error?: string;
-  } | null>(null);
 
   const handleReclassify = async () => {
     setSubmitting(true);

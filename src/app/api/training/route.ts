@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
   const subtype = searchParams.get("subtype");
+  const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50);
 
   // 기본 쿼리: 미검증 + 이미지 있는 원단
   let query = supabase
@@ -47,8 +48,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ fabrics: [], remaining: 0 });
   }
 
-  // 셔플 후 20개 선택
-  const shuffled = ids.sort(() => Math.random() - 0.5).slice(0, 20);
+  // 셔플 후 limit개 선택
+  const shuffled = ids.sort(() => Math.random() - 0.5).slice(0, limit);
   const selectedIds = shuffled.map((r) => r.id);
 
   const { data: fabrics, error } = await supabase

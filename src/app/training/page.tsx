@@ -5,12 +5,6 @@ import Image from "next/image";
 
 /* ───────────────────── 상수 ───────────────────── */
 
-const PATTERN_OPTIONS = [
-  "무지", "벨벳", "스웨이드", "인조가죽",
-  "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴", "자카드", "린넨", "시어",
-];
-
 const MAIN_CATEGORIES = [
   "전체 (무작위)", "무지", "벨벳", "패턴", "스웨이드",
   "인조가죽", "린넨", "면", "울", "자카드", "시어",
@@ -19,11 +13,6 @@ const MAIN_CATEGORIES = [
 const SUB_PATTERNS = [
   "부클", "하운드투스", "스트라이프", "체크", "헤링본",
   "추상", "자연", "동물", "식물", "큰패턴",
-];
-
-const SUB_PATTERN_LIST = [
-  "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴", "자카드", "린넨", "시어",
 ];
 
 const BATCH_SIZE = 12;
@@ -48,7 +37,7 @@ interface Answer {
   confirmed: boolean;
 }
 
-type Phase = "category-select" | "quiz" | "reassign" | "done";
+type Phase = "category-select" | "quiz" | "done";
 
 /* ───────────────────── 컴포넌트 ───────────────────── */
 
@@ -71,12 +60,10 @@ export default function TrainingPage() {
   // 그리드 선택 상태: id → true(맞아) / false(아니야)
   const [selections, setSelections] = useState<Record<string, boolean>>({});
 
-  // 재분류 단계: 틀린 원단들의 올바른 카테고리 지정
-  const [rejectedFabrics, setRejectedFabrics] = useState<QuizFabric[]>([]);
-  const [reassignType, setReassignType] = useState<string | null>(null);
-
-  // 누적 답변
+  // 누적 답변 + 틀린 원단 ID 추적
   const allAnswersRef = useRef<Answer[]>([]);
+  const rejectedIdsRef = useRef<string[]>([]);
+  const [reclassifyDone, setReclassifyDone] = useState(false);
 
   /* ───────── 라벨 ───────── */
 
@@ -93,6 +80,8 @@ export default function TrainingPage() {
         setStats({ correct: 0, corrected: 0 });
         setNoMoreFabrics(false);
         allAnswersRef.current = [];
+        rejectedIdsRef.current = [];
+        setReclassifyDone(false);
       }
 
       try {
@@ -186,45 +175,8 @@ export default function TrainingPage() {
     }
     setStats((prev) => ({ ...prev, correct: prev.correct + confirmed.length }));
 
-    if (rejected.length > 0) {
-      // 틀린 것들 → 올바른 카테고리 선택 단계로
-      setRejectedFabrics(rejected);
-      setReassignType(null);
-      setPhase("reassign");
-    } else {
-      // 전부 맞으면 바로 다음 배치
-      loadBatch(false);
-    }
-  };
-
-  /* ───────── 재분류 지정 ───────── */
-
-  const handleReassignConfirm = () => {
-    if (!reassignType) return;
-
-    const isSubPattern = SUB_PATTERN_LIST.includes(reassignType);
-    const fabricType = isSubPattern ? "패턴" : reassignType;
-    const patternDetail = isSubPattern ? reassignType : null;
-
-    for (const fab of rejectedFabrics) {
-      const answer: Answer = {
-        id: fab.id,
-        fabric_type: fabricType,
-        pattern_detail: patternDetail,
-        colors: fab.notes?.split(",") || [],
-        confirmed: false,
-      };
-      allAnswersRef.current.push(answer);
-    }
-    setStats((prev) => ({ ...prev, corrected: prev.corrected + rejectedFabrics.length }));
-    setRejectedFabrics([]);
-    setPhase("quiz");
-    loadBatch(false);
-  };
-
-  const handleReassignSkip = () => {
-    // 재분류 안하고 그냥 "틀림"으로만 저장 (fabric_type 변경 없이 manually_verified만)
-    for (const fab of rejectedFabrics) {
+    // 틀린 것들도 "틀림"으로 저장 + ID 추적
+    for (const fab of rejected) {
       const answer: Answer = {
         id: fab.id,
         fabric_type: fab.fabric_type || "무지",
@@ -233,12 +185,14 @@ export default function TrainingPage() {
         confirmed: false,
       };
       allAnswersRef.current.push(answer);
+      rejectedIdsRef.current.push(fab.id);
     }
-    setStats((prev) => ({ ...prev, corrected: prev.corrected + rejectedFabrics.length }));
-    setRejectedFabrics([]);
-    setPhase("quiz");
+    setStats((prev) => ({ ...prev, corrected: prev.corrected + rejected.length }));
+
+    // 바로 다음 배치
     loadBatch(false);
   };
+
 
   /* ───────── 그만하기 ───────── */
 
@@ -357,74 +311,42 @@ export default function TrainingPage() {
     );
   }
 
-  /* ───────── 2. 재분류 지정 ───────── */
-  if (phase === "reassign") {
-    return (
-      <div className="pt-24 pb-16 max-w-2xl mx-auto px-4">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-extrabold mb-1">
-            틀린 원단 <span className="text-gradient">재분류</span>
-          </h1>
-          <p className="text-sm text-gray-400">
-            {rejectedFabrics.length}개 원단의 올바른 카테고리를 선택하세요
-          </p>
-        </div>
 
-        {/* 틀린 원단 미리보기 */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          {rejectedFabrics.map((fab) => (
-            <div key={fab.id} className="relative aspect-square rounded-xl overflow-hidden border-2 border-orange-300 bg-gray-100">
-              {fab.image_url && (
-                <Image
-                  src={fab.image_url}
-                  alt={fab.name}
-                  fill
-                  className="object-cover"
-                  sizes="120px"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+  /* ───────── 재분류 실행 ───────── */
 
-        {/* 카테고리 선택 */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm mb-4">
-          <p className="text-xs font-bold text-gray-500 mb-3">올바른 패턴/유형 선택</p>
-          <div className="flex gap-2 flex-wrap">
-            {PATTERN_OPTIONS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setReassignType(p)}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  reassignType === p
-                    ? "bg-[#8B6914] text-white shadow-md"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
+  const [reclassifyResult, setReclassifyResult] = useState<{
+    classified: number;
+    referenceCount: number;
+    error?: string;
+  } | null>(null);
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleReassignConfirm}
-            disabled={!reassignType}
-            className="flex-1 py-3.5 bg-gradient-gold text-white rounded-xl font-semibold text-sm disabled:opacity-40 hover:shadow-lg transition-all"
-          >
-            {reassignType ? `"${reassignType}"(으)로 분류` : "카테고리 선택"}
-          </button>
-          <button
-            onClick={handleReassignSkip}
-            className="px-6 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all"
-          >
-            건너뛰기
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleReclassify = async () => {
+    setSubmitting(true);
+    setReclassifyResult(null);
+    try {
+      const res = await fetch("/api/training/reclassify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: selectedCategory,
+          subtype: selectedSubtype,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setReclassifyResult({ classified: 0, referenceCount: 0, error: data.error });
+      } else {
+        setReclassifyResult({
+          classified: data.classified,
+          referenceCount: data.referenceCount,
+        });
+      }
+      setReclassifyDone(true);
+    } catch {
+      setReclassifyResult({ classified: 0, referenceCount: 0, error: "서버 오류" });
+    }
+    setSubmitting(false);
+  };
 
   /* ───────── 3. 완료 화면 ───────── */
   if (phase === "done") {
@@ -466,7 +388,39 @@ export default function TrainingPage() {
           </p>
         )}
 
+        {/* 재분류 결과 */}
+        {reclassifyResult && (
+          <div className={`rounded-2xl p-4 mb-4 text-sm ${
+            reclassifyResult.error ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+          }`}>
+            {reclassifyResult.error ? (
+              <p>{reclassifyResult.error}</p>
+            ) : (
+              <p>
+                레퍼런스 {reclassifyResult.referenceCount}개 기준으로{" "}
+                <strong>{reclassifyResult.classified}개</strong> 원단을 자동 재분류했습니다!
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-3">
+          {/* 재분류 버튼: 카테고리 집중학습일 때만 표시 */}
+          {focusLabel && stats.correct >= 3 && !reclassifyDone && (
+            <button
+              onClick={handleReclassify}
+              disabled={submitting}
+              className="w-full py-3.5 bg-[#8B6914] text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+            >
+              {submitting ? "재분류 중..." : `"${focusLabel}" 기준으로 전체 재분류`}
+            </button>
+          )}
+          {focusLabel && stats.correct < 3 && !reclassifyDone && (
+            <p className="text-xs text-gray-400 mb-2">
+              재분류하려면 최소 3개 이상 "맞음"으로 확인해야 합니다
+            </p>
+          )}
+
           <button
             onClick={handleBackToSelect}
             className="w-full py-3.5 bg-gradient-gold text-white rounded-xl font-semibold hover:shadow-lg transition-all"

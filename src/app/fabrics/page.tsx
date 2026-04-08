@@ -22,6 +22,8 @@ const FABRIC_CATEGORIES: Record<string, string[]> = {
   스웨이드: [],
   인조가죽: [],
   린넨: [],
+  면: [],
+  울: [],
   자카드: [],
   시어: [],
 };

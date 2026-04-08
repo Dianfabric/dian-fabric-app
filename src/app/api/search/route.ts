@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const type = searchParams.get("type") || "";
+  const subtype = searchParams.get("subtype") || "";
   const usage = searchParams.get("usage") || "";
   const color = searchParams.get("color") || "";
 
@@ -90,8 +91,9 @@ export async function GET(request: NextRequest) {
     .range(from, to);
 
   if (type) query = query.eq("fabric_type", type);
+  if (subtype) query = query.eq("pattern_detail", subtype);
   if (usage) query = query.contains("usage_types", [usage]);
-  if (color) query = query.ilike("color_code", `%${color}%`);
+  if (color) query = query.eq("notes", color);
 
   const { data, count, error } = await query;
 

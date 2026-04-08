@@ -30,20 +30,21 @@ const USAGE_TYPES = ["전체", "소파", "쿠션", "커튼", "침대헤드", "�
 
 const COLOR_FILTERS: { label: string; value: string; bg: string; ring: string }[] = [
   { label: "전체", value: "", bg: "bg-gradient-to-br from-gray-200 to-gray-300", ring: "ring-gray-400" },
-  { label: "화이트", value: "white", bg: "bg-white border border-gray-300", ring: "ring-gray-400" },
-  { label: "아이보리", value: "ivory", bg: "bg-[#FFFFF0]", ring: "ring-yellow-300" },
-  { label: "베이지", value: "beige", bg: "bg-[#D4B896]", ring: "ring-[#C49A6C]" },
-  { label: "브라운", value: "brown", bg: "bg-[#8B4513]", ring: "ring-[#6B3410]" },
-  { label: "그레이", value: "gray", bg: "bg-gray-400", ring: "ring-gray-500" },
-  { label: "블랙", value: "black", bg: "bg-gray-900", ring: "ring-black" },
-  { label: "네이비", value: "navy", bg: "bg-[#1B2A4A]", ring: "ring-[#1B2A4A]" },
-  { label: "블루", value: "blue", bg: "bg-blue-500", ring: "ring-blue-600" },
-  { label: "그린", value: "green", bg: "bg-green-600", ring: "ring-green-700" },
-  { label: "레드", value: "red", bg: "bg-red-500", ring: "ring-red-600" },
-  { label: "핑크", value: "pink", bg: "bg-pink-400", ring: "ring-pink-500" },
-  { label: "옐로우", value: "yellow", bg: "bg-yellow-400", ring: "ring-yellow-500" },
-  { label: "오렌지", value: "orange", bg: "bg-orange-400", ring: "ring-orange-500" },
-  { label: "퍼플", value: "purple", bg: "bg-purple-500", ring: "ring-purple-600" },
+  { label: "화이트", value: "화이트", bg: "bg-white border border-gray-300", ring: "ring-gray-400" },
+  { label: "아이보리", value: "아이보리", bg: "bg-[#FFFFF0]", ring: "ring-yellow-300" },
+  { label: "베이지", value: "베이지", bg: "bg-[#D4B896]", ring: "ring-[#C49A6C]" },
+  { label: "브라운", value: "브라운", bg: "bg-[#8B4513]", ring: "ring-[#6B3410]" },
+  { label: "그레이", value: "그레이", bg: "bg-gray-400", ring: "ring-gray-500" },
+  { label: "블랙", value: "블랙", bg: "bg-gray-900", ring: "ring-black" },
+  { label: "네이비", value: "네이비", bg: "bg-[#1B2A4A]", ring: "ring-[#1B2A4A]" },
+  { label: "블루", value: "블루", bg: "bg-blue-500", ring: "ring-blue-600" },
+  { label: "그린", value: "그린", bg: "bg-green-600", ring: "ring-green-700" },
+  { label: "레드", value: "레드", bg: "bg-red-500", ring: "ring-red-600" },
+  { label: "핑크", value: "핑크", bg: "bg-pink-400", ring: "ring-pink-500" },
+  { label: "옐로우", value: "옐로우", bg: "bg-yellow-400", ring: "ring-yellow-500" },
+  { label: "오렌지", value: "오렌지", bg: "bg-orange-400", ring: "ring-orange-500" },
+  { label: "퍼플", value: "퍼플", bg: "bg-purple-500", ring: "ring-purple-600" },
+  { label: "민트", value: "민트", bg: "bg-teal-400", ring: "ring-teal-500" },
 ];
 
 export default function FabricsPage() {
@@ -69,7 +70,10 @@ export default function FabricsPage() {
       limit: "20",
     });
     if (selectedType !== "전체") {
-      params.set("type", selectedSubType || selectedType);
+      params.set("type", selectedType);
+    }
+    if (selectedSubType) {
+      params.set("subtype", selectedSubType);
     }
     if (selectedUsage !== "전체") params.set("usage", selectedUsage);
     if (selectedColor) params.set("color", selectedColor);

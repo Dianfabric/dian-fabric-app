@@ -20,31 +20,75 @@ export default function SearchPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
-  const searchWithEmbedding = async (embedding: number[]): Promise<SearchResult[]> => {
+  const searchWithEmbedding = async (
+    embedding: number[],
+    fabricType?: string,
+    patternDetail?: string
+  ): Promise<{ results: SearchResult[]; detectedCategory?: string }> => {
     const res = await fetch("/api/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         embedding,
         matchThreshold: 1.5,
-        matchCount: 10,
+        matchCount: 12,
+        fabricType,
+        patternDetail,
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "검색 실패");
-    return data.results || [];
+    return { results: data.results || [], detectedCategory: data.detectedCategory };
+  };
+
+  // 이미지 임베딩으로 카테고리 감지
+  const detectCategory = async (embedding: number[]): Promise<{ fabricType?: string; patternDetail?: string }> => {
+    try {
+      const res = await fetch("/api/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ embedding }),
+      });
+      if (!res.ok) return {};
+      const data = await res.json();
+      return {
+        fabricType: data.fabricType || data.fabric_type,
+        patternDetail: data.patternDetail || data.pattern_detail,
+      };
+    } catch {
+      return {};
+    }
   };
 
   const handleImageSearch = useCallback(async (file: File, groupId: string) => {
     try {
       const { getClipEmbedding } = await import("@/lib/clip-client");
+      setStatusMessage("이미지 분석 중...");
       const embedding = await getClipEmbedding(file, (status) => {
         if (status.status === "loading") setStatusMessage(status.message);
       });
-      const results = await searchWithEmbedding(embedding);
+
+      // 카테고리 감지 (CLIP 기반) → 같은 패턴 안에서 우선 검색
+      setStatusMessage("카테고리 감지 + 유사 원단 검색 중...");
+      const category = await detectCategory(embedding);
+      const { results, detectedCategory } = await searchWithEmbedding(
+        embedding,
+        category.fabricType,
+        category.patternDetail
+      );
+
       setSearchGroups((prev) =>
         prev.map((g) =>
-          g.id === groupId ? { ...g, results, loading: false } : g
+          g.id === groupId
+            ? {
+                ...g,
+                results,
+                loading: false,
+                label: detectedCategory
+                  ? `${g.label} (${detectedCategory} 감지)`
+                  : g.label,
+              }
+            : g
         )
       );
     } catch (err) {
@@ -107,7 +151,7 @@ export default function SearchPage() {
       });
 
       setStatusMessage("유사 원단 검색 중...");
-      const results = await searchWithEmbedding(embedding);
+      const { results } = await searchWithEmbedding(embedding);
 
       setSearchGroups((prev) =>
         prev.map((g) =>

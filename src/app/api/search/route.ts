@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { embedding, matchCount = 12, matchThreshold = 0.1 } = body;
+    const { embedding, matchCount = 12, matchThreshold = 0.1, fabricType, patternDetail } = body;
 
     // 임베딩 벡터 검증
     if (!embedding || !Array.isArray(embedding)) {
@@ -33,10 +33,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Supabase pgvector 코사인 유사도 검색
     const supabase = createServiceClient();
     const vectorString = `[${embedding.join(",")}]`;
 
+    // 카테고리 필터가 있으면 필터 검색 + 일반 검색 병행
+    let filteredResults: Record<string, unknown>[] = [];
+    let generalResults: Record<string, unknown>[] = [];
+
+    // 1) 카테고리 필터 검색 (같은 패턴 안에서 검색)
+    if (fabricType || patternDetail) {
+      const filterParam = patternDetail || fabricType;
+      const filterField = patternDetail ? "pattern_detail" : "fabric_type";
+
+      const { data } = await supabase.rpc("search_fabrics_filtered", {
+        query_embedding: vectorString,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+        filter_field: filterField,
+        filter_value: filterParam,
+      });
+
+      if (data) {
+        filteredResults = data.map(
+          ({ embedding, ...rest }: Record<string, unknown>) => ({ ...rest, category_match: true })
+        );
+      }
+    }
+
+    // 2) 일반 검색 (전체에서 검색)
     const { data: results, error } = await supabase.rpc("search_fabrics", {
       query_embedding: vectorString,
       match_threshold: matchThreshold,
@@ -51,14 +75,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 결과에서 embedding 필드 제거 (응답 크기 절약)
-    const cleanResults = (results || []).map(
+    generalResults = (results || []).map(
       ({ embedding, ...rest }: Record<string, unknown>) => rest
     );
 
+    // 3) 결과 합치기: 필터 결과 우선, 중복 제거
+    const seenIds = new Set<string>();
+    const combined: Record<string, unknown>[] = [];
+
+    for (const r of filteredResults) {
+      if (!seenIds.has(r.id as string)) {
+        seenIds.add(r.id as string);
+        combined.push(r);
+      }
+    }
+    for (const r of generalResults) {
+      if (!seenIds.has(r.id as string)) {
+        seenIds.add(r.id as string);
+        combined.push(r);
+      }
+    }
+
     return NextResponse.json({
-      results: cleanResults,
-      total: cleanResults.length,
+      results: combined.slice(0, matchCount),
+      total: combined.length,
+      detectedCategory: patternDetail || fabricType || null,
     });
   } catch (err) {
     console.error("Search API error:", err);

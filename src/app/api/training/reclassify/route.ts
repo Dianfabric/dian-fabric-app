@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Vercel 타임아웃 60초
 
 /**
- * 레퍼런스 기반 재분류 API
+ * 레퍼런스 기반 재분류 API (v2 - 상대적 비교)
  *
- * POST: 검증된(confirmed) 원단의 임베딩 평균을 기준으로
- *       미검증 원단들을 자동 재분류
+ * CLIP 임베딩은 원단 이미지 간 유사도가 전부 0.85~0.95 범위에 있어서
+ * 절대 임계값(0.75)으로는 구분이 안됨.
  *
- * body: { category?: string, subtype?: string }
+ * 새 로직:
+ * 1. 타겟 카테고리의 검증된 원단 임베딩 → centroid (기준 벡터)
+ * 2. 전체 원단 랜덤 샘플 → generalCentroid (일반 벡터)
+ * 3. 미검증 원단 각각: sim(target) - sim(general) = margin
+ * 4. margin이 상위 N%이면 해당 카테고리로 분류
  *
- * 로직:
- * 1. 해당 카테고리의 검증된 원단들 임베딩 → 평균 = 카테고리 기준 벡터
- * 2. 미검증 원단 중 해당 기준 벡터와 유사도 높은 것 → 자동 분류
+ * 즉, "평균적인 원단보다 스트라이프에 얼마나 더 가까운가"로 판단
  */
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -31,142 +34,166 @@ function averageEmbeddings(embeddings: number[][]): number[] {
   const dim = embeddings[0].length;
   const avg = new Array(dim).fill(0);
   for (const emb of embeddings) {
-    for (let i = 0; i < dim; i++) {
-      avg[i] += emb[i];
-    }
+    for (let i = 0; i < dim; i++) avg[i] += emb[i];
   }
-  for (let i = 0; i < dim; i++) {
-    avg[i] /= embeddings.length;
-  }
-  // L2 normalize
+  for (let i = 0; i < dim; i++) avg[i] /= embeddings.length;
   const norm = Math.sqrt(avg.reduce((s, v) => s + v * v, 0));
-  if (norm > 0) {
-    for (let i = 0; i < dim; i++) avg[i] /= norm;
-  }
+  if (norm > 0) for (let i = 0; i < dim; i++) avg[i] /= norm;
   return avg;
+}
+
+function parseEmbedding(raw: unknown): number[] | null {
+  if (!raw) return null;
+  try {
+    const emb = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (Array.isArray(emb) && emb.length > 0) return emb;
+  } catch { /* ignore */ }
+  return null;
 }
 
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const { category, subtype } = await request.json();
 
-  // 1. 해당 카테고리의 검증된 원단 임베딩 가져오기
-  let verifiedQuery = supabase
+  const label = subtype || category;
+  if (!label || label === "전체 (무작위)") {
+    return NextResponse.json({ error: "카테고리를 선택해주세요" }, { status: 400 });
+  }
+
+  // ─── 1. 타겟 카테고리의 검증된 원단 임베딩 ───
+  let vQuery = supabase
     .from("fabrics")
-    .select("id, embedding")
+    .select("embedding")
     .eq("manually_verified", true)
     .not("embedding", "is", null);
 
   if (subtype) {
-    verifiedQuery = verifiedQuery.eq("pattern_detail", subtype);
-  } else if (category && category !== "전체 (무작위)") {
-    verifiedQuery = verifiedQuery.eq("fabric_type", category);
+    vQuery = vQuery.eq("pattern_detail", subtype);
   } else {
-    return NextResponse.json(
-      { error: "카테고리를 선택해주세요" },
-      { status: 400 }
-    );
+    vQuery = vQuery.eq("fabric_type", category);
   }
 
-  const { data: verifiedFabrics, error: vError } = await verifiedQuery;
-  if (vError) {
-    return NextResponse.json({ error: vError.message }, { status: 500 });
+  const { data: verifiedRows, error: vErr } = await vQuery;
+  if (vErr) return NextResponse.json({ error: vErr.message }, { status: 500 });
+
+  const targetEmbeddings: number[][] = [];
+  for (const row of verifiedRows || []) {
+    const emb = parseEmbedding(row.embedding);
+    if (emb) targetEmbeddings.push(emb);
   }
 
-  if (!verifiedFabrics || verifiedFabrics.length < 3) {
-    return NextResponse.json(
-      { error: `레퍼런스가 부족합니다 (최소 3개 필요, 현재 ${verifiedFabrics?.length || 0}개)` },
-      { status: 400 }
-    );
+  if (targetEmbeddings.length < 3) {
+    return NextResponse.json({
+      error: `레퍼런스가 부족합니다 (최소 3개 필요, 현재 ${targetEmbeddings.length}개)`,
+    }, { status: 400 });
   }
 
-  // 2. 임베딩 파싱 + 평균 계산
-  const embeddings: number[][] = [];
-  for (const fab of verifiedFabrics) {
-    if (fab.embedding) {
-      // pgvector는 string "[0.1,0.2,...]" 또는 array로 반환될 수 있음
-      const emb = typeof fab.embedding === "string"
-        ? JSON.parse(fab.embedding.replace(/^\[/, "[").replace(/\]$/, "]"))
-        : fab.embedding;
-      if (Array.isArray(emb) && emb.length > 0) {
-        embeddings.push(emb);
-      }
-    }
-  }
+  const targetCentroid = averageEmbeddings(targetEmbeddings);
 
-  if (embeddings.length < 3) {
-    return NextResponse.json(
-      { error: `유효한 임베딩이 부족합니다 (${embeddings.length}개)` },
-      { status: 400 }
-    );
-  }
+  // ─── 2. 일반 벡터 (전체 랜덤 샘플 200개) ───
+  const { data: generalRows } = await supabase
+    .from("fabrics")
+    .select("embedding")
+    .not("embedding", "is", null)
+    .limit(300);
 
-  const centroid = averageEmbeddings(embeddings);
+  const generalEmbeddings: number[][] = [];
+  for (const row of generalRows || []) {
+    const emb = parseEmbedding(row.embedding);
+    if (emb) generalEmbeddings.push(emb);
+  }
+  const generalCentroid = averageEmbeddings(generalEmbeddings);
+
+  // ─── 3. 미검증 원단 스캔 + margin 계산 ───
   const targetFabricType = subtype ? "패턴" : category;
   const targetPatternDetail = subtype || null;
 
-  // 3. 미검증 원단 가져오기 (페이징)
-  let classified = 0;
-  let skipped = 0;
-  let errors = 0;
+  // 이미 해당 카테고리인 원단은 건너뛰기 위한 조건
+  let candidates: { id: string; margin: number }[] = [];
   let page = 0;
-  const SIMILARITY_THRESHOLD = 0.75; // 유사도 임계값
 
   while (true) {
     const from = page * 500;
-    const { data: unverified, error: uError } = await supabase
+    const { data: rows, error: uErr } = await supabase
       .from("fabrics")
       .select("id, embedding, fabric_type, pattern_detail")
       .eq("manually_verified", false)
       .not("embedding", "is", null)
       .range(from, from + 499);
 
-    if (uError) { errors++; break; }
-    if (!unverified || unverified.length === 0) break;
+    if (uErr || !rows || rows.length === 0) break;
 
-    for (const fab of unverified) {
-      if (!fab.embedding) { skipped++; continue; }
+    for (const row of rows) {
+      // 이미 해당 카테고리면 건너뛰기
+      if (subtype && row.pattern_detail === subtype) continue;
+      if (!subtype && row.fabric_type === category) continue;
 
-      const emb = typeof fab.embedding === "string"
-        ? JSON.parse(fab.embedding.replace(/^\[/, "[").replace(/\]$/, "]"))
-        : fab.embedding;
+      const emb = parseEmbedding(row.embedding);
+      if (!emb) continue;
 
-      if (!Array.isArray(emb) || emb.length === 0) { skipped++; continue; }
+      const simTarget = cosineSimilarity(targetCentroid, emb);
+      const simGeneral = cosineSimilarity(generalCentroid, emb);
+      const margin = simTarget - simGeneral;
 
-      const similarity = cosineSimilarity(centroid, emb);
-
-      if (similarity >= SIMILARITY_THRESHOLD) {
-        // 기준 벡터와 충분히 유사 → 해당 카테고리로 분류
-        const updateData: Record<string, unknown> = {
-          fabric_type: targetFabricType,
-          auto_classified: true,
-        };
-        if (targetPatternDetail) {
-          updateData.pattern_detail = targetPatternDetail;
-        }
-
-        const { error: upErr } = await supabase
-          .from("fabrics")
-          .update(updateData)
-          .eq("id", fab.id);
-
-        if (upErr) { errors++; } else { classified++; }
-      } else {
-        skipped++;
-      }
+      candidates.push({ id: row.id, margin });
     }
 
-    if (unverified.length < 500) break;
+    if (rows.length < 500) break;
     page++;
+  }
+
+  // ─── 4. margin 기준 상위 원단만 분류 ───
+  // 검증된 원단의 margin 분포를 기준으로 임계값 결정
+  const verifiedMargins: number[] = [];
+  for (const emb of targetEmbeddings) {
+    const simT = cosineSimilarity(targetCentroid, emb);
+    const simG = cosineSimilarity(generalCentroid, emb);
+    verifiedMargins.push(simT - simG);
+  }
+  verifiedMargins.sort((a, b) => a - b);
+
+  // 검증된 원단 중 하위 10% margin을 임계값으로 사용
+  // (검증된 원단의 90%가 이 임계값 이상)
+  const thresholdIndex = Math.floor(verifiedMargins.length * 0.1);
+  const marginThreshold = verifiedMargins[thresholdIndex];
+
+  // 임계값 이상인 미검증 원단을 분류
+  const toClassify = candidates.filter(c => c.margin >= marginThreshold);
+
+  let classified = 0;
+  let errors = 0;
+
+  // 배치 업데이트 (50개씩)
+  for (let i = 0; i < toClassify.length; i += 50) {
+    const batch = toClassify.slice(i, i + 50);
+    const ids = batch.map(c => c.id);
+
+    const updateData: Record<string, unknown> = {
+      fabric_type: targetFabricType,
+    };
+    if (targetPatternDetail) {
+      updateData.pattern_detail = targetPatternDetail;
+    }
+
+    const { error: upErr, count } = await supabase
+      .from("fabrics")
+      .update(updateData)
+      .in("id", ids);
+
+    if (upErr) {
+      errors += batch.length;
+    } else {
+      classified += count || batch.length;
+    }
   }
 
   return NextResponse.json({
     success: true,
-    category: subtype || category,
-    referenceCount: embeddings.length,
+    category: label,
+    referenceCount: targetEmbeddings.length,
+    totalCandidates: candidates.length,
+    marginThreshold: marginThreshold.toFixed(6),
     classified,
-    skipped,
     errors,
-    threshold: SIMILARITY_THRESHOLD,
   });
 }

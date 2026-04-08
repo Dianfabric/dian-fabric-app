@@ -8,6 +8,14 @@ declare module "@huggingface/transformers" {
     static from_pretrained(model: string, options?: any): Promise<any>;
   }
 
+  export class AutoTokenizer {
+    static from_pretrained(model: string, options?: any): Promise<any>;
+  }
+
+  export class CLIPTextModelWithProjection {
+    static from_pretrained(model: string, options?: any): Promise<any>;
+  }
+
   export class RawImage {
     static fromBlob(blob: Blob): Promise<RawImage>;
     static read(url: string): Promise<RawImage>;

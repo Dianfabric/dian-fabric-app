@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { SearchResult, Fabric } from "@/lib/types";
 
 type Props = {
@@ -10,7 +11,7 @@ export default function FabricCard({ fabric, showSimilarity }: Props) {
   const similarity = "similarity" in fabric ? fabric.similarity : null;
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover cursor-pointer">
+    <Link href={`/fabric/${fabric.id}`} className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover cursor-pointer">
       {/* Image */}
       <div className="relative aspect-square bg-gray-100">
         {fabric.image_url ? (
@@ -58,6 +59,6 @@ export default function FabricCard({ fabric, showSimilarity }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

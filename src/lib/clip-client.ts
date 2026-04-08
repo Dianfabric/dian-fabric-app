@@ -8,6 +8,11 @@ let modelInstance: { processor: any; model: any } | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let loadingPromise: Promise<{ processor: any; model: any }> | null = null;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let textModelInstance: { tokenizer: any; model: any } | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let textLoadingPromise: Promise<{ tokenizer: any; model: any }> | null = null;
+
 export type ModelLoadingStatus =
   | { status: "idle" }
   | { status: "loading"; message: string }
@@ -109,6 +114,90 @@ export async function getClipEmbedding(
 
   const vector: number[] = Array.from(rawData);
   console.log("[CLIP] 최종 임베딩 차원:", vector.length);
+
+  // L2 정규화
+  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+  if (norm > 0) {
+    return vector.map((val) => val / norm);
+  }
+  return vector;
+}
+
+async function ensureTextModel(
+  onStatus?: (status: ModelLoadingStatus) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<{ tokenizer: any; model: any }> {
+  if (textModelInstance) return textModelInstance;
+
+  if (!textLoadingPromise) {
+    textLoadingPromise = (async () => {
+      try {
+        onStatus?.({ status: "loading", message: "텍스트 AI 모델 준비 중..." });
+
+        const {
+          AutoTokenizer,
+          CLIPTextModelWithProjection,
+          env,
+        } = await import("@huggingface/transformers");
+
+        env.allowLocalModels = false;
+
+        onStatus?.({
+          status: "loading",
+          message: "CLIP 텍스트 모델 다운로드 중...",
+        });
+
+        const [tokenizer, model] = await Promise.all([
+          AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch32"),
+          CLIPTextModelWithProjection.from_pretrained(
+            "Xenova/clip-vit-base-patch32",
+            { dtype: "q8" }
+          ),
+        ]);
+
+        textModelInstance = { tokenizer, model };
+        onStatus?.({ status: "ready" });
+        return textModelInstance;
+      } catch (err) {
+        textLoadingPromise = null;
+        const message =
+          err instanceof Error ? err.message : "텍스트 모델 로딩 실패";
+        onStatus?.({ status: "error", message });
+        throw err;
+      }
+    })();
+  }
+
+  return textLoadingPromise;
+}
+
+export async function getClipTextEmbedding(
+  text: string,
+  onStatus?: (status: ModelLoadingStatus) => void
+): Promise<number[]> {
+  const { tokenizer, model } = await ensureTextModel(onStatus);
+
+  onStatus?.({ status: "loading", message: "텍스트 분석 중..." });
+
+  const textInputs = tokenizer(text, { padding: true, truncation: true });
+  const output = await model(textInputs);
+
+  let rawData: Float32Array | null = null;
+
+  if (output.text_embeds) {
+    rawData = output.text_embeds.data;
+  } else if (output.text_embeddings) {
+    rawData = output.text_embeddings.data;
+  } else {
+    const keys = Object.keys(output || {});
+    throw new Error(`CLIP 텍스트 출력 인식 불가: ${keys.join(", ")}`);
+  }
+
+  if (!rawData || rawData.length === 0) {
+    throw new Error("CLIP 텍스트 임베딩이 비어있습니다");
+  }
+
+  const vector: number[] = Array.from(rawData);
 
   // L2 정규화
   const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));

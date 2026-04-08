@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "20");
   const type = searchParams.get("type") || "";
   const usage = searchParams.get("usage") || "";
+  const color = searchParams.get("color") || "";
 
   const supabase = createServiceClient();
   const from = (page - 1) * limit;
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
 
   if (type) query = query.eq("fabric_type", type);
   if (usage) query = query.contains("usage_types", [usage]);
+  if (color) query = query.ilike("color_code", `%${color}%`);
 
   const { data, count, error } = await query;
 

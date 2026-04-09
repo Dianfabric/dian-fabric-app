@@ -114,20 +114,17 @@ export default function FabricDetailPage() {
                   {fabric.fabric_type}
                 </span>
               )}
+              {fabric.pattern_detail && (
+                <span className="text-xs font-semibold text-white bg-[#8B6914] px-3 py-1 rounded-lg">
+                  {fabric.pattern_detail}
+                </span>
+              )}
               {fabric.usage_types?.map((u) => (
                 <span
                   key={u}
                   className="text-xs font-semibold text-[#8B6914] bg-[rgba(139,105,20,0.08)] px-3 py-1 rounded-lg"
                 >
                   {u}
-                </span>
-              ))}
-              {fabric.features?.map((f) => (
-                <span
-                  key={f}
-                  className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-lg"
-                >
-                  {f}
                 </span>
               ))}
             </div>

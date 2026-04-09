@@ -10,6 +10,7 @@ export interface Fabric {
   other_percent: number
   composition_note: string | null
   fabric_type: string | null
+  pattern_detail: string | null
   usage_types: string[]
   features: string[]
   is_curtain_eligible: boolean

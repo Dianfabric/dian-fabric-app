@@ -44,6 +44,11 @@ export default function FabricCard({ fabric, showSimilarity }: Props) {
               {fabric.fabric_type}
             </span>
           )}
+          {fabric.pattern_detail && (
+            <span className="text-[10px] font-semibold text-white bg-[#8B6914] px-2.5 py-1 rounded-md">
+              {fabric.pattern_detail}
+            </span>
+          )}
           {fabric.usage_types?.slice(0, 2).map((u) => (
             <span
               key={u}

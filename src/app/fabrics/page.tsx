@@ -3,37 +3,20 @@ import { useState, useEffect, useCallback } from "react";
 import FabricCard from "@/components/FabricCard";
 import type { Fabric } from "@/lib/types";
 
-const FABRIC_CATEGORIES: Record<string, string[]> = {
-  전체: [],
-  무지: [],
-  벨벳: [],
-  패턴: [
-    "부클",
-    "하운드투스",
-    "스트라이프",
-    "체크",
-    "헤링본",
-    "추상",
-    "자연",
-    "동물",
-    "식물",
-    "큰패턴",
-  ],
-  스웨이드: [],
-  인조가죽: [],
-  린넨: [],
-  면: [],
-  울: [],
-  자카드: [],
-  시어: [],
-};
+const FABRIC_TYPES = [
+  "전체", "무지", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "자카드", "시어",
+];
+
+const PATTERN_DETAILS = [
+  "전체", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
+  "추상", "자연", "동물", "식물", "큰패턴",
+];
 
 const USAGE_TYPES = ["전체", "소파", "쿠션", "커튼", "침대헤드", "스툴", "벽패널"];
 
 const COLOR_FILTERS: { label: string; value: string; bg: string; ring: string }[] = [
   { label: "전체", value: "", bg: "bg-gradient-to-br from-gray-200 to-gray-300", ring: "ring-gray-400" },
-  { label: "화이트", value: "화이트", bg: "bg-white border border-gray-300", ring: "ring-gray-400" },
-  { label: "아이보리", value: "아이보리", bg: "bg-[#FFFFF0]", ring: "ring-yellow-300" },
+  { label: "아이보리", value: "아이보리", bg: "bg-[#FFFFF0] border border-gray-200", ring: "ring-yellow-300" },
   { label: "베이지", value: "베이지", bg: "bg-[#D4B896]", ring: "ring-[#C49A6C]" },
   { label: "브라운", value: "브라운", bg: "bg-[#8B4513]", ring: "ring-[#6B3410]" },
   { label: "그레이", value: "그레이", bg: "bg-gray-400", ring: "ring-gray-500" },
@@ -159,8 +142,6 @@ export default function FabricsPage() {
     return pages;
   };
 
-  const subTypes = FABRIC_CATEGORIES[selectedType] || [];
-
   return (
     <div className="pt-24 pb-20 px-6">
       <div className="max-w-[1200px] mx-auto">
@@ -229,7 +210,7 @@ export default function FabricsPage() {
           <div className="mb-4">
             <p className="text-xs font-bold text-gray-500 mb-2">원단 종류</p>
             <div className="flex gap-2 flex-wrap">
-              {Object.keys(FABRIC_CATEGORIES).map((t) => (
+              {FABRIC_TYPES.map((t) => (
                 <button
                   key={t}
                   onClick={() => handleTypeClick(t)}
@@ -245,29 +226,34 @@ export default function FabricsPage() {
             </div>
           </div>
 
-          {/* 하위 카테고리 (패턴 등) */}
-          {subTypes.length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs font-bold text-gray-500 mb-2">
-                {selectedType} 상세
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                {subTypes.map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => handleSubTypeClick(sub)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      selectedSubType === sub
-                        ? "bg-[#8B6914] text-white"
-                        : "bg-[rgba(139,105,20,0.08)] text-[#8B6914] hover:bg-[rgba(139,105,20,0.15)]"
-                    }`}
-                  >
-                    {sub}
-                  </button>
-                ))}
-              </div>
+          {/* 패턴 상세 (항상 표시) */}
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-500 mb-2">패턴 상세</p>
+            <div className="flex gap-2 flex-wrap">
+              {PATTERN_DETAILS.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => {
+                    if (sub === "전체") {
+                      setSelectedSubType("");
+                    } else if (selectedSubType === sub) {
+                      setSelectedSubType("");
+                    } else {
+                      setSelectedSubType(sub);
+                    }
+                    setPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    (sub === "전체" && !selectedSubType) || selectedSubType === sub
+                      ? "bg-[#8B6914] text-white"
+                      : "bg-[rgba(139,105,20,0.08)] text-[#8B6914] hover:bg-[rgba(139,105,20,0.15)]"
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* 사용처 */}
           <div className="mb-4">

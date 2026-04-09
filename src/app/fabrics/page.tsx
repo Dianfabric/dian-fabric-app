@@ -60,10 +60,12 @@ export default function FabricsPage() {
   const [selectedUsage, setSelectedUsage] = useState("전체");
   const [selectedColor, setSelectedColor] = useState("");
   const [goToPage, setGoToPage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   useEffect(() => {
     fetchFabrics();
-  }, [page, selectedType, selectedSubType, selectedUsage, selectedColor]);
+  }, [page, selectedType, selectedSubType, selectedUsage, selectedColor, searchQuery]);
 
   const fetchFabrics = async () => {
     setLoading(true);
@@ -79,6 +81,7 @@ export default function FabricsPage() {
     }
     if (selectedUsage !== "전체") params.set("usage", selectedUsage);
     if (selectedColor) params.set("color", selectedColor);
+    if (searchQuery) params.set("search", searchQuery);
 
     try {
       const res = await fetch(`/api/search?${params}`);
@@ -101,6 +104,17 @@ export default function FabricsPage() {
 
   const handleSubTypeClick = useCallback((sub: string) => {
     setSelectedSubType((prev) => (prev === sub ? "" : sub));
+    setPage(1);
+  }, []);
+
+  const handleSearch = useCallback(() => {
+    setSearchQuery(searchInput.trim());
+    setPage(1);
+  }, [searchInput]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchInput("");
+    setSearchQuery("");
     setPage(1);
   }, []);
 
@@ -158,6 +172,55 @@ export default function FabricsPage() {
           <p className="text-gray-400 text-[15px]">
             {total}개의 프리미엄 원단을 둘러보세요
           </p>
+        </div>
+
+        {/* 검색 */}
+        <div className="mb-6">
+          <div className="flex gap-3 max-w-[600px] mx-auto">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="원단명 또는 컬러번호 검색 (예: ALPINE, PS3086, 2119)"
+                className="w-full h-12 pl-11 pr-10 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-[#C49A6C] transition-colors"
+              />
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+              </svg>
+              {searchInput && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={!searchInput.trim()}
+              className="px-6 h-12 rounded-2xl bg-gradient-gold text-white text-sm font-semibold disabled:opacity-50 hover:shadow-lg transition-all"
+            >
+              검색
+            </button>
+          </div>
+          {searchQuery && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <span className="text-sm text-gray-500">
+                &quot;{searchQuery}&quot; 검색 결과: {total}개
+              </span>
+              <button
+                onClick={handleClearSearch}
+                className="text-xs text-[#8B6914] font-semibold hover:underline"
+              >
+                검색 초기화
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Filters */}

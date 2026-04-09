@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
   const subtype = searchParams.get("subtype") || "";
   const usage = searchParams.get("usage") || "";
   const color = searchParams.get("color") || "";
+  const search = searchParams.get("search") || "";
 
   const supabase = createServiceClient();
   const from = (page - 1) * limit;
@@ -131,6 +132,10 @@ export async function GET(request: NextRequest) {
     .order("name")
     .range(from, to);
 
+  if (search) {
+    // 원단명 또는 컬러번호로 검색
+    query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+  }
   if (type) query = query.eq("fabric_type", type);
   if (subtype) query = query.eq("pattern_detail", subtype);
   if (usage) query = query.contains("usage_types", [usage]);

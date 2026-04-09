@@ -136,8 +136,26 @@ export async function GET(request: NextRequest) {
     // 원단명 또는 컬러번호로 검색
     query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
   }
-  if (type) query = query.eq("fabric_type", type);
-  if (subtype) query = query.eq("pattern_detail", subtype);
+
+  // 패턴상세가 선택되면 패턴상세 기준으로만 필터 (fabric_type 무시)
+  // → 린넨+헤링본, 면+체크 같은 원단도 패턴 필터에 포함
+  if (subtype) {
+    query = query.eq("pattern_detail", subtype);
+    // type이 "패턴"이면 subtype으로 이미 커버되므로 추가 필터 불필요
+    // type이 린넨/면/울 등 소재면 소재+패턴 조합 필터
+    if (type && type !== "패턴") {
+      query = query.eq("fabric_type", type);
+    }
+  } else if (type) {
+    // 패턴상세 없이 원단종류만 선택
+    if (type === "패턴") {
+      // "패턴" 선택 시: fabric_type이 패턴이거나, pattern_detail이 있는 것 모두 포함
+      query = query.not("pattern_detail", "is", null);
+    } else {
+      query = query.eq("fabric_type", type);
+    }
+  }
+
   if (usage) query = query.contains("usage_types", [usage]);
   if (color) query = query.ilike("notes", `%${color}%`);
 

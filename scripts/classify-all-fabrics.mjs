@@ -238,10 +238,19 @@ async function main() {
           ? result.colors.map((c) => typeof c === "object" ? `${c.color}:${c.pct}` : c).join(",")
           : "";
 
+        // 기존 notes에서 RGB 데이터 보존
+        const { data: current } = await supabase
+          .from("fabrics")
+          .select("notes")
+          .eq("id", fabric.id)
+          .single();
+        const existingRgb = current?.notes?.match(/\|rgb:\d+,\d+,\d+/)?.[0] || "";
+        const newNotes = colorStr + existingRgb;
+
         const updateData = {
           fabric_type,
           pattern_detail,
-          notes: colorStr,
+          notes: newNotes,
           auto_classified: true,
         };
 

@@ -239,10 +239,10 @@ export default function SearchPage() {
 
         const { results: clipResults } = await searchWithEmbedding(
           embedding,
-          useFilter ? fab.fabricType : undefined,
+          useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
           useFilter ? fab.patternDetail || undefined : undefined,
-          useFilter ? fab.colors[0]?.color : undefined,
-          imageColors,
+          undefined,                                     // 색상은 RGB가 담당 (Gemini 텍스트 안씀)
+          imageColors,                                   // RGB 클러스터로 색상 필터+정렬
           IMAGE_FETCH_COUNT, // 100개
         );
 

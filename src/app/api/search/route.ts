@@ -4,10 +4,13 @@ import { createServiceClient } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 
 /**
- * 원단 유사도 검색 API (pgvector 코사인 유사도)
+ * 원단 유사도 검색 API
  *
- * POST: 클라이언트에서 생성한 CLIP 임베딩 벡터를 받아 Supabase pgvector 검색
- *       → 브라우저에서 Transformers.js로 임베딩 생성 후 이 API로 전송
+ * 역할 분리:
+ *   - 패턴: Gemini가 판단 (patternDetail, fabricType)
+ *   - 색상: RGB 수치 비교 (K-means 클러스터)
+ *
+ * POST: CLIP 임베딩 + RGB 클러스터 + Gemini 패턴 → 검색
  * GET:  전체 원단 목록 (필터/페이지네이션)
  */
 
@@ -53,30 +56,35 @@ function parseColorClusters(notes: string | null): ColorCluster[] | null {
 
 // 색상 분포 유사도 계산 (0~1, 1이 완전 같음)
 function colorDistributionSimilarity(query: ColorCluster[], fabric: ColorCluster[]): number {
-  // 각 쿼리 색상에 대해 가장 가까운 원단 색상 찾기 (비율 가중)
   let totalScore = 0;
 
   for (const qc of query) {
     let bestMatch = 0;
     for (const fc of fabric) {
       const dist = rgbDistance(qc.rgb, fc.rgb);
-      const colorSim = Math.max(0, 1 - dist * 2.5); // 거리가 가까울수록 1에 가까움
-      // 비율 유사도 (비율 차이가 적을수록 높음)
+      const colorSim = Math.max(0, 1 - dist * 2.5);
       const pctSim = 1 - Math.abs(qc.pct - fc.pct) / 100;
       const match = colorSim * 0.7 + pctSim * 0.3;
       if (match > bestMatch) bestMatch = match;
     }
-    totalScore += bestMatch * (qc.pct / 100); // 쿼리 색상 비율로 가중
+    totalScore += bestMatch * (qc.pct / 100);
   }
 
   return totalScore;
+}
+
+// RGB 클러스터 기반 색상 필터 (임계값 이상이면 통과)
+function passesColorFilter(queryColors: ColorCluster[], fabricNotes: string, threshold = 0.35): boolean {
+  const fabricClusters = parseColorClusters(fabricNotes);
+  if (!fabricClusters) return false;
+  return colorDistributionSimilarity(queryColors, fabricClusters) >= threshold;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { embedding, matchCount = 12, matchThreshold = 0.1, fabricType, patternDetail } = body;
-    // 새 형식: [{rgb:[R,G,B], pct:60}, ...] 또는 구 형식: [R,G,B]
+    // RGB 색상 클러스터 (Gemini 대신 색상 담당)
     const rawRGB = body.rgb;
     let queryColors: ColorCluster[] | null = null;
     if (rawRGB) {
@@ -107,14 +115,14 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const vectorString = `[${embedding.join(",")}]`;
 
-    // ─── 필터 기반 검색: 패턴 필터 → 색상 필터 → CLIP+RGB 정렬 ───
-    const hasGeminiFilter = patternDetail || fabricType || body.dominantColor;
+    // ─── 역할 분리 검색: Gemini→패턴 필터, RGB→색상 필터+정렬 ───
+    // dominantColor는 텍스트 검색용 (RGB 없을 때 fallback)
+    const dominantColor = body.dominantColor as string | undefined;
+    const hasPatternFilter = patternDetail || fabricType;
     const hasRGBData = queryColors && queryColors.length > 0;
+    const hasTextColor = !!dominantColor && !hasRGBData; // 텍스트 검색에서만 색상명 사용
 
-    if (hasGeminiFilter || hasRGBData) {
-      const dominantColor = body.dominantColor as string | undefined;
-
-      // STEP 1: 단계적 필터링 (좁은 범위 → 넓은 범위)
+    if (hasPatternFilter || hasRGBData || hasTextColor) {
       let allCandidates: Record<string, unknown>[] = [];
       const seenIds = new Set<string>();
 
@@ -129,8 +137,8 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      // 1순위: 패턴 + 색상 (가장 정확)
-      if ((patternDetail || fabricType) && dominantColor) {
+      // STEP 1a: 패턴 + 텍스트색상 (텍스트 검색용)
+      if (hasPatternFilter && hasTextColor) {
         let q = supabase.from("fabrics").select("*")
           .not("embedding", "is", null).not("image_url", "is", null)
           .ilike("notes", `%${dominantColor}%`);
@@ -140,41 +148,47 @@ export async function POST(request: NextRequest) {
         addResults(data);
       }
 
-      // 패턴+색상으로 충분하면 여기서 멈춤, 부족하면 확장
-      if (allCandidates.length < matchCount) {
-        // 2순위: 패턴만 (색상은 다르지만 같은 패턴)
-        if (patternDetail || fabricType) {
-          let q = supabase.from("fabrics").select("*")
-            .not("embedding", "is", null).not("image_url", "is", null);
-          if (patternDetail) q = q.eq("pattern_detail", patternDetail);
-          else if (fabricType) q = q.eq("fabric_type", fabricType);
-          const { data } = await q;
-          addResults(data);
-        }
+      // STEP 1b: 패턴 필터 (Gemini 담당)
+      if (hasPatternFilter && allCandidates.length < matchCount) {
+        let q = supabase.from("fabrics").select("*")
+          .not("embedding", "is", null).not("image_url", "is", null);
+        if (patternDetail) q = q.eq("pattern_detail", patternDetail);
+        else if (fabricType) q = q.eq("fabric_type", fabricType);
+        const { data } = await q;
+        addResults(data);
       }
 
-      if (allCandidates.length < matchCount) {
-        // 3순위: 색상만 (패턴은 다르지만 같은 색상)
-        if (dominantColor) {
-          const { data } = await supabase.from("fabrics").select("*")
-            .not("embedding", "is", null).not("image_url", "is", null)
-            .ilike("notes", `%${dominantColor}%`);
-          addResults(data);
-        }
+      // STEP 1c: 텍스트 색상만 (패턴 없이)
+      if (!hasPatternFilter && hasTextColor && allCandidates.length < matchCount) {
+        const { data } = await supabase.from("fabrics").select("*")
+          .not("embedding", "is", null).not("image_url", "is", null)
+          .ilike("notes", `%${dominantColor}%`);
+        addResults(data);
       }
 
-      // 4순위: Gemini 실패, RGB만 있음
-      if (allCandidates.length === 0 && hasRGBData) {
+      // 패턴 필터 결과가 부족하면 CLIP 벡터로 확장
+      if (allCandidates.length < matchCount) {
         const { data } = await supabase.rpc("search_fabrics", {
           query_embedding: vectorString,
           match_threshold: matchThreshold,
-          match_count: 200,
+          match_count: 300,
         });
         addResults(data as Record<string, unknown>[] | null);
       }
 
+      // STEP 2: RGB 색상 필터 (이미지 검색) — 패턴 후보 중 색상이 비슷한 것만
+      if (hasRGBData && allCandidates.length > matchCount) {
+        const colorFiltered = allCandidates.filter((fabric) =>
+          passesColorFilter(queryColors!, (fabric.notes as string) || "", 0.3)
+        );
+        // 색상 필터 결과가 충분하면 사용, 아니면 전체 유지
+        if (colorFiltered.length >= Math.min(matchCount, 15)) {
+          allCandidates = colorFiltered;
+        }
+      }
+
       if (allCandidates.length > 0) {
-        // STEP 2: CLIP 유사도 + RGB 색상 유사도로 정렬
+        // STEP 3: CLIP + RGB로 정렬
         const queryVec = embedding as number[];
 
         const scored = allCandidates.map((fabric: Record<string, unknown>) => {
@@ -205,8 +219,8 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 최종: CLIP 50% + RGB 50%
-          const similarity = clipSim * 0.5 + rgbSim * 0.5;
+          // 최종: CLIP 40% + RGB 60% (색상 중시)
+          const similarity = clipSim * 0.4 + rgbSim * 0.6;
 
           const { embedding: _, ...rest } = fabric;
           return { ...rest, similarity, category_match: true };
@@ -277,23 +291,16 @@ export async function GET(request: NextRequest) {
     .range(from, to);
 
   if (search) {
-    // 원단명 또는 컬러번호로 검색
     query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
   }
 
-  // 패턴상세가 선택되면 패턴상세 기준으로만 필터 (fabric_type 무시)
-  // → 린넨+헤링본, 면+체크 같은 원단도 패턴 필터에 포함
   if (subtype) {
     query = query.eq("pattern_detail", subtype);
-    // type이 "패턴"이면 subtype으로 이미 커버되므로 추가 필터 불필요
-    // type이 린넨/면/울 등 소재면 소재+패턴 조합 필터
     if (type && type !== "패턴") {
       query = query.eq("fabric_type", type);
     }
   } else if (type) {
-    // 패턴상세 없이 원단종류만 선택
     if (type === "패턴") {
-      // "패턴" 선택 시: fabric_type이 패턴이거나, pattern_detail이 있는 것 모두 포함
       query = query.not("pattern_detail", "is", null);
     } else {
       query = query.eq("fabric_type", type);

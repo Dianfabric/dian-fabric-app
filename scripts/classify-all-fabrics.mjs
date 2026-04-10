@@ -24,7 +24,7 @@ envContent.split("\n").forEach((line) => {
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
-const CONCURRENCY = 5;
+const CONCURRENCY = 2;
 
 // ─── 프롬프트 ───
 const PROMPT = `You are a world-class fabric/textile classification expert with decades of experience.
@@ -160,7 +160,7 @@ async function main() {
   console.log(`  패턴 카테고리: ${[...PATTERN_DETAILS].join(", ")}`);
   console.log(`  원단종류: ${[...VALID_TYPES].join(", ")} (린넨/면/울 유지)\n`);
 
-  // 전체 원단 로드 (image_url 있는 것만)
+  // 미분류 원단만 로드 (auto_classified가 false 또는 null인 것)
   let allFabrics = [];
   let page = 0;
   while (true) {
@@ -169,6 +169,7 @@ async function main() {
       .from("fabrics")
       .select("id, name, image_url, fabric_type")
       .not("image_url", "is", null)
+      .or("auto_classified.is.null,auto_classified.eq.false")
       .range(from, from + 999);
     if (error) { console.error("DB 에러:", error.message); break; }
     if (!data || data.length === 0) break;
@@ -177,8 +178,8 @@ async function main() {
     page++;
   }
 
-  console.log(`전체 대상: ${allFabrics.length}개\n`);
-  if (allFabrics.length === 0) return;
+  console.log(`미분류 대상: ${allFabrics.length}개\n`);
+  if (allFabrics.length === 0) { console.log("모든 원단이 이미 분류되었습니다!"); return; }
 
   // 진행 파일 (중단 시 이어서)
   const progressFile = "scripts/.gemini-all-progress.json";

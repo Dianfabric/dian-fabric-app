@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
 
 export default function FabricDetailPage() {
@@ -11,6 +12,7 @@ export default function FabricDetailPage() {
   const [fabric, setFabric] = useState<Fabric | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -81,8 +83,27 @@ export default function FabricDetailPage() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* 라이트박스 */}
+        {showLightbox && fabric.image_url && (
+          <ImageLightbox
+            images={[{
+              src: fabric.image_url,
+              name: fabric.name,
+              colorCode: fabric.color_code,
+              patternDetail: fabric.pattern_detail || undefined,
+              fabricType: fabric.fabric_type || undefined,
+              price: fabric.price_per_yard || undefined,
+            }]}
+            currentIndex={0}
+            onClose={() => setShowLightbox(false)}
+          />
+        )}
+
         {/* 왼쪽: 이미지 */}
-        <div className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden">
+        <div
+          className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => setShowLightbox(true)}
+        >
           {fabric.image_url ? (
             <Image
               src={fabric.image_url}

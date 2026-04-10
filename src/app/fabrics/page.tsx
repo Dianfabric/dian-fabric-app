@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import FabricCard from "@/components/FabricCard";
+import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
 
 const FABRIC_TYPES = [
@@ -45,6 +46,22 @@ export default function FabricsPage() {
   const [goToPage, setGoToPage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [lightbox, setLightbox] = useState<{
+    images: { src: string; name: string; colorCode?: string; patternDetail?: string; fabricType?: string; price?: number }[];
+    index: number;
+  } | null>(null);
+
+  const openLightbox = useCallback((fabricIdx: number) => {
+    const images = fabrics.map((f) => ({
+      src: f.image_url || "",
+      name: f.name,
+      colorCode: f.color_code,
+      patternDetail: f.pattern_detail || undefined,
+      fabricType: f.fabric_type || undefined,
+      price: f.price_per_yard || undefined,
+    }));
+    setLightbox({ images, index: fabricIdx });
+  }, [fabrics]);
 
   useEffect(() => {
     fetchFabrics();
@@ -144,6 +161,13 @@ export default function FabricsPage() {
 
   return (
     <div className="pt-24 pb-20 px-6">
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          currentIndex={Math.max(0, lightbox.index)}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
@@ -323,8 +347,12 @@ export default function FabricsPage() {
           </div>
         ) : fabrics.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {fabrics.map((fabric) => (
-              <FabricCard key={fabric.id} fabric={fabric} />
+            {fabrics.map((fabric, idx) => (
+              <FabricCard
+                key={fabric.id}
+                fabric={fabric}
+                onImageClick={() => openLightbox(idx)}
+              />
             ))}
           </div>
         ) : (

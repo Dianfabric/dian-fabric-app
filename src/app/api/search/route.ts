@@ -224,8 +224,16 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 최종 점수: 색상 60% + CLIP 40%
-          const similarity = colorScore * 0.6 + clipSimilarity * 0.4;
+          // 3) 패턴/타입 매칭 보너스 (확장 검색에서 원래 카테고리 우선)
+          let categoryBonus = 0;
+          if (patternDetail && (fabric.pattern_detail as string) === patternDetail) {
+            categoryBonus = 0.3; // 패턴 정확 매칭
+          } else if (fabricType && (fabric.fabric_type as string) === fabricType) {
+            categoryBonus = 0.2; // 타입 매칭
+          }
+
+          // 최종 점수: 색상 40% + 패턴 30% + CLIP 30%
+          const similarity = colorScore * 0.4 + categoryBonus + clipSimilarity * 0.3;
 
           const { embedding: _, ...rest } = fabric;
           return { ...rest, similarity, category_match: true };

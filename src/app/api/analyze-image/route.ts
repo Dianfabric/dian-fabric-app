@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const base64 = buffer.toString("base64");
     const mimeType = file.type || "image/jpeg";
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
         generationConfig: {
           temperature: 0.1,
           maxOutputTokens: 1024,
-          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });

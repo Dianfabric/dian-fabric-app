@@ -144,7 +144,11 @@ export default function SearchPage() {
       ]);
 
       // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
-      const fabricsToSearch = geminiFabrics.length > 0 ? geminiFabrics : [{ location: "원단", fabricType: "무지", patternDetail: null, colors: [], confidence: 0 }];
+      // Gemini 실패 시 RGB 색상만으로도 검색 (fallback)
+      const geminiOk = geminiFabrics.length > 0;
+      const fabricsToSearch = geminiOk
+        ? geminiFabrics
+        : [{ location: "원단", fabricType: "", patternDetail: null as string | null, colors: [] as { color: string; pct: number }[], confidence: 0 }];
       const preview = URL.createObjectURL(file);
 
       // 기존 placeholder 그룹 제거
@@ -160,7 +164,9 @@ export default function SearchPage() {
         if (fab.patternDetail) detectedParts.push(fab.patternDetail);
         else if (fab.fabricType) detectedParts.push(fab.fabricType);
         if (fab.colors.length > 0) detectedParts.push(fab.colors[0].color);
-        const label = `${detectedParts.join(" · ")} (${fab.confidence}%)`;
+        const label = geminiOk
+          ? `${detectedParts.join(" · ")} (${fab.confidence}%)`
+          : "RGB 색상 기반 검색";
 
         setStatusMessage(`${fab.location} 원단 검색 중... (${i + 1}/${fabricsToSearch.length})`);
 
@@ -169,7 +175,7 @@ export default function SearchPage() {
           useFilter ? fab.fabricType : undefined,
           useFilter ? fab.patternDetail || undefined : undefined,
           useFilter ? fab.colors[0]?.color : undefined,
-          imageColors,
+          imageColors, // Gemini 실패해도 RGB 색상은 항상 전달
         );
 
         newGroups.push({

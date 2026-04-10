@@ -108,7 +108,11 @@ export async function POST(request: NextRequest) {
     const vectorString = `[${embedding.join(",")}]`;
 
     // 필터 검색: 색상 우선 → 패턴/타입 → CLIP 유사도 정렬
-    if (patternDetail || fabricType || body.dominantColor) {
+    // Gemini 필터가 있거나, RGB 색상 데이터가 있으면 필터 검색 사용
+    const hasGeminiFilter = patternDetail || fabricType || body.dominantColor;
+    const hasRGBData = queryColors && queryColors.length > 0;
+
+    if (hasGeminiFilter || hasRGBData) {
       const dominantColor = body.dominantColor as string | undefined;
       let allCandidates: Record<string, unknown>[] = [];
 
@@ -146,8 +150,8 @@ export async function POST(request: NextRequest) {
             allCandidates = [...allCandidates, ...extra];
           }
         }
-      } else {
-        // 색상 없으면 패턴/타입만
+      } else if (patternDetail || fabricType) {
+        // 색상 없고 패턴/타입만 있으면
         let filterQuery = supabase
           .from("fabrics")
           .select("*")
@@ -162,6 +166,14 @@ export async function POST(request: NextRequest) {
 
         const { data } = await filterQuery;
         if (data) allCandidates = data;
+      } else if (hasRGBData) {
+        // Gemini 실패, RGB만 있음 → CLIP top 200에서 RGB로 재정렬
+        const { data: clipResults } = await supabase.rpc("search_fabrics", {
+          query_embedding: vectorString,
+          match_threshold: matchThreshold,
+          match_count: 200,
+        });
+        if (clipResults) allCandidates = clipResults;
       }
 
       if (allCandidates.length > 0) {

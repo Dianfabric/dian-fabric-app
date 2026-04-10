@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import FabricCard from "@/components/FabricCard";
 import ImageLightbox from "@/components/ImageLightbox";
+import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSelector";
 import type { SearchResult } from "@/lib/types";
 
 const VISIBLE_COUNT = 15; // 화면에 보이는 원단 수
@@ -28,6 +29,10 @@ export default function SearchPage() {
   const [lightbox, setLightbox] = useState<{
     images: { src: string; name: string; colorCode?: string; similarity?: number; patternDetail?: string; fabricType?: string; price?: number }[];
     index: number;
+  } | null>(null);
+  const [cropModal, setCropModal] = useState<{
+    imageUrl: string;
+    file: File;
   } | null>(null);
 
   // 라이트박스 열기
@@ -274,6 +279,48 @@ export default function SearchPage() {
     setStatusMessage("");
   }, []);
 
+  // 크롭 영역 선택 완료 → 각 영역별로 검색 시작
+  const handleCropComplete = useCallback(
+    (regions: CroppedRegion[]) => {
+      setCropModal(null);
+      regions.forEach((region) => {
+        const placeholderId = `img-ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        setSearchGroups((prev) => [{
+          id: placeholderId,
+          type: "image" as const,
+          label: `영역 선택 — 분석 중...`,
+          preview: region.preview,
+          visible: [],
+          waitlist: [],
+          loading: true,
+        }, ...prev]);
+        handleImageSearch(region.file, [placeholderId]);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [handleImageSearch]
+  );
+
+  // 전체 이미지로 검색 (크롭 없이)
+  const handleSearchFullImage = useCallback(() => {
+    if (!cropModal) return;
+    const file = cropModal.file;
+    setCropModal(null);
+
+    const placeholderId = `img-ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setSearchGroups((prev) => [{
+      id: placeholderId,
+      type: "image" as const,
+      label: file.name + " — 분석 중...",
+      preview: URL.createObjectURL(file),
+      visible: [],
+      waitlist: [],
+      loading: true,
+    }, ...prev]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    handleImageSearch(file, [placeholderId]);
+  }, [cropModal, handleImageSearch]);
+
   const handleFiles = useCallback(
     (files: FileList | File[]) => {
       const imageFiles = Array.from(files).filter((f) =>
@@ -281,29 +328,14 @@ export default function SearchPage() {
       );
       if (imageFiles.length === 0) return;
 
-      // 각 이미지에 placeholder 그룹 생성
-      imageFiles.forEach((file) => {
-        const placeholderId = `img-ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-        // loading placeholder 추가
-        setSearchGroups((prev) => [{
-          id: placeholderId,
-          type: "image" as const,
-          label: file.name + " — 분석 중...",
-          preview: URL.createObjectURL(file),
-          visible: [],
-          waitlist: [],
-          loading: true,
-        }, ...prev]);
-
-        // 맨 위로 스크롤
-        window.scrollTo({ top: 0, behavior: "smooth" });
-
-        // 검색 시작
-        handleImageSearch(file, [placeholderId]);
+      // 첫 번째 이미지 → 크롭 모달 열기
+      const file = imageFiles[0];
+      setCropModal({
+        imageUrl: URL.createObjectURL(file),
+        file,
       });
     },
-    [handleImageSearch]
+    []
   );
 
   const handleTextSearch = useCallback(async () => {
@@ -421,6 +453,15 @@ export default function SearchPage() {
           images={lightbox.images}
           currentIndex={Math.max(0, lightbox.index)}
           onClose={() => setLightbox(null)}
+        />
+      )}
+      {cropModal && (
+        <ImageCropSelector
+          imageUrl={cropModal.imageUrl}
+          originalFile={cropModal.file}
+          onComplete={handleCropComplete}
+          onSearchFullImage={handleSearchFullImage}
+          onCancel={() => setCropModal(null)}
         />
       )}
       <div className="max-w-[1200px] mx-auto">

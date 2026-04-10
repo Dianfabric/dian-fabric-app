@@ -112,7 +112,19 @@ export async function POST(request: NextRequest) {
     }
 
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    let parsed = JSON.parse(cleaned);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // JSON 파싱 실패 시 JSON 부분만 추출 시도
+      const jsonMatch = cleaned.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("Gemini JSON parse failed:", cleaned.slice(0, 200));
+        return NextResponse.json({ error: "Gemini 응답 파싱 실패" }, { status: 500 });
+      }
+      parsed = JSON.parse(jsonMatch[0]);
+    }
 
     // 단일 객체로 올 수도 있으니 배열로 통일
     if (!Array.isArray(parsed)) {

@@ -547,15 +547,10 @@ export default function SearchPage() {
                             <line x1="6" y1="6" x2="18" y2="18" />
                           </svg>
                         </button>
-                        <div
-                          onClick={() => openLightbox(group, fabricIdx)}
-                          className="cursor-pointer"
-                        >
-                          <FabricCard
-                            fabric={fabric}
-                            disableLink
-                          />
-                        </div>
+                        <FabricCard
+                          fabric={fabric}
+                          onImageClick={() => openLightbox(group, fabricIdx)}
+                        />
                       </div>
                     ))}
                   </div>

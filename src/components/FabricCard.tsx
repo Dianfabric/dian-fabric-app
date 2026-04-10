@@ -6,23 +6,25 @@ type Props = {
   fabric: Fabric | SearchResult;
   showSimilarity?: boolean;
   disableLink?: boolean;
+  onImageClick?: () => void;
 };
 
-export default function FabricCard({ fabric, showSimilarity, disableLink }: Props) {
+export default function FabricCard({ fabric, showSimilarity, disableLink, onImageClick }: Props) {
   const similarity = "similarity" in fabric ? fabric.similarity : null;
 
-  const Wrapper = disableLink
-    ? ({ children, className }: { children: React.ReactNode; className: string }) => (
-        <div className={className}>{children}</div>
-      )
-    : ({ children, className }: { children: React.ReactNode; className: string }) => (
-        <Link href={`/fabric/${fabric.id}`} className={className}>{children}</Link>
-      );
-
   return (
-    <Wrapper className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover cursor-pointer">
-      {/* Image */}
-      <div className="relative aspect-square bg-gray-100">
+    <div className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover">
+      {/* Image — 클릭 시 라이트박스 */}
+      <div
+        className="relative aspect-square bg-gray-100 cursor-pointer"
+        onClick={(e) => {
+          if (onImageClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            onImageClick();
+          }
+        }}
+      >
         {fabric.image_url ? (
           <Image
             src={fabric.image_url}
@@ -43,36 +45,50 @@ export default function FabricCard({ fabric, showSimilarity, disableLink }: Prop
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-4">
-        <div className="text-[15px] font-bold">{fabric.name}</div>
-        <div className="text-xs text-gray-400 mb-2.5">Color: {fabric.color_code}</div>
-        <div className="flex gap-1.5 flex-wrap">
-          {fabric.fabric_type && (
-            <span className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md">
-              {fabric.fabric_type}
-            </span>
-          )}
-          {fabric.pattern_detail && (
-            <span className="text-[10px] font-semibold text-white bg-[#8B6914] px-2.5 py-1 rounded-md">
-              {fabric.pattern_detail}
-            </span>
-          )}
-          {fabric.usage_types?.slice(0, 2).map((u) => (
-            <span
-              key={u}
-              className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md"
-            >
-              {u}
-            </span>
-          ))}
+      {/* Info — 클릭 시 상세 페이지 */}
+      {disableLink ? (
+        <div className="p-4">
+          <CardInfo fabric={fabric} />
         </div>
-        {fabric.price_per_yard && (
-          <div className="text-sm font-extrabold text-gradient mt-3">
-            &#8361;{fabric.price_per_yard.toLocaleString()}/Y
-          </div>
+      ) : (
+        <Link href={`/fabric/${fabric.id}`} className="block p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+          <CardInfo fabric={fabric} />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function CardInfo({ fabric }: { fabric: Fabric | SearchResult }) {
+  return (
+    <>
+      <div className="text-[15px] font-bold">{fabric.name}</div>
+      <div className="text-xs text-gray-400 mb-2.5">Color: {fabric.color_code}</div>
+      <div className="flex gap-1.5 flex-wrap">
+        {fabric.fabric_type && (
+          <span className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md">
+            {fabric.fabric_type}
+          </span>
         )}
+        {fabric.pattern_detail && (
+          <span className="text-[10px] font-semibold text-white bg-[#8B6914] px-2.5 py-1 rounded-md">
+            {fabric.pattern_detail}
+          </span>
+        )}
+        {fabric.usage_types?.slice(0, 2).map((u) => (
+          <span
+            key={u}
+            className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md"
+          >
+            {u}
+          </span>
+        ))}
       </div>
-    </Wrapper>
+      {fabric.price_per_yard && (
+        <div className="text-sm font-extrabold text-gradient mt-3">
+          &#8361;{fabric.price_per_yard.toLocaleString()}/Y
+        </div>
+      )}
+    </>
   );
 }

@@ -5,7 +5,8 @@ import ImageLightbox from "@/components/ImageLightbox";
 import type { SearchResult } from "@/lib/types";
 
 const VISIBLE_COUNT = 15; // 화면에 보이는 원단 수
-const FETCH_COUNT = 50;   // 넉넉히 가져오는 수 (대기열용)
+const FETCH_COUNT = 50;   // 텍스트 검색용
+const IMAGE_FETCH_COUNT = 100; // 이미지 검색: CLIP+RGB 후보 100개 → Gemini 랭킹
 
 interface SearchGroup {
   id: string;
@@ -75,7 +76,8 @@ export default function SearchPage() {
     fabricType?: string,
     patternDetail?: string,
     dominantColor?: string,
-    rgb?: number[] | { rgb: number[]; pct: number }[]
+    rgb?: number[] | { rgb: number[]; pct: number }[],
+    matchCount?: number,
   ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
     const res = await fetch("/api/search", {
       method: "POST",
@@ -83,7 +85,7 @@ export default function SearchPage() {
       body: JSON.stringify({
         embedding,
         matchThreshold: 1.5,
-        matchCount: FETCH_COUNT,
+        matchCount: matchCount || FETCH_COUNT,
         fabricType,
         patternDetail,
         dominantColor,
@@ -129,11 +131,69 @@ export default function SearchPage() {
     }
   };
 
+  // 파일을 base64로 변환
+  const fileToBase64 = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(",")[1]); // data:...;base64, 제거
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Gemini 최종 랭킹 호출
+  const rankWithGemini = async (
+    queryBase64: string,
+    queryMimeType: string,
+    candidates: SearchResult[],
+  ): Promise<SearchResult[]> => {
+    try {
+      const candidateUrls = candidates.map((c) => c.image_url || "");
+      const candidateIds = candidates.map((c) => c.id);
+
+      const res = await fetch("/api/rank-fabrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          queryImageBase64: queryBase64,
+          queryMimeType,
+          candidateUrls,
+          candidateIds,
+        }),
+      });
+
+      if (!res.ok) return candidates; // fallback: 기존 순서
+
+      const data = await res.json();
+      const rankedIds: string[] = data.rankedIds || [];
+
+      if (rankedIds.length === 0) return candidates;
+
+      // ID 기반으로 재정렬
+      const idMap = new Map(candidates.map((c) => [c.id, c]));
+      const ranked: SearchResult[] = [];
+      for (const id of rankedIds) {
+        const fabric = idMap.get(id);
+        if (fabric) ranked.push(fabric);
+      }
+      // Gemini가 빠뜨린 것들은 뒤에 추가
+      for (const c of candidates) {
+        if (!rankedIds.includes(c.id)) ranked.push(c);
+      }
+      return ranked;
+    } catch {
+      return candidates; // 에러 시 기존 순서 유지
+    }
+  };
+
   const handleImageSearch = useCallback(async (file: File, groupIds: string[]) => {
     try {
       setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
-      const [embedding, geminiFabrics, imageColors] = await Promise.all([
+      const [embedding, geminiFabrics, imageColors, queryBase64] = await Promise.all([
         import("@/lib/clip-client").then(({ getClipEmbedding }) =>
           getClipEmbedding(file, (status) => {
             if (status.status === "loading") setStatusMessage(status.message);
@@ -141,6 +201,7 @@ export default function SearchPage() {
         ),
         analyzeWithGemini(file),
         import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
+        fileToBase64(file),
       ]);
 
       // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
@@ -168,29 +229,39 @@ export default function SearchPage() {
           ? `${detectedParts.join(" · ")} (${fab.confidence}%)`
           : "RGB 색상 기반 검색";
 
-        setStatusMessage(`${fab.location} 원단 검색 중... (${i + 1}/${fabricsToSearch.length})`);
+        // STEP 1: CLIP+RGB로 100개 후보 추출
+        setStatusMessage(`${fab.location} 원단 후보 추출 중... (${i + 1}/${fabricsToSearch.length})`);
 
-        const { results: allResults } = await searchWithEmbedding(
+        const { results: clipResults } = await searchWithEmbedding(
           embedding,
           useFilter ? fab.fabricType : undefined,
           useFilter ? fab.patternDetail || undefined : undefined,
           useFilter ? fab.colors[0]?.color : undefined,
-          imageColors, // Gemini 실패해도 RGB 색상은 항상 전달
+          imageColors,
+          IMAGE_FETCH_COUNT, // 100개
         );
+
+        // STEP 2: Gemini 최종 랭킹 (100개 → 순위 정렬)
+        let finalResults: SearchResult[];
+        if (clipResults.length > VISIBLE_COUNT) {
+          setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
+          finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", clipResults);
+        } else {
+          finalResults = clipResults;
+        }
 
         newGroups.push({
           id: `img-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
           type: "image",
           label,
           preview: i === 0 ? preview : preview,
-          visible: allResults.slice(0, VISIBLE_COUNT),
-          waitlist: allResults.slice(VISIBLE_COUNT),
+          visible: finalResults.slice(0, VISIBLE_COUNT),
+          waitlist: finalResults.slice(VISIBLE_COUNT),
           loading: false,
         });
       }
 
       setSearchGroups((prev) => [...newGroups, ...prev]);
-      // 맨 위로 스크롤
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "검색 실패";

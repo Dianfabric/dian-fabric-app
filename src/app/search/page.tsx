@@ -234,10 +234,57 @@ export default function SearchPage() {
     setIsTextSearching(true);
 
     const groupId = `txt-${Date.now()}`;
+    const query = textQuery.trim();
+
+    // 텍스트에서 색상/패턴/타입 파싱
+    const COLOR_MAP: Record<string, string> = {
+      "파란": "블루", "파랑": "블루", "파란색": "블루", "블루": "블루", "청": "블루",
+      "빨간": "레드", "빨강": "레드", "빨간색": "레드", "레드": "레드",
+      "노란": "옐로우", "노랑": "옐로우", "노란색": "옐로우", "옐로우": "옐로우",
+      "초록": "그린", "초록색": "그린", "녹색": "그린", "그린": "그린",
+      "분홍": "핑크", "분홍색": "핑크", "핑크": "핑크",
+      "보라": "퍼플", "보라색": "퍼플", "퍼플": "퍼플",
+      "주황": "오렌지", "주황색": "오렌지", "오렌지": "오렌지",
+      "하늘": "블루", "하늘색": "블루",
+      "검정": "블랙", "검은": "블랙", "검정색": "블랙", "블랙": "블랙",
+      "흰": "아이보리", "흰색": "아이보리", "화이트": "아이보리", "아이보리": "아이보리",
+      "베이지": "베이지", "크림": "베이지",
+      "갈색": "브라운", "브라운": "브라운",
+      "회색": "그레이", "그레이": "그레이", "회": "그레이",
+      "차콜": "차콜", "진회색": "차콜",
+      "네이비": "네이비", "남색": "네이비",
+      "민트": "민트", "민트색": "민트",
+    };
+    const PATTERN_MAP: Record<string, string> = {
+      "하운드투스": "하운드투스", "체크": "체크", "스트라이프": "스트라이프",
+      "헤링본": "헤링본", "부클": "부클", "추상": "추상",
+      "식물": "식물", "동물": "동물", "자연": "자연", "큰패턴": "큰패턴",
+      "줄무늬": "스트라이프", "격자": "체크", "꽃": "식물", "플로럴": "식물",
+    };
+    const TYPE_MAP: Record<string, string> = {
+      "무지": "무지", "벨벳": "벨벳", "스웨이드": "스웨이드",
+      "인조가죽": "인조가죽", "가죽": "인조가죽", "자카드": "자카드",
+      "린넨": "린넨", "면": "면", "울": "울", "시어": "시어",
+    };
+
+    let detectedColor: string | undefined;
+    let detectedPattern: string | undefined;
+    let detectedType: string | undefined;
+
+    for (const [keyword, value] of Object.entries(COLOR_MAP)) {
+      if (query.includes(keyword)) { detectedColor = value; break; }
+    }
+    for (const [keyword, value] of Object.entries(PATTERN_MAP)) {
+      if (query.includes(keyword)) { detectedPattern = value; break; }
+    }
+    for (const [keyword, value] of Object.entries(TYPE_MAP)) {
+      if (query.includes(keyword)) { detectedType = value; break; }
+    }
+
     const newGroup: SearchGroup = {
       id: groupId,
       type: "text",
-      label: textQuery.trim(),
+      label: query,
       visible: [],
       waitlist: [],
       loading: true,
@@ -253,7 +300,12 @@ export default function SearchPage() {
       });
 
       setStatusMessage("유사 원단 검색 중...");
-      const { results: allResults } = await searchWithEmbedding(embedding);
+      const { results: allResults } = await searchWithEmbedding(
+        embedding,
+        detectedPattern ? undefined : detectedType,
+        detectedPattern || undefined,
+        detectedColor,
+      );
 
       setSearchGroups((prev) =>
         prev.map((g) =>

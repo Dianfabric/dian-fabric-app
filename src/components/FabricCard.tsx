@@ -5,13 +5,22 @@ import type { SearchResult, Fabric } from "@/lib/types";
 type Props = {
   fabric: Fabric | SearchResult;
   showSimilarity?: boolean;
+  disableLink?: boolean;
 };
 
-export default function FabricCard({ fabric, showSimilarity }: Props) {
+export default function FabricCard({ fabric, showSimilarity, disableLink }: Props) {
   const similarity = "similarity" in fabric ? fabric.similarity : null;
 
+  const Wrapper = disableLink
+    ? ({ children, className }: { children: React.ReactNode; className: string }) => (
+        <div className={className}>{children}</div>
+      )
+    : ({ children, className }: { children: React.ReactNode; className: string }) => (
+        <Link href={`/fabric/${fabric.id}`} className={className}>{children}</Link>
+      );
+
   return (
-    <Link href={`/fabric/${fabric.id}`} className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover cursor-pointer">
+    <Wrapper className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover cursor-pointer">
       {/* Image */}
       <div className="relative aspect-square bg-gray-100">
         {fabric.image_url ? (
@@ -64,6 +73,6 @@ export default function FabricCard({ fabric, showSimilarity }: Props) {
           </div>
         )}
       </div>
-    </Link>
+    </Wrapper>
   );
 }

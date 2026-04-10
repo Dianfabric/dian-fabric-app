@@ -1,14 +1,19 @@
 "use client";
 import { useState, useCallback } from "react";
 import FabricCard from "@/components/FabricCard";
+import ImageLightbox from "@/components/ImageLightbox";
 import type { SearchResult } from "@/lib/types";
+
+const VISIBLE_COUNT = 15; // 화면에 보이는 원단 수
+const FETCH_COUNT = 50;   // 넉넉히 가져오는 수 (대기열용)
 
 interface SearchGroup {
   id: string;
   type: "image" | "text";
   label: string;
   preview?: string;
-  results: SearchResult[];
+  visible: SearchResult[];   // 화면에 보이는 15개
+  waitlist: SearchResult[];  // 대기열 (X 누르면 여기서 보충)
   loading: boolean;
   error?: string;
 }
@@ -19,83 +24,173 @@ export default function SearchPage() {
   const [isTextSearching, setIsTextSearching] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [lightbox, setLightbox] = useState<{
+    images: { src: string; name: string; colorCode?: string; similarity?: number; patternDetail?: string; fabricType?: string; price?: number }[];
+    index: number;
+  } | null>(null);
+
+  // 라이트박스 열기
+  const openLightbox = useCallback((group: SearchGroup, fabricIndex: number) => {
+    const images: { src: string; name: string; colorCode?: string; similarity?: number; patternDetail?: string; fabricType?: string; price?: number }[] = [];
+
+    if (group.preview) {
+      images.push({ src: group.preview, name: "업로드 원본" });
+    }
+
+    group.visible.forEach((fabric) => {
+      images.push({
+        src: fabric.image_url || "",
+        name: fabric.name,
+        colorCode: fabric.color_code,
+        similarity: fabric.similarity,
+        patternDetail: fabric.pattern_detail || undefined,
+        fabricType: fabric.fabric_type || undefined,
+        price: fabric.price_per_yard || undefined,
+      });
+    });
+
+    const actualIndex = group.preview ? fabricIndex + 1 : fabricIndex;
+    setLightbox({ images, index: actualIndex });
+  }, []);
+
+  // 카드 X 버튼: 해당 원단 제거 → 대기열에서 보충
+  const dismissFabric = useCallback((groupId: string, fabricId: string) => {
+    setSearchGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const newVisible = g.visible.filter((f) => f.id !== fabricId);
+        const toAdd = g.waitlist.slice(0, VISIBLE_COUNT - newVisible.length);
+        const newWaitlist = g.waitlist.slice(toAdd.length);
+        return {
+          ...g,
+          visible: [...newVisible, ...toAdd],
+          waitlist: newWaitlist,
+        };
+      })
+    );
+  }, []);
 
   const searchWithEmbedding = async (
     embedding: number[],
     fabricType?: string,
-    patternDetail?: string
-  ): Promise<{ results: SearchResult[]; detectedCategory?: string }> => {
+    patternDetail?: string,
+    dominantColor?: string,
+    rgb?: number[]
+  ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
     const res = await fetch("/api/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         embedding,
         matchThreshold: 1.5,
-        matchCount: 12,
+        matchCount: FETCH_COUNT,
         fabricType,
         patternDetail,
+        dominantColor,
+        rgb,
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "검색 실패");
-    return { results: data.results || [], detectedCategory: data.detectedCategory };
+    return { results: data.results || [], detectedCategory: data.detectedCategory, filteredCount: data.filteredCount };
   };
 
-  // 이미지 임베딩으로 카테고리 감지
-  const detectCategory = async (embedding: number[]): Promise<{ fabricType?: string; patternDetail?: string }> => {
+  // Gemini 다중 원단 분석
+  type GeminiFabric = {
+    location: string;
+    fabricType: string;
+    patternDetail: string | null;
+    colors: { color: string; pct: number }[];
+    confidence: number;
+  };
+
+  const analyzeWithGemini = async (file: File): Promise<GeminiFabric[]> => {
     try {
-      const res = await fetch("/api/classify", {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/analyze-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ embedding }),
+        body: formData,
       });
-      if (!res.ok) return {};
+      if (!res.ok) return [];
       const data = await res.json();
-      return {
-        fabricType: data.fabricType || data.fabric_type,
-        patternDetail: data.patternDetail || data.pattern_detail,
-      };
+      if (data.fabrics && Array.isArray(data.fabrics)) {
+        return data.fabrics.map((f: { location?: string; fabric_type?: string; pattern_detail?: string | null; colors?: { color: string; pct: number }[]; confidence?: number }) => ({
+          location: f.location || "기타",
+          fabricType: f.fabric_type || "무지",
+          patternDetail: f.pattern_detail || null,
+          colors: f.colors || [],
+          confidence: f.confidence || 50,
+        }));
+      }
+      return [];
     } catch {
-      return {};
+      return [];
     }
   };
 
-  const handleImageSearch = useCallback(async (file: File, groupId: string) => {
+  const handleImageSearch = useCallback(async (file: File, groupIds: string[]) => {
     try {
-      const { getClipEmbedding } = await import("@/lib/clip-client");
-      setStatusMessage("이미지 분석 중...");
-      const embedding = await getClipEmbedding(file, (status) => {
-        if (status.status === "loading") setStatusMessage(status.message);
-      });
+      setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
-      // 카테고리 감지 (CLIP 기반) → 같은 패턴 안에서 우선 검색
-      setStatusMessage("카테고리 감지 + 유사 원단 검색 중...");
-      const category = await detectCategory(embedding);
-      const { results, detectedCategory } = await searchWithEmbedding(
-        embedding,
-        category.fabricType,
-        category.patternDetail
-      );
+      const [embedding, geminiFabrics, imageRGB] = await Promise.all([
+        import("@/lib/clip-client").then(({ getClipEmbedding }) =>
+          getClipEmbedding(file, (status) => {
+            if (status.status === "loading") setStatusMessage(status.message);
+          })
+        ),
+        analyzeWithGemini(file),
+        import("@/lib/extract-rgb").then(({ extractImageRGB }) => extractImageRGB(file)).catch(() => undefined),
+      ]);
 
-      setSearchGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                results,
-                loading: false,
-                label: detectedCategory
-                  ? `${g.label} (${detectedCategory} 감지)`
-                  : g.label,
-              }
-            : g
-        )
-      );
+      // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
+      const fabricsToSearch = geminiFabrics.length > 0 ? geminiFabrics : [{ location: "원단", fabricType: "무지", patternDetail: null, colors: [], confidence: 0 }];
+      const preview = URL.createObjectURL(file);
+
+      // 기존 placeholder 그룹 제거
+      setSearchGroups((prev) => prev.filter((g) => !groupIds.includes(g.id)));
+
+      // 각 감지된 원단별로 그룹 생성 + 검색
+      const newGroups: SearchGroup[] = [];
+      for (let i = 0; i < fabricsToSearch.length; i++) {
+        const fab = fabricsToSearch[i];
+        const useFilter = fab.confidence >= 60;
+
+        const detectedParts: string[] = [fab.location];
+        if (fab.patternDetail) detectedParts.push(fab.patternDetail);
+        else if (fab.fabricType) detectedParts.push(fab.fabricType);
+        if (fab.colors.length > 0) detectedParts.push(fab.colors[0].color);
+        const label = `${detectedParts.join(" · ")} (${fab.confidence}%)`;
+
+        setStatusMessage(`${fab.location} 원단 검색 중... (${i + 1}/${fabricsToSearch.length})`);
+
+        const { results: allResults } = await searchWithEmbedding(
+          embedding,
+          useFilter ? fab.fabricType : undefined,
+          useFilter ? fab.patternDetail || undefined : undefined,
+          useFilter ? fab.colors[0]?.color : undefined,
+          imageRGB,
+        );
+
+        newGroups.push({
+          id: `img-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+          type: "image",
+          label,
+          preview: i === 0 ? preview : preview,
+          visible: allResults.slice(0, VISIBLE_COUNT),
+          waitlist: allResults.slice(VISIBLE_COUNT),
+          loading: false,
+        });
+      }
+
+      setSearchGroups((prev) => [...newGroups, ...prev]);
+      // 맨 위로 스크롤
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "검색 실패";
       setSearchGroups((prev) =>
         prev.map((g) =>
-          g.id === groupId ? { ...g, error: msg, loading: false } : g
+          groupIds.includes(g.id) ? { ...g, error: msg, loading: false } : g
         )
       );
     }
@@ -109,20 +204,26 @@ export default function SearchPage() {
       );
       if (imageFiles.length === 0) return;
 
-      const newGroups: SearchGroup[] = imageFiles.map((file) => ({
-        id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        type: "image" as const,
-        label: file.name,
-        preview: URL.createObjectURL(file),
-        results: [],
-        loading: true,
-      }));
+      // 각 이미지에 placeholder 그룹 생성
+      imageFiles.forEach((file) => {
+        const placeholderId = `img-ph-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-      setSearchGroups((prev) => [...prev, ...newGroups]);
+        // loading placeholder 추가
+        setSearchGroups((prev) => [{
+          id: placeholderId,
+          type: "image" as const,
+          label: file.name + " — 분석 중...",
+          preview: URL.createObjectURL(file),
+          visible: [],
+          waitlist: [],
+          loading: true,
+        }, ...prev]);
 
-      // 각 이미지 병렬 검색
-      newGroups.forEach((group, i) => {
-        handleImageSearch(imageFiles[i], group.id);
+        // 맨 위로 스크롤
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        // 검색 시작
+        handleImageSearch(file, [placeholderId]);
       });
     },
     [handleImageSearch]
@@ -137,7 +238,8 @@ export default function SearchPage() {
       id: groupId,
       type: "text",
       label: textQuery.trim(),
-      results: [],
+      visible: [],
+      waitlist: [],
       loading: true,
     };
     setSearchGroups((prev) => [...prev, newGroup]);
@@ -151,11 +253,18 @@ export default function SearchPage() {
       });
 
       setStatusMessage("유사 원단 검색 중...");
-      const { results } = await searchWithEmbedding(embedding);
+      const { results: allResults } = await searchWithEmbedding(embedding);
 
       setSearchGroups((prev) =>
         prev.map((g) =>
-          g.id === groupId ? { ...g, results, loading: false } : g
+          g.id === groupId
+            ? {
+                ...g,
+                visible: allResults.slice(0, VISIBLE_COUNT),
+                waitlist: allResults.slice(VISIBLE_COUNT),
+                loading: false,
+              }
+            : g
         )
       );
     } catch (err) {
@@ -178,6 +287,13 @@ export default function SearchPage() {
 
   return (
     <div className="pt-24 pb-20 px-6">
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          currentIndex={Math.max(0, lightbox.index)}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
@@ -211,7 +327,7 @@ export default function SearchPage() {
             </button>
           </div>
 
-          {/* 이미지 업로드 (드래그앤드롭 + 클릭) */}
+          {/* 이미지 업로드 */}
           <label
             className={`block bg-white rounded-3xl p-8 text-center border-2 border-dashed cursor-pointer upload-hover ${
               dragActive
@@ -309,7 +425,8 @@ export default function SearchPage() {
                     <img
                       src={group.preview}
                       alt={group.label}
-                      className="w-16 h-16 rounded-xl object-cover border border-gray-100"
+                      className="w-16 h-16 rounded-xl object-cover border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openLightbox(group, -1)}
                     />
                   )}
                   <div className="flex-1">
@@ -321,14 +438,14 @@ export default function SearchPage() {
                     </div>
                     {!group.loading && !group.error && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {group.results.length}개 유사 원단 발견
+                        {group.visible.length}개 표시 · {group.waitlist.length}개 대기 중
                       </p>
                     )}
                   </div>
                   <button
                     onClick={() => removeGroup(group.id)}
                     className="text-gray-400 hover:text-gray-600 p-2"
-                    title="결과 제거"
+                    title="검색 결과 전체 제거"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -339,7 +456,7 @@ export default function SearchPage() {
 
                 {/* 결과 그리드 */}
                 {group.loading ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div
                         key={i}
@@ -357,14 +474,37 @@ export default function SearchPage() {
                   <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                     {group.error}
                   </div>
-                ) : group.results.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {group.results.map((fabric) => (
-                      <FabricCard
+                ) : group.visible.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {group.visible.map((fabric, fabricIdx) => (
+                      <div
                         key={fabric.id}
-                        fabric={fabric}
-                        showSimilarity
-                      />
+                        className="relative group/card"
+                      >
+                        {/* X 버튼 — 호버 시 표시 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dismissFabric(group.id, fabric.id);
+                          }}
+                          className="absolute top-2 right-2 z-10 w-7 h-7 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover/card:opacity-100 transition-all"
+                          title="이 원단 제외 → 다음 대기 원단 표시"
+                        >
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                        <div
+                          onClick={() => openLightbox(group, fabricIdx)}
+                          className="cursor-pointer"
+                        >
+                          <FabricCard
+                            fabric={fabric}
+                            disableLink
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (

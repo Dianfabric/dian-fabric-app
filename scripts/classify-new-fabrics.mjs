@@ -1,6 +1,7 @@
 /**
- * Gemini 2.5 Flash로 전체 원단 패턴/색상 분류
- * 부클 과잉분류 방지 프롬프트 + 진행 파일 + 자동 재시작
+ * 신규 업로드 원단 Gemini 2.5 Flash 분류
+ * auto_classified=false인 원단만 대상
+ * + 같은 원단명 다수결 통일 후처리
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -21,7 +22,7 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 
-// ─── 프롬프트 (부클 과잉분류 방지 + 컬러 비율) ───
+// ─── 프롬프트 ───
 const PROMPT = `You are an expert fabric/textile classifier. Analyze this fabric image carefully.
 
 IMPORTANT CLASSIFICATION RULES:
@@ -33,10 +34,13 @@ IMPORTANT CLASSIFICATION RULES:
 - 벨벳 (velvet): Soft, plush surface with visible sheen/pile
 - 스웨이드 (suede): Matte, napped/brushed surface like suede leather
 - 인조가죽 (faux leather): Smooth or pebbled leather-like surface
-- 하운드투스 (houndstooth): Distinct jagged check pattern with pointed star shapes
+- 하운드투스 (houndstooth): Distinct jagged check pattern with pointed star shapes.
+  NOT the same as herringbone. Houndstooth has broken checks with pointed extensions.
 - 스트라이프 (stripe): Clear parallel lines
-- 체크 (check/plaid): Crossing lines forming squares/rectangles
-- 헤링본 (herringbone): V-shaped zigzag pattern in columns
+- 체크 (check/plaid): Crossing lines forming squares/rectangles.
+  Must have CLEAR grid lines. Boucle or textured fabric is NOT check.
+- 헤링본 (herringbone): V-shaped zigzag pattern in columns.
+  NOT the same as houndstooth. Herringbone has continuous V/chevron shapes.
 - 추상 (abstract): Irregular artistic/geometric pattern
 - 자연 (nature): Landscape, water, stone patterns
 - 동물 (animal): Animal print (leopard, zebra, snake, etc.)
@@ -75,7 +79,6 @@ async function classifyWithGemini(imageUrl) {
   if (!imgRes.ok) throw new Error(`Image fetch ${imgRes.status}`);
   let buffer = Buffer.from(await imgRes.arrayBuffer());
 
-  // 큰 이미지는 리사이즈 (Gemini API 제한 대응)
   if (buffer.byteLength > 3 * 1024 * 1024) {
     buffer = await sharp(buffer)
       .resize(800, 800, { fit: "inside" })
@@ -84,8 +87,6 @@ async function classifyWithGemini(imageUrl) {
   }
 
   const base64 = buffer.toString("base64");
-  const mimeType = "image/jpeg";
-
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   const response = await fetch(apiUrl, {
@@ -94,7 +95,7 @@ async function classifyWithGemini(imageUrl) {
     body: JSON.stringify({
       contents: [{
         parts: [
-          { inline_data: { mime_type: mimeType, data: base64 } },
+          { inline_data: { mime_type: "image/jpeg", data: base64 } },
           { text: PROMPT },
         ],
       }],
@@ -123,9 +124,9 @@ async function classifyWithGemini(imageUrl) {
 
 // ─── 메인 ───
 async function main() {
-  console.log(`=== Gemini ${MODEL} 원단 분류 ===\n`);
+  console.log(`=== 신규 원단 Gemini ${MODEL} 분류 ===\n`);
 
-  // 전체 원단 로드
+  // 미분류 원단만 로드
   let allFabrics = [];
   let page = 0;
   while (true) {
@@ -133,6 +134,7 @@ async function main() {
     const { data, error } = await supabase
       .from("fabrics")
       .select("id, name, image_url, fabric_type")
+      .eq("auto_classified", false)
       .not("image_url", "is", null)
       .range(from, from + 999);
     if (error) { console.error("DB 에러:", error.message); break; }
@@ -142,10 +144,15 @@ async function main() {
     page++;
   }
 
-  console.log(`총 ${allFabrics.length}개 원단\n`);
+  console.log(`미분류 원단: ${allFabrics.length}개\n`);
 
-  // 진행 파일 (중단 후 재시작)
-  const progressFile = "scripts/.gemini-progress.json";
+  if (allFabrics.length === 0) {
+    console.log("분류할 원단이 없습니다.");
+    return;
+  }
+
+  // 진행 파일
+  const progressFile = "scripts/.gemini-new-progress.json";
   let processed = new Set();
   try {
     const saved = JSON.parse(fs.readFileSync(progressFile, "utf-8"));
@@ -153,20 +160,17 @@ async function main() {
     console.log(`이전 진행: ${processed.size}개 완료, 나머지 계속\n`);
   } catch { /* 처음부터 */ }
 
-  // 통계
   let success = 0;
   let errors = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   const stats = {};
   const startTime = Date.now();
-  const CONCURRENCY = 2; // 동시 2개 병렬 처리 (API rate limit 대응)
+  const CONCURRENCY = 3;
 
-  // 미처리 원단만 필터
   const remaining = allFabrics.filter((f) => !processed.has(f.id));
   console.log(`처리 대상: ${remaining.length}개 (${processed.size}개 완료됨)\n`);
 
-  // 5개씩 묶어서 병렬 처리
   for (let i = 0; i < remaining.length; i += CONCURRENCY) {
     const batch = remaining.slice(i, i + CONCURRENCY);
 
@@ -179,7 +183,7 @@ async function main() {
             return { fabric, result, usage, ok: true };
           } catch (err) {
             const msg = err.message || "";
-            if (msg === "RATE_LIMITED" || msg.includes("429") || msg.includes("quota") || msg.includes("expired") || msg.includes("RESOURCE_EXHAUSTED")) {
+            if (msg === "RATE_LIMITED" || msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
               retries++;
               const wait = retries * 10;
               await new Promise((r) => setTimeout(r, wait * 1000));
@@ -192,7 +196,6 @@ async function main() {
       })
     );
 
-    // 결과 처리
     for (const r of results) {
       const val = r.status === "fulfilled" ? r.value : { fabric: null, ok: false, error: "promise_rejected" };
       if (!val.fabric) continue;
@@ -205,7 +208,12 @@ async function main() {
           ? colors.map((c) => typeof c === "object" ? `${c.color}:${c.pct}` : c).join(",")
           : "";
 
-        const updateData = { pattern_detail, notes: colorStr };
+        // fabric_type: 린넨/면/울은 시트 매칭에서 이미 설정될 수 있으므로 유지
+        const updateData = {
+          pattern_detail,
+          notes: colorStr,
+          auto_classified: true,
+        };
         const keepType = ["린넨", "면", "울"].includes(fabric.fabric_type);
         if (!keepType) {
           updateData.fabric_type = fabric_type;
@@ -226,51 +234,86 @@ async function main() {
         totalInputTokens += usage.promptTokenCount || 0;
         totalOutputTokens += usage.candidatesTokenCount || 0;
       } else {
-        const msg = val.error || "";
-        if (msg.includes("IMAGE_TOO_LARGE")) {
-          console.log(`  ${val.fabric.name} 건너뛰기: ${msg}`);
-        } else {
-          console.error(`  ${val.fabric.name} 에러:`, msg.slice(0, 80));
-        }
         errors++;
       }
 
       processed.add(val.fabric.id);
     }
 
-    // 50개마다 로그
     const total = success + errors;
     if (total % 50 < CONCURRENCY || total <= 5) {
       const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
       const cost = ((totalInputTokens / 1e6) * 0.15 + (totalOutputTokens / 1e6) * 0.60).toFixed(3);
-      const lastFabric = batch[batch.length - 1];
-      console.log(`  [${success}/${remaining.length}] ${lastFabric.name} | ${elapsed}분, $${cost} | 성공${success} 에러${errors}`);
+      console.log(`  [${success}/${remaining.length}] ${elapsed}분, $${cost} | 성공${success} 에러${errors}`);
       fs.writeFileSync(progressFile, JSON.stringify([...processed]));
     }
 
-    // 500개마다 상세 통계
     if (total % 500 < CONCURRENCY && total >= 500) {
       fs.writeFileSync(progressFile, JSON.stringify([...processed]));
       const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
       const cost = ((totalInputTokens / 1e6) * 0.15 + (totalOutputTokens / 1e6) * 0.60).toFixed(3);
-      console.log(`\n--- ${total}개 처리 완료 (${elapsed}분, $${cost}) ---`);
-      console.log("  현재 분포:", JSON.stringify(stats));
+      console.log(`\n--- ${total}개 처리 (${elapsed}분, $${cost}) ---`);
+      console.log("  분포:", JSON.stringify(stats));
       console.log();
     }
   }
 
-  // 진행 파일 삭제
+  // ─── 후처리: 같은 원단명 다수결 통일 ───
+  console.log("\n=== 후처리: 같은 원단명 패턴 다수결 통일 ===");
+
+  let allClassified = [];
+  let from2 = 0;
+  while (true) {
+    const { data } = await supabase
+      .from("fabrics")
+      .select("id, name, pattern_detail, fabric_type")
+      .eq("auto_classified", true)
+      .range(from2, from2 + 999);
+    if (!data || data.length === 0) break;
+    allClassified.push(...data);
+    from2 += 1000;
+  }
+
+  const nameMap = {};
+  allClassified.forEach((r) => {
+    if (!nameMap[r.name]) nameMap[r.name] = [];
+    nameMap[r.name].push(r);
+  });
+
+  let unified = 0;
+  for (const [name, fabrics] of Object.entries(nameMap)) {
+    const patCounts = {};
+    fabrics.forEach((f) => {
+      const p = f.pattern_detail || "__null__";
+      patCounts[p] = (patCounts[p] || 0) + 1;
+    });
+    const entries = Object.entries(patCounts).sort((a, b) => b[1] - a[1]);
+    if (entries.length <= 1) continue;
+
+    const majority = entries[0][0];
+    for (const f of fabrics) {
+      const current = f.pattern_detail || "__null__";
+      if (current !== majority) {
+        await supabase.from("fabrics").update({
+          pattern_detail: majority === "__null__" ? null : majority,
+        }).eq("id", f.id);
+        unified++;
+      }
+    }
+  }
+  console.log(`  패턴 통일: ${unified}개\n`);
+
+  // 진행 파일 정리
   try { fs.unlinkSync(progressFile); } catch {}
 
-  // 최종 결과
   const totalTime = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
   const totalCost = ((totalInputTokens / 1e6) * 0.15 + (totalOutputTokens / 1e6) * 0.60).toFixed(2);
 
   console.log(`\n=== 분류 완료 ===`);
   console.log(`  성공: ${success}개`);
   console.log(`  에러: ${errors}개`);
+  console.log(`  패턴 통일: ${unified}개`);
   console.log(`  소요시간: ${totalTime}분`);
-  console.log(`  토큰: 입력 ${(totalInputTokens / 1e6).toFixed(2)}M / 출력 ${(totalOutputTokens / 1e6).toFixed(2)}M`);
   console.log(`  비용: ~$${totalCost}`);
   console.log(`\n=== 패턴 분포 ===`);
   Object.entries(stats)

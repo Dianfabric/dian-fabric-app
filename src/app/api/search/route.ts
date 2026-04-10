@@ -11,27 +11,81 @@ export const dynamic = "force-dynamic";
  * GET:  전체 원단 목록 (필터/페이지네이션)
  */
 
+// 색상 클러스터 타입
+type ColorCluster = { rgb: number[]; pct: number };
+
 // RGB 거리 계산 (0~1, 0이 완전 같음)
 function rgbDistance(rgb1: number[], rgb2: number[]): number {
   const dr = rgb1[0] - rgb2[0];
   const dg = rgb1[1] - rgb2[1];
   const db = rgb1[2] - rgb2[2];
-  return Math.sqrt(dr * dr + dg * dg + db * db) / 441.67; // max distance = sqrt(255²*3)
+  return Math.sqrt(dr * dr + dg * dg + db * db) / 441.67;
 }
 
-// notes에서 RGB 파싱: "아이보리:60,차콜:40|rgb:128,100,80" → [128,100,80]
-function parseRGB(notes: string | null): number[] | null {
+// notes에서 색상 클러스터 파싱
+// 새 형식: "|rgb:R,G,B:PCT;R,G,B:PCT;R,G,B:PCT"
+// 구 형식: "|rgb:R,G,B" (하위 호환)
+function parseColorClusters(notes: string | null): ColorCluster[] | null {
   if (!notes) return null;
-  const match = notes.match(/\|rgb:(\d+),(\d+),(\d+)/);
-  if (!match) return null;
-  return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+  const rgbPart = notes.match(/\|rgb:([^|]*)/)?.[1];
+  if (!rgbPart) return null;
+
+  // 새 형식: "R,G,B:PCT;R,G,B:PCT"
+  if (rgbPart.includes(";") || rgbPart.match(/:\d+$/)) {
+    const clusters: ColorCluster[] = [];
+    for (const seg of rgbPart.split(";")) {
+      const m = seg.match(/(\d+),(\d+),(\d+):(\d+)/);
+      if (m) {
+        clusters.push({
+          rgb: [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])],
+          pct: parseInt(m[4]),
+        });
+      }
+    }
+    return clusters.length > 0 ? clusters : null;
+  }
+
+  // 구 형식: "R,G,B"
+  const m = rgbPart.match(/(\d+),(\d+),(\d+)/);
+  if (!m) return null;
+  return [{ rgb: [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])], pct: 100 }];
+}
+
+// 색상 분포 유사도 계산 (0~1, 1이 완전 같음)
+function colorDistributionSimilarity(query: ColorCluster[], fabric: ColorCluster[]): number {
+  // 각 쿼리 색상에 대해 가장 가까운 원단 색상 찾기 (비율 가중)
+  let totalScore = 0;
+
+  for (const qc of query) {
+    let bestMatch = 0;
+    for (const fc of fabric) {
+      const dist = rgbDistance(qc.rgb, fc.rgb);
+      const colorSim = Math.max(0, 1 - dist * 2.5); // 거리가 가까울수록 1에 가까움
+      // 비율 유사도 (비율 차이가 적을수록 높음)
+      const pctSim = 1 - Math.abs(qc.pct - fc.pct) / 100;
+      const match = colorSim * 0.7 + pctSim * 0.3;
+      if (match > bestMatch) bestMatch = match;
+    }
+    totalScore += bestMatch * (qc.pct / 100); // 쿼리 색상 비율로 가중
+  }
+
+  return totalScore;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { embedding, matchCount = 12, matchThreshold = 0.1, fabricType, patternDetail } = body;
-    const queryRGB = body.rgb as number[] | undefined; // [R, G, B] from uploaded image
+    // 새 형식: [{rgb:[R,G,B], pct:60}, ...] 또는 구 형식: [R,G,B]
+    const rawRGB = body.rgb;
+    let queryColors: ColorCluster[] | null = null;
+    if (rawRGB) {
+      if (Array.isArray(rawRGB) && rawRGB.length > 0 && typeof rawRGB[0] === "object") {
+        queryColors = rawRGB as ColorCluster[];
+      } else if (Array.isArray(rawRGB) && rawRGB.length === 3 && typeof rawRGB[0] === "number") {
+        queryColors = [{ rgb: rawRGB as number[], pct: 100 }];
+      }
+    }
 
     // 임베딩 벡터 검증
     if (!embedding || !Array.isArray(embedding)) {
@@ -157,14 +211,13 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 2) RGB 거리 보너스 (가장 강력한 색상 필터)
-          if (queryRGB && queryRGB.length === 3) {
-            const fabricRGB = parseRGB((fabric.notes as string) || "");
-            if (fabricRGB) {
-              const dist = rgbDistance(queryRGB, fabricRGB);
-              // dist 0 = 완전 같음 → 보너스 0.15
-              // dist 0.5 = 꽤 다름 → 보너스 0
-              colorBonus += Math.max(0, 0.15 * (1 - dist * 2));
+          // 2) 색상 분포 비교 (K-means 클러스터 vs 클러스터)
+          if (queryColors) {
+            const fabricClusters = parseColorClusters((fabric.notes as string) || "");
+            if (fabricClusters) {
+              const sim = colorDistributionSimilarity(queryColors, fabricClusters);
+              // sim 0~1 → 보너스 최대 0.20
+              colorBonus += sim * 0.20;
             }
           }
 

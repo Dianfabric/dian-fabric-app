@@ -75,7 +75,7 @@ export default function SearchPage() {
     fabricType?: string,
     patternDetail?: string,
     dominantColor?: string,
-    rgb?: number[]
+    rgb?: number[] | { rgb: number[]; pct: number }[]
   ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
     const res = await fetch("/api/search", {
       method: "POST",
@@ -133,14 +133,14 @@ export default function SearchPage() {
     try {
       setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
-      const [embedding, geminiFabrics, imageRGB] = await Promise.all([
+      const [embedding, geminiFabrics, imageColors] = await Promise.all([
         import("@/lib/clip-client").then(({ getClipEmbedding }) =>
           getClipEmbedding(file, (status) => {
             if (status.status === "loading") setStatusMessage(status.message);
           })
         ),
         analyzeWithGemini(file),
-        import("@/lib/extract-rgb").then(({ extractImageRGB }) => extractImageRGB(file)).catch(() => undefined),
+        import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
       ]);
 
       // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
@@ -169,7 +169,7 @@ export default function SearchPage() {
           useFilter ? fab.fabricType : undefined,
           useFilter ? fab.patternDetail || undefined : undefined,
           useFilter ? fab.colors[0]?.color : undefined,
-          imageRGB,
+          imageColors,
         );
 
         newGroups.push({

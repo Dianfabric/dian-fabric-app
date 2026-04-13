@@ -42,7 +42,7 @@ export default function FabricsPage() {
   const [selectedType, setSelectedType] = useState("전체");
   const [selectedSubType, setSelectedSubType] = useState("");
   const [selectedUsage, setSelectedUsage] = useState("전체");
-  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [goToPage, setGoToPage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -65,7 +65,7 @@ export default function FabricsPage() {
 
   useEffect(() => {
     fetchFabrics();
-  }, [page, selectedType, selectedSubType, selectedUsage, selectedColor, searchQuery]);
+  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery]);
 
   const fetchFabrics = async () => {
     setLoading(true);
@@ -80,7 +80,7 @@ export default function FabricsPage() {
       params.set("subtype", selectedSubType);
     }
     if (selectedUsage !== "전체") params.set("usage", selectedUsage);
-    if (selectedColor) params.set("color", selectedColor);
+    if (selectedColors.length > 0) params.set("color", selectedColors.join(","));
     if (searchQuery) params.set("search", searchQuery);
 
     try {
@@ -310,11 +310,19 @@ export default function FabricsPage() {
                 <button
                   key={c.value || "all"}
                   onClick={() => {
-                    setSelectedColor(selectedColor === c.value ? "" : c.value);
+                    if (!c.value) {
+                      setSelectedColors([]);
+                    } else {
+                      setSelectedColors((prev) =>
+                        prev.includes(c.value)
+                          ? prev.filter((v) => v !== c.value)
+                          : [...prev, c.value]
+                      );
+                    }
                     setPage(1);
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    selectedColor === c.value
+                    (!c.value && selectedColors.length === 0) || selectedColors.includes(c.value)
                       ? "ring-2 " + c.ring + " bg-white shadow-sm"
                       : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                   }`}

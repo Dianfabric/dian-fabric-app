@@ -327,12 +327,19 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
 
   // 색상 필터 있으면 → 전체 가져와서 RGB 비율순 정렬
-  if (color) {
+  // 다중 색상 지원: "그레이,블루" → 두 색상 모두 포함
+  const colors = color ? color.split(",").filter(Boolean) : [];
+
+  if (colors.length > 0) {
     let query = supabase
       .from("fabrics")
       .select("*")
-      .not("image_url", "is", null)
-      .ilike("notes", `%${color}%`);
+      .not("image_url", "is", null);
+
+    // 모든 선택 색상을 포함하는 원단 필터 (AND 조건)
+    for (const c of colors) {
+      query = query.ilike("notes", `%${c}%`);
+    }
 
     if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
     if (subtype) {
@@ -347,11 +354,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // RGB 비율순 정렬 (선택한 색상이 많은 원단이 앞으로)
+    // RGB 비율순 정렬 (선택한 색상들의 합산 점수)
     const sorted = (data || [])
       .map((fabric) => ({
         ...fabric,
-        _colorScore: getColorRelevanceScore(fabric.notes, color),
+        _colorScore: colors.reduce((sum, c) => sum + getColorRelevanceScore(fabric.notes, c), 0),
       }))
       .sort((a, b) => b._colorScore - a._colorScore);
 

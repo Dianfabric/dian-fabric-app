@@ -268,6 +268,51 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// 색상명 → 대표 RGB 매핑 (색상 비율 정렬용)
+const COLOR_RGB_MAP: Record<string, number[]> = {
+  "아이보리": [245, 240, 225],
+  "베이지": [210, 180, 140],
+  "브라운": [139, 90, 43],
+  "그레이": [150, 150, 150],
+  "블랙": [30, 30, 30],
+  "네이비": [27, 42, 74],
+  "블루": [50, 100, 200],
+  "그린": [50, 150, 50],
+  "레드": [200, 50, 50],
+  "핑크": [230, 150, 170],
+  "옐로우": [230, 200, 50],
+  "오렌지": [230, 130, 50],
+  "퍼플": [130, 60, 180],
+  "민트": [100, 200, 180],
+  "차콜": [70, 70, 70],
+};
+
+// 원단의 notes에서 특정 색상의 RGB 유사도 점수 계산
+function getColorRelevanceScore(notes: string | null, colorName: string): number {
+  if (!notes) return 0;
+
+  // 1. notes에서 색상명 비율 추출 (예: "그린:40,베이지:30")
+  const colorPctMatch = notes.match(new RegExp(colorName + ":(\\d+)"));
+  const textPct = colorPctMatch ? parseInt(colorPctMatch[1]) : 0;
+
+  // 2. RGB 클러스터에서 해당 색상과의 유사도 계산
+  const targetRgb = COLOR_RGB_MAP[colorName];
+  if (!targetRgb) return textPct;
+
+  const clusters = parseColorClusters(notes);
+  if (!clusters) return textPct;
+
+  let bestMatch = 0;
+  for (const c of clusters) {
+    const dist = rgbDistance(targetRgb, c.rgb);
+    const sim = Math.max(0, 1 - dist * 2) * c.pct;
+    if (sim > bestMatch) bestMatch = sim;
+  }
+
+  // 텍스트 비율 + RGB 유사도 합산
+  return textPct * 0.5 + bestMatch * 0.5;
+}
+
 // GET: 전체 원단 목록 (필터/페이지네이션)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -280,6 +325,53 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") || "";
 
   const supabase = createServiceClient();
+
+  // 색상 필터 있으면 → 전체 가져와서 RGB 비율순 정렬
+  if (color) {
+    let query = supabase
+      .from("fabrics")
+      .select("*")
+      .not("image_url", "is", null)
+      .ilike("notes", `%${color}%`);
+
+    if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+    if (subtype) {
+      query = query.eq("pattern_detail", subtype);
+      if (type && type !== "패턴") query = query.eq("fabric_type", type);
+    } else if (type) {
+      if (type === "패턴") query = query.not("pattern_detail", "is", null);
+      else query = query.eq("fabric_type", type);
+    }
+    if (usage) query = query.contains("usage_types", [usage]);
+
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // RGB 비율순 정렬 (선택한 색상이 많은 원단이 앞으로)
+    const sorted = (data || [])
+      .map((fabric) => ({
+        ...fabric,
+        _colorScore: getColorRelevanceScore(fabric.notes, color),
+      }))
+      .sort((a, b) => b._colorScore - a._colorScore);
+
+    const total = sorted.length;
+    const from = (page - 1) * limit;
+    const paged = sorted.slice(from, from + limit);
+
+    const fabrics = paged.map(
+      ({ embedding, _colorScore, ...rest }: Record<string, unknown>) => rest
+    );
+
+    return NextResponse.json({
+      fabrics,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  }
+
+  // 색상 필터 없으면 → 기존 방식 (이름순)
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -290,25 +382,15 @@ export async function GET(request: NextRequest) {
     .order("name")
     .range(from, to);
 
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
-  }
-
+  if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
   if (subtype) {
     query = query.eq("pattern_detail", subtype);
-    if (type && type !== "패턴") {
-      query = query.eq("fabric_type", type);
-    }
+    if (type && type !== "패턴") query = query.eq("fabric_type", type);
   } else if (type) {
-    if (type === "패턴") {
-      query = query.not("pattern_detail", "is", null);
-    } else {
-      query = query.eq("fabric_type", type);
-    }
+    if (type === "패턴") query = query.not("pattern_detail", "is", null);
+    else query = query.eq("fabric_type", type);
   }
-
   if (usage) query = query.contains("usage_types", [usage]);
-  if (color) query = query.ilike("notes", `%${color}%`);
 
   const { data, count, error } = await query;
 

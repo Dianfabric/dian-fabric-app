@@ -5,15 +5,15 @@ import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
 
 const FABRIC_TYPES = [
-  "전체", "무지", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "자카드", "시어",
+  "전체", "무지", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어",
 ];
 
 const PATTERN_DETAILS = [
   "전체", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴",
+  "추상", "자연", "동물", "식물", "큰패턴", "다마스크",
 ];
 
-const USAGE_TYPES = ["전체", "소파", "쿠션", "커튼", "침대헤드", "스툴", "벽패널"];
+const USAGE_TYPES = ["전체", "소파", "쿠션", "커튼", "침대헤드", "스툴", "벽패널", "아웃도어", "친환경"];
 
 const COLOR_FILTERS: { label: string; value: string; bg: string; ring: string }[] = [
   { label: "전체", value: "", bg: "bg-gradient-to-br from-gray-200 to-gray-300", ring: "ring-gray-400" },

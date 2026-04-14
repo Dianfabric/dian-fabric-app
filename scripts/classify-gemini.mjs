@@ -21,49 +21,100 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 
-// ─── 프롬프트 (부클 과잉분류 방지 + 컬러 비율) ───
-const PROMPT = `You are an expert fabric/textile classifier. Analyze this fabric image carefully.
+// ─── 프롬프트 (최종: 원단종류 + 패턴상세 다중선택) ───
+const PROMPT = `You are an expert interior fabric classifier for a B2B fabric distributor.
+Classify this fabric image in TWO independent dimensions: material TYPE and visual PATTERN.
 
-IMPORTANT CLASSIFICATION RULES:
-- 부클 (boucle): ONLY if you can clearly see CURLY, LOOPED YARN creating a bumpy 3D surface.
-  Regular woven texture, tweed weave, or slightly rough surface is NOT boucle.
-  If unsure between 부클 and 무지, choose 무지.
-- 무지 (solid/plain): Uniform color fabric. Can have texture (linen texture, canvas weave, etc.)
-  but NO distinct pattern. Most fabrics fall here. When in doubt, choose 무지.
-- 벨벳 (velvet): Soft, plush surface with visible sheen/pile
-- 스웨이드 (suede): Matte, napped/brushed surface like suede leather
-- 인조가죽 (faux leather): Smooth or pebbled leather-like surface
-- 하운드투스 (houndstooth): Distinct jagged check pattern with pointed star shapes
-- 스트라이프 (stripe): Clear parallel lines
-- 체크 (check/plaid): Crossing lines forming squares/rectangles
-- 헤링본 (herringbone): V-shaped zigzag pattern in columns
-- 추상 (abstract): Irregular artistic/geometric pattern
-- 자연 (nature): Landscape, water, stone patterns
-- 동물 (animal): Animal print (leopard, zebra, snake, etc.)
-- 식물 (floral): Flowers, leaves, botanical patterns
-- 큰패턴 (large pattern): Large-scale decorative motifs, damask
-- 자카드 (jacquard): Woven-in pattern with visible texture variation
+=== STEP 1: FABRIC TYPE (원단 종류) — pick EXACTLY ONE ===
+What MATERIAL is this fabric made of? Judge by surface texture, not by pattern.
 
-Pick EXACTLY ONE category.
+- 패브릭 (fabric): DEFAULT. Regular woven/knit textile with visible thread/yarn/weave structure. Choose this when no special material stands out.
+- 벨벳 (velvet): Soft plush surface with dense pile. Includes BOTH shiny velvet AND matte suede-like textures. If the fabric has a soft napped/brushed/plush surface → always classify as 벨벳 (NOT 스웨이드).
+- 인조가죽 (faux leather): ⚠️ MOST COMMONLY MISSED — check carefully before choosing 패브릭!
+  ✅ 인조가죽: (1) NO visible thread/yarn/weave — continuous sheet surface, (2) Smooth/rubbery/waxy/plastic texture, (3) Visible pores or leather grain bumps, (4) Broad sheen (not fiber glitter), (5) Coated/laminated look.
+  ❌ 일반원단: (1) Threads/yarn/weave visible, (2) Matte fiber texture, (3) Soft drape with folds.
+  RULE: No thread/weave visible → 인조가죽, NOT 패브릭.
+- 시어 (sheer): Transparent or semi-transparent lightweight fabric you can see through.
 
-Also estimate the color composition as percentages (must sum to 100).
-Pick from these colors ONLY (NO 화이트 — use 아이보리 instead):
+(린넨/면/울/커튼 are classified separately from spec data — do NOT use them here.)
+
+=== STEP 2: PATTERN (패턴 상세) — pick ONE or TWO from the list ===
+What VISUAL PATTERN is on the fabric? Most fabrics have only ONE pattern.
+Rarely, two patterns can combine (e.g., boucle texture + herringbone pattern). In that case, list both.
+
+- 무지 (solid): NO pattern at all. Single uniform color. Most common — choose this when in doubt.
+- 부클 (boucle): KEY feature is CURLY/CURLED yarn — the yarn itself must look twisted and loopy, creating a bumpy 3D surface. Look for: (1) clearly curly/coiled yarn strands, (2) irregular bumpy texture from loops. Rough or textured surface alone is NOT boucle. Unsure → 무지.
+- 하운드투스 (houndstooth): Jagged check pattern with distinctive pointed star/tooth shapes.
+- 스트라이프 (stripe): Clear parallel lines running in one direction.
+- 체크 (check): ONLY clearly visible crossing lines forming squares with CONTRASTING COLORS. Subtle woven grid/basket weave is NOT check → 무지. Unsure → 무지.
+- 헤링본 (herringbone): V-shaped zigzag pattern arranged in columns.
+- 추상 (abstract): Irregular artistic/geometric design, OR non-woven random textures (fur-like, brushstrokes, marbled, chaotic fibers, crumpled).
+- 자연 (nature): Landscape, water, stone, marble-like natural patterns.
+- 동물 (animal): ONLY actual animal prints (leopard spots, zebra stripes, snake scales, crocodile). Wavy/organic abstract textures are NOT animal → 추상.
+- 식물 (floral): Flowers, leaves, vines, botanical designs.
+- 큰패턴 (large pattern): Large-scale decorative motifs, medallion patterns.
+- 다마스크 (damask): Elegant woven pattern with symmetrical floral/scroll motifs, tone-on-tone or contrasting. Classic European ornamental design with repeating symmetry.
+
+COMBINATION EXAMPLES:
+- Boucle yarn with herringbone layout → ["부클", "헤링본"]
+- Boucle yarn with houndstooth → ["부클", "하운드투스"]
+- Just plain solid color → ["무지"]
+- Floral pattern on regular fabric → ["식물"]
+
+=== STEP 3: COLOR COMPOSITION ===
+Estimate color percentages (must sum to 100).
+Available colors (NO 화이트 — use 아이보리 instead):
 아이보리, 베이지, 브라운, 그레이, 차콜, 블랙, 네이비, 블루, 그린, 레드, 핑크, 옐로우, 오렌지, 퍼플, 민트
 
+=== OUTPUT FORMAT ===
 Reply ONLY with JSON (no markdown, no explanation):
-{"pattern":"카테고리명","colors":[{"color":"아이보리","pct":70},{"color":"베이지","pct":30}]}`;
+{"type":"패브릭","pattern":["무지"],"colors":[{"color":"아이보리","pct":70},{"color":"베이지","pct":30}]}`;
 
 // ─── fabric_type 매핑 ───
-const SUB_PATTERNS = new Set([
-  "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴", "자카드",
+const VALID_TYPES = new Set(["패브릭", "벨벳", "스웨이드", "인조가죽", "시어"]);
+// 스웨이드 → 벨벳으로 통일
+const TYPE_REMAP = { "스웨이드": "벨벳", "린넨": "패브릭", "커튼": "패브릭" };
+const VALID_PATTERNS = new Set([
+  "무지", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
+  "추상", "자연", "동물", "식물", "큰패턴", "다마스크",
 ]);
 
-function mapToDbFields(pattern) {
-  if (SUB_PATTERNS.has(pattern)) {
+function mapToDbFields(result) {
+  // 새 형식: { type, pattern (string or array) }
+  if (result.type !== undefined) {
+    let fabricType = TYPE_REMAP[result.type] || result.type;
+    fabricType = VALID_TYPES.has(fabricType) ? fabricType : "패브릭";
+
+    // pattern을 배열로 정규화
+    let patterns = [];
+    if (Array.isArray(result.pattern)) {
+      patterns = result.pattern.filter(p => VALID_PATTERNS.has(p));
+    } else if (result.pattern && VALID_PATTERNS.has(result.pattern)) {
+      patterns = [result.pattern];
+    }
+    if (patterns.length === 0) patterns = ["무지"];
+
+    // 무지만 있으면 패턴 없음
+    const isPlain = patterns.length === 1 && patterns[0] === "무지";
+    // 무지 + 다른 패턴 조합이면 무지 제거
+    if (!isPlain) patterns = patterns.filter(p => p !== "무지");
+
+    const patternStr = isPlain ? null : patterns.join(",");
+
+    // DB 호환
+    const dbFabricType = !isPlain ? "패턴" : (fabricType === "패브릭" ? "무지" : fabricType);
+    return {
+      fabric_type: dbFabricType,
+      pattern_detail: patternStr,
+      material_type: fabricType,
+    };
+  }
+  // 구 형식 호환: { pattern }
+  const pattern = result.pattern;
+  if (VALID_PATTERNS.has(pattern)) {
     return { fabric_type: "패턴", pattern_detail: pattern };
   }
-  return { fabric_type: pattern, pattern_detail: null };
+  return { fabric_type: VALID_TYPES.has(pattern) ? pattern : "무지", pattern_detail: null };
 }
 
 // ─── Gemini API 호출 ───
@@ -199,8 +250,8 @@ async function main() {
 
       if (val.ok) {
         const { fabric, result, usage } = val;
-        const { pattern, colors } = result;
-        const { fabric_type, pattern_detail } = mapToDbFields(pattern);
+        const { colors } = result;
+        const { fabric_type, pattern_detail } = mapToDbFields(result);
         const colorStr = Array.isArray(colors)
           ? colors.map((c) => typeof c === "object" ? `${c.color}:${c.pct}` : c).join(",")
           : "";
@@ -220,7 +271,8 @@ async function main() {
           errors++;
         } else {
           success++;
-          stats[pattern] = (stats[pattern] || 0) + 1;
+          const statKey = fabric_type + (pattern_detail ? "+" + pattern_detail : "");
+          stats[statKey] = (stats[statKey] || 0) + 1;
         }
 
         totalInputTokens += usage.promptTokenCount || 0;
@@ -276,6 +328,78 @@ async function main() {
   Object.entries(stats)
     .sort((a, b) => b[1] - a[1])
     .forEach(([k, v]) => console.log(`  ${k}: ${v}개`));
+
+  // ─── 원단명 기준 패턴 통일 (같은 원단명 → 다수결로 패턴 통일) ───
+  console.log(`\n=== 원단명 기준 패턴 통일 ===`);
+
+  // 전체 원단 다시 로드 (분류 결과 반영된 상태)
+  let allForUnify = [];
+  let uPage = 0;
+  while (true) {
+    const from = uPage * 1000;
+    const { data } = await supabase
+      .from("fabrics")
+      .select("id, name, fabric_type, pattern_detail")
+      .not("image_url", "is", null)
+      .range(from, from + 999);
+    if (!data || data.length === 0) break;
+    allForUnify = allForUnify.concat(data);
+    if (data.length < 1000) break;
+    uPage++;
+  }
+
+  // 원단명별 그룹핑
+  const nameGroups = {};
+  for (const f of allForUnify) {
+    if (!nameGroups[f.name]) nameGroups[f.name] = [];
+    nameGroups[f.name].push(f);
+  }
+
+  let unifiedCount = 0;
+  let conflictNames = [];
+
+  for (const [name, fabrics] of Object.entries(nameGroups)) {
+    if (fabrics.length <= 1) continue;
+
+    // fabric_type 다수결
+    const typeCounts = {};
+    const patternCounts = {};
+    for (const f of fabrics) {
+      const t = f.fabric_type || "무지";
+      const p = f.pattern_detail || "__none__";
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+      patternCounts[p] = (patternCounts[p] || 0) + 1;
+    }
+
+    const majorType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0];
+    const majorPattern = Object.entries(patternCounts).sort((a, b) => b[1] - a[1])[0][0];
+    const finalPattern = majorPattern === "__none__" ? null : majorPattern;
+
+    // 불일치 원단 찾기
+    const mismatch = fabrics.filter(f =>
+      (f.fabric_type || "무지") !== majorType || (f.pattern_detail || null) !== finalPattern
+    );
+
+    if (mismatch.length > 0) {
+      conflictNames.push(`${name}: ${mismatch.length}개 수정 (→ ${majorType}${finalPattern ? "+" + finalPattern : ""})`);
+
+      for (const f of mismatch) {
+        await supabase
+          .from("fabrics")
+          .update({ fabric_type: majorType, pattern_detail: finalPattern })
+          .eq("id", f.id);
+        unifiedCount++;
+      }
+    }
+  }
+
+  console.log(`  통일된 원단: ${unifiedCount}개`);
+  if (conflictNames.length > 0) {
+    console.log(`  수정된 원단명 (${conflictNames.length}개):`);
+    conflictNames.forEach(c => console.log(`    ${c}`));
+  } else {
+    console.log(`  모든 원단명이 이미 통일 상태`);
+  }
 }
 
 main().catch(console.error);

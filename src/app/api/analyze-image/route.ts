@@ -23,8 +23,6 @@ For EACH fabric found, classify TWO things independently:
 - 패브릭: DEFAULT. Regular woven/knit textile with visible thread/yarn/weave.
 - 벨벳: Soft plush surface (shiny OR matte). Includes suede-like velvet.
 - 인조가죽: ⚠️ COMMONLY MISSED! No visible thread/weave, smooth/rubbery/waxy/plastic surface, visible pores or leather grain. No thread visible → 인조가죽 NOT 패브릭.
-- 린넨: Natural fiber with visible slubs/nubs, slightly rough, crisp.
-- 커튼: Opaque drapery/lining fabric for windows.
 - 시어: Transparent/semi-transparent lightweight fabric.
 
 ## PATTERN (패턴 상세) — Choose ONE or TWO as array, or ["무지"]:
@@ -54,9 +52,9 @@ const VALID_PATTERNS = new Set([
   "추상", "자연", "동물", "식물", "큰패턴", "다마스크",
 ]);
 const VALID_TYPES = new Set([
-  "패브릭", "벨벳", "인조가죽", "린넨", "커튼", "시어",
+  "패브릭", "벨벳", "인조가죽", "시어",
 ]);
-const TYPE_REMAP: Record<string, string> = { "스웨이드": "벨벳", "무지": "패브릭", "자카드": "패브릭" };
+const TYPE_REMAP: Record<string, string> = { "스웨이드": "벨벳", "무지": "패브릭", "자카드": "패브릭", "린넨": "패브릭", "커튼": "패브릭" };
 
 export async function POST(request: NextRequest) {
   try {

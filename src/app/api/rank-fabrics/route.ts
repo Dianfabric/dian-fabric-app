@@ -5,13 +5,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Gemini 최종 랭킹 API
+ * GPT-4o 최종 랭킹 API
  *
- * CLIP+RGB로 추린 후보 100개 → Gemini가 시각적으로 비교 → 유사도순 정렬
+ * CLIP+RGB로 추린 후보 100개 → GPT-4o가 시각적으로 비교 → 유사도순 정렬
  *
  * 방식: 후보 이미지들을 작은 썸네일로 리사이즈 → 10x10 그리드 합성
- *       → 쿼리 이미지 + 그리드 이미지를 Gemini에 전송
- *       → Gemini가 번호로 랭킹 반환
+ *       → 쿼리 이미지 + 그리드 이미지를 GPT-4o에 전송
+ *       → GPT-4o가 번호로 랭킹 반환
  */
 
 const THUMB_SIZE = 100; // 각 썸네일 크기
@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      return NextResponse.json({ error: "Gemini API 키 미설정" }, { status: 500 });
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      return NextResponse.json({ error: "OpenAI API 키 미설정" }, { status: 500 });
     }
 
     const count = Math.min(candidateUrls.length, 100);
@@ -153,49 +153,52 @@ export async function POST(request: NextRequest) {
       .toBuffer();
     const queryBase64Resized = queryResized.toString("base64");
 
-    // 4. Gemini API 호출
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-    const response = await fetch(apiUrl, {
+    // 4. GPT-4o API 호출
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
+        model: "gpt-4o",
+        messages: [{
+          role: "user",
+          content: [
             {
-              inline_data: {
-                mime_type: queryMimeType || "image/jpeg",
-                data: queryBase64Resized,
+              type: "image_url",
+              image_url: {
+                url: `data:${queryMimeType || "image/jpeg"};base64,${queryBase64Resized}`,
+                detail: "low",
               },
             },
             {
-              inline_data: {
-                mime_type: "image/jpeg",
-                data: gridBase64,
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${gridBase64}`,
+                detail: "high",
               },
             },
-            { text: buildRankPrompt(count) },
+            { type: "text", text: buildRankPrompt(count) },
           ],
         }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-        },
+        temperature: 0.1,
+        max_tokens: 1024,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini rank error:", errText.slice(0, 300));
+      console.error("GPT-4o rank error:", errText.slice(0, 300));
       return NextResponse.json({
         rankedIds: candidateIds.slice(0, 30),
         fallback: true,
-        reason: "gemini_error",
+        reason: "gpt4o_error",
       });
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text = data.choices?.[0]?.message?.content?.trim();
     if (!text) {
       return NextResponse.json({
         rankedIds: candidateIds.slice(0, 30),
@@ -210,7 +213,7 @@ export async function POST(request: NextRequest) {
     try {
       ranking = JSON.parse(cleaned);
     } catch {
-      console.error("Gemini rank parse error:", cleaned.slice(0, 200));
+      console.error("GPT-4o rank parse error:", cleaned.slice(0, 200));
       return NextResponse.json({
         rankedIds: candidateIds.slice(0, 30),
         fallback: true,

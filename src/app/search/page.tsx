@@ -354,6 +354,27 @@ export default function SearchPage() {
     handleImageSearch(file, [placeholderId]);
   }, [cropModal, handleImageSearch]);
 
+  // Ctrl+V 클립보드 이미지 붙여넣기
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles(imageFiles);
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, []);
+
   const handleFiles = useCallback(
     (files: FileList | File[]) => {
       const imageFiles = Array.from(files).filter((f) =>
@@ -579,7 +600,7 @@ export default function SearchPage() {
               여러 장을 한번에 업로드할 수 있습니다
             </p>
             <div className="flex gap-2 justify-center">
-              {["JPG", "PNG", "WEBP", "여러 장 가능"].map((f) => (
+              {["JPG", "PNG", "WEBP", "Ctrl+V 붙여넣기"].map((f) => (
                 <span
                   key={f}
                   className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-3 py-1 rounded-lg"

@@ -73,6 +73,33 @@ function colorDistributionSimilarity(query: ColorCluster[], fabric: ColorCluster
   return totalScore;
 }
 
+// notes에서 색상명 비율 파싱: "그레이:70,아이보리:30|rgb:..." → [{name:"그레이",pct:70},{name:"아이보리",pct:30}]
+type ColorName = { name: string; pct: number };
+function parseColorNames(notes: string | null): ColorName[] | null {
+  if (!notes) return null;
+  const colorPart = notes.split("|")[0];
+  if (!colorPart || colorPart.startsWith("rgb:")) return null;
+  const colors: ColorName[] = [];
+  for (const seg of colorPart.split(",")) {
+    const m = seg.match(/^(.+):(\d+)$/);
+    if (m) colors.push({ name: m[1], pct: parseInt(m[2]) });
+  }
+  return colors.length > 0 ? colors : null;
+}
+
+// 색상명 비율 유사도 (0~1, 1이 완전 같음)
+function colorNameSimilarity(query: ColorName[], fabric: ColorName[]): number {
+  let score = 0;
+  for (const qc of query) {
+    const match = fabric.find(fc => fc.name === qc.name);
+    if (match) {
+      const pctSim = 1 - Math.abs(qc.pct - match.pct) / 100;
+      score += pctSim * (qc.pct / 100);
+    }
+  }
+  return score;
+}
+
 // RGB 클러스터 기반 색상 필터 (임계값 이상이면 통과)
 function passesColorFilter(queryColors: ColorCluster[], fabricNotes: string, threshold = 0.35): boolean {
   const fabricClusters = parseColorClusters(fabricNotes);
@@ -84,6 +111,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { embedding, matchCount = 12, matchThreshold = 0.1, fabricType, patternDetail } = body;
+    // Gemini 색상명 비율 (예: [{name:"그레이",pct:70},{name:"아이보리",pct:30}])
+    const queryColorNames: ColorName[] | null = body.colorNames || null;
     // RGB 색상 클러스터 (Gemini 대신 색상 담당)
     const rawRGB = body.rgb;
     let queryColors: ColorCluster[] | null = null;
@@ -219,8 +248,20 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 최종: CLIP 40% + RGB 60% (색상 중시)
-          const similarity = clipSim * 0.4 + rgbSim * 0.6;
+          // 색상명 비율 유사도
+          let nameSim = 0;
+          if (queryColorNames) {
+            const fabricColorNames = parseColorNames((fabric.notes as string) || "");
+            if (fabricColorNames) {
+              nameSim = colorNameSimilarity(queryColorNames, fabricColorNames);
+            }
+          }
+
+          // 최종: CLIP 30% + RGB 40% + 색상명 30% (색상명 있을 때)
+          // 색상명 없으면 기존: CLIP 40% + RGB 60%
+          const similarity = queryColorNames
+            ? clipSim * 0.3 + rgbSim * 0.4 + nameSim * 0.3
+            : clipSim * 0.4 + rgbSim * 0.6;
 
           const { embedding: _, ...rest } = fabric;
           return { ...rest, similarity, category_match: true };

@@ -108,6 +108,7 @@ export default function SearchPage() {
     dominantColor?: string,
     rgb?: number[] | { rgb: number[]; pct: number }[],
     matchCount?: number,
+    colorNames?: { name: string; pct: number }[],
   ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
     const res = await fetch("/api/search", {
       method: "POST",
@@ -115,6 +116,7 @@ export default function SearchPage() {
       body: JSON.stringify({
         embedding,
         matchThreshold: 1.5,
+        colorNames,
         matchCount: matchCount || FETCH_COUNT,
         fabricType,
         patternDetail,
@@ -262,13 +264,19 @@ export default function SearchPage() {
         // STEP 1: CLIP+RGB로 100개 후보 추출
         setStatusMessage(`${fab.location} 원단 후보 추출 중... (${i + 1}/${fabricsToSearch.length})`);
 
+        // Gemini 색상명 비율을 검색에 전달
+        const geminiColorNames = fab.colors.length > 0
+          ? fab.colors.map(c => ({ name: c.color, pct: c.pct }))
+          : undefined;
+
         const { results: clipResults } = await searchWithEmbedding(
           embedding,
           useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
           useFilter ? fab.patternDetail || undefined : undefined,
-          undefined,                                     // 색상은 RGB가 담당 (Gemini 텍스트 안씀)
+          undefined,                                     // 색상은 RGB가 담당
           imageColors,                                   // RGB 클러스터로 색상 필터+정렬
           IMAGE_FETCH_COUNT, // 100개
+          geminiColorNames,                              // Gemini 색상명 비율 매칭
         );
 
         // STEP 2: Gemini 최종 랭킹 (100개 → 순위 정렬)

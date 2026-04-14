@@ -99,14 +99,11 @@ function mapToDbFields(result) {
     // 무지 + 다른 패턴 조합이면 무지 제거
     if (!isPlain) patterns = patterns.filter(p => p !== "무지");
 
-    const patternStr = isPlain ? null : patterns.join(",");
+    const patternStr = patterns.join(",");
 
-    // DB 호환
-    const dbFabricType = !isPlain ? "패턴" : (fabricType === "패브릭" ? "무지" : fabricType);
     return {
-      fabric_type: dbFabricType,
+      fabric_type: fabricType,
       pattern_detail: patternStr,
-      material_type: fabricType,
     };
   }
   // 구 형식 호환: { pattern }

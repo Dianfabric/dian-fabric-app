@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import FabricCard from "@/components/FabricCard";
 import ImageLightbox from "@/components/ImageLightbox";
 import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSelector";
@@ -8,6 +8,7 @@ import type { SearchResult } from "@/lib/types";
 const VISIBLE_COUNT = 15; // 화면에 보이는 원단 수
 const FETCH_COUNT = 50;   // 텍스트 검색용
 const IMAGE_FETCH_COUNT = 100; // 이미지 검색: CLIP+RGB 후보 100개 → Gemini 랭킹
+const CACHE_KEY = "dian-search-cache";
 
 interface SearchGroup {
   id: string;
@@ -20,8 +21,32 @@ interface SearchGroup {
   error?: string;
 }
 
+function loadCachedGroups(): SearchGroup[] {
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (!cached) return [];
+    const groups: SearchGroup[] = JSON.parse(cached);
+    return groups.map(g => ({ ...g, loading: false }));
+  } catch { return []; }
+}
+
 export default function SearchPage() {
-  const [searchGroups, setSearchGroups] = useState<SearchGroup[]>([]);
+  const [searchGroups, setSearchGroups] = useState<SearchGroup[]>(() => {
+    if (typeof window !== "undefined") return loadCachedGroups();
+    return [];
+  });
+  const isInitial = useRef(true);
+
+  // 검색 결과 변경 시 sessionStorage에 저장
+  useEffect(() => {
+    if (isInitial.current) { isInitial.current = false; return; }
+    const toCache = searchGroups.filter(g => !g.loading && !g.error && g.visible.length > 0);
+    if (toCache.length > 0) {
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(toCache)); } catch {}
+    } else {
+      sessionStorage.removeItem(CACHE_KEY);
+    }
+  }, [searchGroups]);
   const [textQuery, setTextQuery] = useState("");
   const [isTextSearching, setIsTextSearching] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");

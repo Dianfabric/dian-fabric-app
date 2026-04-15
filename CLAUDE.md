@@ -1,1 +1,2 @@
 @AGENTS.md
+@SESSION_STATUS.md

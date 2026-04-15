@@ -48,7 +48,8 @@ Rarely, two patterns can combine (e.g., boucle texture + herringbone pattern). I
 - 스트라이프 (stripe): Clear parallel lines running in one direction.
 - 체크 (check): ONLY clearly visible crossing lines forming squares with CONTRASTING COLORS. Subtle woven grid/basket weave is NOT check → 무지. Unsure → 무지.
 - 헤링본 (herringbone): V-shaped zigzag pattern arranged in columns.
-- 추상 (abstract): Irregular artistic/geometric design, OR non-woven random textures (fur-like, brushstrokes, marbled, chaotic fibers, crumpled).
+- 추상 (abstract): Irregular artistic design, OR non-woven random textures (fur-like, brushstrokes, marbled, chaotic fibers, crumpled). NOT geometric → use 기하학.
+- 기하학 (geometric): Regular repeating geometric shapes — circles, triangles, hexagons, diamonds, lattice, grid, trellis, interlocking tiles, tessellations. Must have clear geometric regularity. Irregular/random shapes → 추상.
 - 자연 (nature): Landscape, water, stone, marble-like natural patterns.
 - 동물 (animal): ONLY actual animal prints (leopard spots, zebra stripes, snake scales, crocodile). Wavy/organic abstract textures are NOT animal → 추상.
 - 식물 (floral): Flowers, leaves, vines, botanical designs.
@@ -76,7 +77,7 @@ const VALID_TYPES = new Set(["패브릭", "벨벳", "스웨이드", "인조가�
 const TYPE_REMAP = { "스웨이드": "벨벳", "린넨": "패브릭", "커튼": "패브릭" };
 const VALID_PATTERNS = new Set([
   "무지", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴", "다마스크",
+  "추상", "기하학", "자연", "동물", "식물", "큰패턴", "다마스크",
 ]);
 
 function mapToDbFields(result) {

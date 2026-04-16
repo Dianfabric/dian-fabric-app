@@ -1,8 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import FabricCard from "@/components/FabricCard";
 import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
+
+const FABRICS_STATE_KEY = "dian-fabrics-state";
 
 const FABRIC_TYPES = [
   "전체", "패브릭", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어",
@@ -33,23 +35,41 @@ const COLOR_FILTERS: { label: string; value: string; bg: string; ring: string }[
   { label: "민트", value: "민트", bg: "bg-teal-400", ring: "ring-teal-500" },
 ];
 
+function getRestoredState() {
+  try {
+    const saved = typeof window !== "undefined" ? sessionStorage.getItem(FABRICS_STATE_KEY) : null;
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return null;
+}
+
 export default function FabricsPage() {
+  const restored = useRef(getRestoredState());
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(restored.current?.page || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [selectedType, setSelectedType] = useState("전체");
-  const [selectedSubType, setSelectedSubType] = useState("");
-  const [selectedUsage, setSelectedUsage] = useState("전체");
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedType, setSelectedType] = useState(restored.current?.selectedType || "전체");
+  const [selectedSubType, setSelectedSubType] = useState(restored.current?.selectedSubType || "");
+  const [selectedUsage, setSelectedUsage] = useState(restored.current?.selectedUsage || "전체");
+  const [selectedColors, setSelectedColors] = useState<string[]>(restored.current?.selectedColors || []);
   const [goToPage, setGoToPage] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState(restored.current?.searchQuery || "");
+  const [searchInput, setSearchInput] = useState(restored.current?.searchQuery || "");
   const [lightbox, setLightbox] = useState<{
     images: { src: string; name: string; colorCode?: string; patternDetail?: string; fabricType?: string; price?: number }[];
     index: number;
   } | null>(null);
+
+  // 필터 상태가 바뀔 때마다 sessionStorage에 저장
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FABRICS_STATE_KEY, JSON.stringify({
+        page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery,
+      }));
+    } catch {}
+  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery]);
 
   const openLightbox = useCallback((fabricIdx: number) => {
     const images = fabrics.map((f) => ({
@@ -103,7 +123,7 @@ export default function FabricsPage() {
   }, []);
 
   const handleSubTypeClick = useCallback((sub: string) => {
-    setSelectedSubType((prev) => (prev === sub ? "" : sub));
+    setSelectedSubType((prev: string) => (prev === sub ? "" : sub));
     setPage(1);
   }, []);
 

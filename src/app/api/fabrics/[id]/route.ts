@@ -23,6 +23,15 @@ export async function GET(
     );
   }
 
+  // 같은 이름의 다른 컬러웨이 조회
+  const { data: variants } = await supabase
+    .from("fabrics")
+    .select("id, name, color_code, image_url, price_per_yard")
+    .eq("name", data.name)
+    .neq("id", id)
+    .order("color_code", { ascending: true })
+    .limit(50);
+
   const { embedding, ...fabric } = data;
-  return NextResponse.json(fabric);
+  return NextResponse.json({ ...fabric, colorVariants: variants || [] });
 }

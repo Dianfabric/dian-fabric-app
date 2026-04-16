@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
 
+interface ColorVariant {
+  id: string;
+  name: string;
+  color_code: string;
+  image_url: string | null;
+  price_per_yard: number | null;
+}
+
 export default function FabricDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [fabric, setFabric] = useState<Fabric | null>(null);
+  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -20,7 +30,9 @@ export default function FabricDetailPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
-        setFabric(data);
+        const { colorVariants: variants, ...fabricData } = data;
+        setFabric(fabricData);
+        setColorVariants(variants || []);
       })
       .catch(() => setFabric(null))
       .finally(() => setLoading(false));
@@ -75,12 +87,12 @@ export default function FabricDetailPage() {
   return (
     <div className="pt-24 pb-16 max-w-5xl mx-auto px-4">
       {/* 뒤로가기 */}
-      <Link
-        href="/fabrics"
+      <button
+        onClick={() => router.back()}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors"
       >
         <span>←</span> 원단 목록
-      </Link>
+      </button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* 라이트박스 */}
@@ -99,23 +111,76 @@ export default function FabricDetailPage() {
           />
         )}
 
-        {/* 왼쪽: 이미지 */}
-        <div
-          className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-          onClick={() => setShowLightbox(true)}
-        >
-          {fabric.image_url ? (
-            <Image
-              src={fabric.image_url}
-              alt={`${fabric.name}-${fabric.color_code}`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              priority
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              No Image
+        {/* 왼쪽: 이미지 + 컬러웨이 */}
+        <div>
+          <div
+            className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => setShowLightbox(true)}
+          >
+            {fabric.image_url ? (
+              <Image
+                src={fabric.image_url}
+                alt={`${fabric.name}-${fabric.color_code}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                No Image
+              </div>
+            )}
+          </div>
+
+          {/* 다른 컬러웨이 */}
+          {colorVariants.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-bold text-gray-500 mb-2">
+                다른 컬러 ({colorVariants.length + 1}개)
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {/* 현재 컬러 (선택 상태) */}
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden ring-2 ring-[#8B6914] cursor-default">
+                  {fabric.image_url ? (
+                    <Image
+                      src={fabric.image_url}
+                      alt={fabric.color_code}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200" />
+                  )}
+                  <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
+                    {fabric.color_code}
+                  </span>
+                </div>
+                {/* 다른 컬러들 */}
+                {colorVariants.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/fabric/${v.id}`}
+                    className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#C49A6C] transition-all"
+                  >
+                    {v.image_url ? (
+                      <Image
+                        src={v.image_url}
+                        alt={v.color_code}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200" />
+                    )}
+                    <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
+                      {v.color_code}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>

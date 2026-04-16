@@ -407,20 +407,21 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // RGB 비율순 정렬 (선택한 색상들의 합산 점수)
+    // RGB 비율순 정렬 + 해상도 우선 (동점 시 고해상도 먼저)
     const sorted = (data || [])
       .map((fabric) => ({
         ...fabric,
         _colorScore: colors.reduce((sum, c) => sum + getColorRelevanceScore(fabric.notes, c), 0),
+        _imgW: (fabric.image_width as number) || 0,
       }))
-      .sort((a, b) => b._colorScore - a._colorScore);
+      .sort((a, b) => b._colorScore - a._colorScore || b._imgW - a._imgW);
 
     const total = sorted.length;
     const from = (page - 1) * limit;
     const paged = sorted.slice(from, from + limit);
 
     const fabrics = paged.map(
-      ({ embedding, _colorScore, ...rest }: Record<string, unknown>) => rest
+      ({ embedding, _colorScore, _imgW, ...rest }: Record<string, unknown>) => rest
     );
 
     return NextResponse.json({
@@ -431,7 +432,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 색상 필터 없으면 → 기존 방식 (이름순)
+  // 색상 필터 없으면 → 해상도 높은 순 + 이름순
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -439,6 +440,7 @@ export async function GET(request: NextRequest) {
     .from("fabrics")
     .select("*", { count: "exact" })
     .not("image_url", "is", null)
+    .order("image_width", { ascending: false })
     .order("name")
     .range(from, to);
 

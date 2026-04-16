@@ -354,6 +354,23 @@ export default function SearchPage() {
     handleImageSearch(file, [placeholderId]);
   }, [cropModal, handleImageSearch]);
 
+  const handleFiles = useCallback(
+    (files: FileList | File[]) => {
+      const imageFiles = Array.from(files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (imageFiles.length === 0) return;
+
+      // 첫 번째 이미지 → 크롭 모달 열기
+      const file = imageFiles[0];
+      setCropModal({
+        imageUrl: URL.createObjectURL(file),
+        file,
+      });
+    },
+    []
+  );
+
   // Ctrl+V 클립보드 이미지 붙여넣기
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
@@ -374,23 +391,6 @@ export default function SearchPage() {
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleFiles]);
-
-  const handleFiles = useCallback(
-    (files: FileList | File[]) => {
-      const imageFiles = Array.from(files).filter((f) =>
-        f.type.startsWith("image/")
-      );
-      if (imageFiles.length === 0) return;
-
-      // 첫 번째 이미지 → 크롭 모달 열기
-      const file = imageFiles[0];
-      setCropModal({
-        imageUrl: URL.createObjectURL(file),
-        file,
-      });
-    },
-    []
-  );
 
   const handleTextSearch = useCallback(async () => {
     if (!textQuery.trim()) return;

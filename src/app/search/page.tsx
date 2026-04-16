@@ -373,7 +373,7 @@ export default function SearchPage() {
     };
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
-  }, []);
+  }, [handleFiles]);
 
   const handleFiles = useCallback(
     (files: FileList | File[]) => {

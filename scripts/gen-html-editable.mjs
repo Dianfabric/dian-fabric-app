@@ -60,7 +60,7 @@ function makeCheckboxes(name, options, selected, idx) {
   let h = `<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;" data-idx="${idx}" data-field="${name}">`;
   for (const o of options) {
     const ck = selSet.has(o);
-    h += `<label style="font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer;border:1.5px solid ${ck?"#8B6914":"#e0e0e0"};background:${ck?"rgba(139,105,20,0.08)":"#fafafa"};color:${ck?"#8B6914":"#999"};font-weight:${ck?"600":"400"};transition:all 0.15s;" onmousedown="toggleCb(this)"><input type="checkbox" value="${o}" ${ck?"checked":""} style="display:none;" onchange="markEdited(this)">${o}</label>`;
+    h += `<label style="font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer;border:1.5px solid ${ck?"#8B6914":"#e0e0e0"};background:${ck?"rgba(139,105,20,0.08)":"#fafafa"};color:${ck?"#8B6914":"#999"};font-weight:${ck?"600":"400"};transition:all 0.15s;" onclick="toggleCb(event,this)"><input type="checkbox" value="${o}" ${ck?"checked":""} style="display:none;" onchange="markEdited(this)">${o}</label>`;
   }
   return h + "</div>";
 }
@@ -126,6 +126,12 @@ tr.confirmed.edited{background:#e8f5e9 !important}
 .overlay img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:12px}
 .overlay .fname{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);color:white;font-size:14px;font-weight:600;background:rgba(0,0,0,0.5);padding:6px 16px;border-radius:8px}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1a18;color:white;padding:12px 28px;border-radius:12px;font-size:13px;font-weight:600;z-index:1000;display:none}
+.pagination{display:flex;gap:4px;justify-content:center;align-items:center;margin:20px 0;flex-wrap:wrap}
+.pagination button{padding:8px 14px;border-radius:8px;border:1.5px solid #e0e0e0;background:white;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;min-width:38px}
+.pagination button:hover{border-color:#8B6914;color:#8B6914}
+.pagination button.active{background:#1c1a18;color:white;border-color:#1c1a18}
+.pagination button:disabled{opacity:0.3;cursor:not-allowed}
+.page-info{font-size:12px;color:#888;text-align:center;margin:8px 0}
 </style></head><body>
 <h1>Gemini 3 Flash — 분류 결과 컨펌</h1>
 <div class="sub">${results.length}개 고유 원단 — 드롭다운/체크박스로 수정 후 JSON 내보내기</div>
@@ -157,24 +163,75 @@ ${patternFilters}
 <button onclick="exportAllJSON()" style="background:#1c1a18;color:white;">전체 JSON 내보내기</button>
 <button onclick="exportConfirmedJSON()" style="background:#2d8a4e;color:white;">컨펌된 JSON 내보내기</button>
 </div>
+<div id="paginationNav" class="pagination"></div>
 <div id="imgOverlay" class="overlay"><img src=""><div class="fname"></div></div>
 <div id="toast" class="toast"></div>
 <table><thead><tr>
 <th style="width:36px;">#</th><th style="width:160px;">원단 이미지</th><th style="width:90px;">기존</th><th>Gemini 분류 (수정 가능)</th><th style="width:60px;">상태</th>
 </tr></thead><tbody>${rows}</tbody></table>
+<div id="paginationTop" class="pagination" style="margin-top:20px;"></div>
+<div id="pageInfo" class="page-info"></div>
 <script>
 var DATA=${DATA_JSON};
 var SAVE_KEY="dian-fabric-confirm-state";
+var PAGE_SIZE=100;
+var currentPage=1;
+var currentFilter=null;
+var visibleRows=[];
+
+function getFilteredRows(){
+  var rows=Array.from(document.querySelectorAll("tr.row"));
+  if(!currentFilter)return rows;
+  return rows.filter(function(r){
+    if(currentFilter.type==="type")return r.dataset.type===currentFilter.value;
+    if(currentFilter.type==="pattern")return r.dataset.pattern.includes(currentFilter.value);
+    if(currentFilter.type==="edited")return r.classList.contains("edited");
+    if(currentFilter.type==="confirmed")return r.classList.contains("confirmed");
+    if(currentFilter.type==="pending")return !r.classList.contains("confirmed");
+    return true;
+  });
+}
+
+function renderPage(){
+  visibleRows=getFilteredRows();
+  var totalPages=Math.max(1,Math.ceil(visibleRows.length/PAGE_SIZE));
+  if(currentPage>totalPages)currentPage=totalPages;
+  var start=(currentPage-1)*PAGE_SIZE;
+  var end=start+PAGE_SIZE;
+  document.querySelectorAll("tr.row").forEach(function(r){r.classList.add("hide")});
+  for(var i=start;i<Math.min(end,visibleRows.length);i++){visibleRows[i].classList.remove("hide")}
+  renderPagination(totalPages);
+  document.getElementById("pageInfo").textContent="전체 "+visibleRows.length+"개 중 "+(start+1)+"-"+Math.min(end,visibleRows.length)+"번 표시 (페이지 "+currentPage+"/"+totalPages+")";
+  window.scrollTo({top:document.querySelector("table").offsetTop-80,behavior:"smooth"});
+}
+
+function renderPagination(totalPages){
+  var html="";
+  html+='<button onclick="goPage(1)" '+(currentPage===1?"disabled":"")+'>«</button>';
+  html+='<button onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?"disabled":"")+'>‹</button>';
+  var startP=Math.max(1,currentPage-4);
+  var endP=Math.min(totalPages,startP+9);
+  if(endP-startP<9)startP=Math.max(1,endP-9);
+  for(var p=startP;p<=endP;p++){
+    html+='<button onclick="goPage('+p+')" class="'+(p===currentPage?"active":"")+'">'+p+'</button>';
+  }
+  html+='<button onclick="goPage('+(currentPage+1)+')" '+(currentPage===totalPages?"disabled":"")+'>›</button>';
+  html+='<button onclick="goPage('+totalPages+')" '+(currentPage===totalPages?"disabled":"")+'>»</button>';
+  document.getElementById("paginationNav").innerHTML=html;
+  document.getElementById("paginationTop").innerHTML=html;
+}
+
+function goPage(p){var totalPages=Math.max(1,Math.ceil(visibleRows.length/PAGE_SIZE));currentPage=Math.max(1,Math.min(p,totalPages));renderPage()}
 function saveState(){var state={};document.querySelectorAll("tr.row").forEach(function(row){var idx=row.dataset.idx;var d={};if(row.classList.contains("confirmed"))d.confirmed=true;if(row.classList.contains("edited"))d.edited=true;var sel=row.querySelector("select[data-field=type]");if(sel)d.type=sel.value;var patBox=row.querySelector("[data-field=pattern]");if(patBox){d.pattern=[];patBox.querySelectorAll("input:checked").forEach(function(cb){d.pattern.push(cb.value)})}var usageBox=row.querySelector("[data-field=usage]");if(usageBox){d.usage=[];usageBox.querySelectorAll("input:checked").forEach(function(cb){d.usage.push(cb.value)})}if(d.confirmed||d.edited)state[idx]=d});try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));console.log("저장됨: "+Object.keys(state).length+"개")}catch(e){}}
 function loadState(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var state=JSON.parse(raw);var loaded=0;for(var idx in state){var d=state[idx];var row=document.querySelector('tr[data-idx="'+idx+'"]');if(!row)continue;if(d.type){var sel=row.querySelector("select[data-field=type]");if(sel)sel.value=d.type}if(d.pattern){var patBox=row.querySelector("[data-field=pattern]");if(patBox){patBox.querySelectorAll("input").forEach(function(cb){var ck=d.pattern.includes(cb.value);cb.checked=ck;var label=cb.closest("label");label.style.border="1.5px solid "+(ck?"#8B6914":"#e0e0e0");label.style.background=ck?"rgba(139,105,20,0.08)":"#fafafa";label.style.color=ck?"#8B6914":"#999";label.style.fontWeight=ck?"600":"400"})}}if(d.usage){var usageBox=row.querySelector("[data-field=usage]");if(usageBox){usageBox.querySelectorAll("input").forEach(function(cb){var ck=d.usage.includes(cb.value);cb.checked=ck;var label=cb.closest("label");label.style.border="1.5px solid "+(ck?"#8B6914":"#e0e0e0");label.style.background=ck?"rgba(139,105,20,0.08)":"#fafafa";label.style.color=ck?"#8B6914":"#999";label.style.fontWeight=ck?"600":"400"})}}if(d.edited){row.classList.add("edited");var badge=row.querySelector(".status-badge");badge.textContent="수정됨";badge.style.background="#fff3e0";badge.style.color="#e65100"}if(d.confirmed){var btn=row.querySelector(".confirm-btn");if(btn)confirmRow(btn)}loaded++}updateCounts();document.getElementById("editCount").textContent=document.querySelectorAll("tr.edited").length;console.log("복원됨: "+loaded+"개")}catch(e){console.error(e)}}
-window.addEventListener("load",function(){loadState()});
-function toggleCb(label){var cb=label.querySelector("input");cb.checked=!cb.checked;label.style.border="1.5px solid "+(cb.checked?"#8B6914":"#e0e0e0");label.style.background=cb.checked?"rgba(139,105,20,0.08)":"#fafafa";label.style.color=cb.checked?"#8B6914":"#999";label.style.fontWeight=cb.checked?"600":"400";markEdited(cb);event.preventDefault()}
+window.addEventListener("load",function(){loadState();renderPage()});
+function toggleCb(e,label){e.preventDefault();e.stopPropagation();var cb=label.querySelector("input");cb.checked=!cb.checked;label.style.border="1.5px solid "+(cb.checked?"#8B6914":"#e0e0e0");label.style.background=cb.checked?"rgba(139,105,20,0.08)":"#fafafa";label.style.color=cb.checked?"#8B6914":"#999";label.style.fontWeight=cb.checked?"600":"400";markEdited(cb)}
 function confirmRow(btn){var row=btn.closest("tr");row.classList.add("confirmed");row.style.background="#f0faf0";var badge=row.querySelector(".status-badge");badge.textContent="컨펌됨";badge.style.background="#2d8a4e";badge.style.color="white";btn.textContent="취소";btn.style.background="#2d8a4e";btn.style.color="white";btn.onclick=function(){unconfirmRow(this)};updateCounts();saveState()}
 function unconfirmRow(btn){var row=btn.closest("tr");row.classList.remove("confirmed");row.style.background="";var badge=row.querySelector(".status-badge");var isEdited=row.classList.contains("edited");badge.textContent=isEdited?"수정됨":"AI";badge.style.background=isEdited?"#fff3e0":"#e8f5e9";badge.style.color=isEdited?"#e65100":"#2d8a4e";btn.textContent="컨펌";btn.style.background="white";btn.style.color="#2d8a4e";btn.onclick=function(){confirmRow(this)};updateCounts();saveState()}
-function confirmAllVisible(){document.querySelectorAll("tr.row:not(.hide):not(.confirmed)").forEach(function(row){var btn=row.querySelector(".confirm-btn");if(btn)confirmRow(btn)});showToast("보이는 원단 전체 컨펌 완료")}
+function confirmAllVisible(){var count=0;document.querySelectorAll("tr.row:not(.hide):not(.confirmed)").forEach(function(row){var btn=row.querySelector(".confirm-btn");if(btn){confirmRow(btn);count++}});showToast("이 페이지 "+count+"개 컨펌 완료")}
 function updateCounts(){var confirmed=document.querySelectorAll("tr.confirmed").length;var total=${successCount};document.getElementById("confirmCount").textContent=confirmed;document.getElementById("pendingCount").textContent=total-confirmed}
-function filterConfirmed(btn){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.toggle("hide",!r.classList.contains("confirmed"))})}
-function filterPending(btn){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.toggle("hide",r.classList.contains("confirmed"))})}
+function filterConfirmed(btn){setActive(btn);currentFilter={type:"confirmed"};currentPage=1;renderPage()}
+function filterPending(btn){setActive(btn);currentFilter={type:"pending"};currentPage=1;renderPage()}
 function exportConfirmedJSON(){var confirmed=[];document.querySelectorAll("tr.confirmed").forEach(function(row){confirmed.push(getRowData(row))});if(confirmed.length===0){showToast("컨펌된 항목이 없습니다");return}download("confirmed-"+confirmed.length+".json",JSON.stringify(confirmed,null,2));showToast(confirmed.length+"개 컨펌 항목 JSON 내보내기 완료")}
 function markEdited(el){var row=el.closest("tr");row.classList.add("edited");var badge=row.querySelector(".status-badge");if(!row.classList.contains("confirmed")){badge.textContent="수정됨";badge.style.background="#fff3e0";badge.style.color="#e65100"}document.getElementById("editCount").textContent=document.querySelectorAll("tr.edited").length;saveState()}
 function getRowData(row){var idx=parseInt(row.dataset.idx);var d=Object.assign({},DATA[idx]);var sel=row.querySelector("select[data-field=type]");if(sel)d.type=sel.value;var patBox=row.querySelector("[data-field=pattern]");if(patBox){d.pattern=[];patBox.querySelectorAll("input:checked").forEach(function(cb){d.pattern.push(cb.value)});if(d.pattern.length===0)d.pattern=["무지"]}var usageBox=row.querySelector("[data-field=usage]");if(usageBox){d.usage=[];usageBox.querySelectorAll("input:checked").forEach(function(cb){d.usage.push(cb.value)})}return d}
@@ -183,10 +240,10 @@ function exportAllJSON(){var all=[];document.querySelectorAll("tr.row").forEach(
 function download(name,content){var a=document.createElement("a");a.href="data:application/json;charset=utf-8,"+encodeURIComponent(content);a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a)}
 function showToast(msg){var t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(function(){t.style.display="none"},3000)}
 function setActive(btn){document.querySelectorAll(".fbtn").forEach(function(b){b.classList.remove("active")});btn.classList.add("active")}
-function filterAll(btn){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.remove("hide")})}
-function filterType(btn,t){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.toggle("hide",r.dataset.type!==t)})}
-function filterPattern(btn,p){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.toggle("hide",!r.dataset.pattern.includes(p))})}
-function filterEdited(btn){setActive(btn);document.querySelectorAll(".row").forEach(function(r){r.classList.toggle("hide",!r.classList.contains("edited"))})}
+function filterAll(btn){setActive(btn);currentFilter=null;currentPage=1;renderPage()}
+function filterType(btn,t){setActive(btn);currentFilter={type:"type",value:t};currentPage=1;renderPage()}
+function filterPattern(btn,p){setActive(btn);currentFilter={type:"pattern",value:p};currentPage=1;renderPage()}
+function filterEdited(btn){setActive(btn);currentFilter={type:"edited"};currentPage=1;renderPage()}
 function openImg(src,name){var o=document.getElementById("imgOverlay");o.querySelector("img").src=src;o.querySelector(".fname").textContent=name;o.classList.add("show")}
 document.getElementById("imgOverlay").onclick=function(){this.classList.remove("show")};
 </script></body></html>`;

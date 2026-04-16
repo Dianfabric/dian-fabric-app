@@ -32,7 +32,8 @@ For EACH fabric found, classify TWO things independently:
 - 스트라이프: Clear parallel lines.
 - 체크: ONLY clearly visible crossing lines with contrasting colors. Subtle woven grid is NOT check → 무지.
 - 헤링본: V-shaped zigzag columns.
-- 추상: Abstract/geometric, OR non-woven random textures (fur-like, brushstrokes, marbled).
+- 추상: Abstract/irregular artistic design, OR non-woven random textures (fur-like, brushstrokes, marbled). NOT geometric → use 기하학.
+- 기하학: Regular repeating geometric shapes — circles, triangles, hexagons, diamonds, lattice, grid, trellis, tessellations.
 - 자연: Landscape, water, stone patterns.
 - 동물: ONLY actual animal prints (leopard, zebra, snake). Abstract organic textures → 추상.
 - 식물: Flowers, leaves, botanical.
@@ -49,7 +50,7 @@ Reply ONLY with a JSON array (no markdown):
 
 const VALID_PATTERNS = new Set([
   "무지", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
-  "추상", "자연", "동물", "식물", "큰패턴", "다마스크",
+  "추상", "기하학", "자연", "동물", "식물", "큰패턴", "다마스크",
 ]);
 const VALID_TYPES = new Set([
   "패브릭", "벨벳", "인조가죽", "시어",

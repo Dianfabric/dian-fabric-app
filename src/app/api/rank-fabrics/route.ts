@@ -18,27 +18,29 @@ const THUMB_SIZE = 100; // 각 썸네일 크기
 const GRID_COLS = 10;   // 그리드 열 수
 
 function buildRankPrompt(count: number): string {
-  return `You are a world-class fabric matching expert.
+  return `You are a world-class fabric TEXTURE matching expert.
 
 IMAGE 1 (left): The QUERY fabric — this is what the customer is looking for.
 IMAGE 2 (right): A grid of ${count} CANDIDATE fabrics, numbered 1-${count} (left to right, top to bottom). Each cell has its number overlaid.
 
-Your task: Rank the candidates by overall visual similarity to the query fabric.
+IMPORTANT: Color has ALREADY been matched. All candidates have similar colors.
+Your task: Rank candidates by TEXTURE and PATTERN similarity ONLY.
 
-Consider these factors in order of importance:
-1. COLOR — similar hue, shade, and tone (most important, 50% weight)
-2. PATTERN — same type of pattern: solid, stripes, checks, herringbone, etc. (30% weight)
-3. TEXTURE — similar surface texture and material appearance (20% weight)
+Consider these factors:
+1. TEXTURE (60%) — surface feel: smooth, rough, woven density, fiber visibility, weave structure, grain
+2. PATTERN (40%) — same visual pattern: solid, stripes, checks, herringbone, boucle, damask, etc.
+
+IGNORE color differences — focus ONLY on how the fabric FEELS and LOOKS structurally.
 
 Return ONLY a JSON array of candidate numbers ranked from MOST similar to LEAST.
-Include the top 20-30 best matches. Do NOT include candidates that look very different.
+Include the top 20-30 best matches.
 
 Example: [42,15,67,3,88,21,...]
 
 RULES:
 - Return ONLY the JSON array — no markdown, no explanation, no commentary
 - Numbers are 1-based (top-left = 1, next = 2, ...)
-- Focus on COLOR first — a solid blue fabric should match other blues, not greens`;
+- A smooth plain fabric should match other smooth plains, not rough boucles`;
 }
 
 async function fetchAndResizeImage(url: string): Promise<Buffer | null> {

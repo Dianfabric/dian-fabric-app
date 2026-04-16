@@ -270,10 +270,10 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 최종: CLIP 30% + 색상명 70% (색상명 있을 때)
+          // 색상명 있을 때: 색상명 50%(필터) + RGB 30%(톤 정렬) + CLIP 20%(텍스처)
           // 색상명 없으면 기존: CLIP 40% + RGB 60%
           const similarity = queryColorNames
-            ? clipSim * 0.3 + nameSim * 0.7
+            ? nameSim * 0.5 + rgbSim * 0.3 + clipSim * 0.2
             : clipSim * 0.4 + rgbSim * 0.6;
 
           const { embedding: _, ...rest } = fabric;

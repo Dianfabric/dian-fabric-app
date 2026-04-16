@@ -157,14 +157,14 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const vectorString = `[${embedding.join(",")}]`;
 
-    // ─── 역할 분리 검색: Gemini→패턴 필터, RGB→색상 필터+정렬 ───
-    // dominantColor는 텍스트 검색용 (RGB 없을 때 fallback)
+    // ─── 단계별 검색: 1.Gemini필터 → 2.CLIP텍스처 → 3.RGB+GPT-4o ───
     const dominantColor = body.dominantColor as string | undefined;
+    const hasColorNames = queryColorNames && queryColorNames.length > 0;
     const hasPatternFilter = patternDetail || fabricType;
     const hasRGBData = queryColors && queryColors.length > 0;
-    const hasTextColor = !!dominantColor && !hasRGBData; // 텍스트 검색에서만 색상명 사용
+    const hasTextColor = !!dominantColor && !hasRGBData;
 
-    if (hasPatternFilter || hasRGBData || hasTextColor) {
+    if (hasColorNames || hasPatternFilter || hasRGBData || hasTextColor) {
       let allCandidates: Record<string, unknown>[] = [];
       const seenIds = new Set<string>();
 
@@ -179,36 +179,41 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      // STEP 1a: 패턴 + 텍스트색상 (텍스트 검색용)
-      if (hasPatternFilter && hasTextColor) {
-        let q = supabase.from("fabrics").select("*")
-          .not("embedding", "is", null).not("image_url", "is", null)
-          .ilike("notes", `%${dominantColor}%`);
-        if (patternDetail) q = q.eq("pattern_detail", patternDetail);
-        else if (fabricType) q = q.eq("fabric_type", fabricType);
-        const { data } = await q;
-        addResults(data);
-      }
-
-      // STEP 1b: 패턴 필터 (Gemini 담당)
-      if (hasPatternFilter && allCandidates.length < matchCount) {
+      // ═══ STEP 1: Gemini 색상비율 + 패턴으로 1차 필터 ═══
+      if (hasColorNames) {
+        // 색상명 비율로 DB 필터 — 쿼리의 주요 색상 포함 원단만
         let q = supabase.from("fabrics").select("*")
           .not("embedding", "is", null).not("image_url", "is", null);
-        if (patternDetail) q = q.eq("pattern_detail", patternDetail);
-        else if (fabricType) q = q.eq("fabric_type", fabricType);
+
+        // 쿼리의 상위 색상으로 필터 (AND 조건)
+        for (const cn of queryColorNames) {
+          if (cn.pct >= 20) { // 20% 이상 색상만 필터
+            q = q.ilike("notes", `%${cn.name}%`);
+          }
+        }
+        // 패턴 필터도 함께 적용
+        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
+        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+
         const { data } = await q;
         addResults(data);
-      }
-
-      // STEP 1c: 텍스트 색상만 (패턴 없이)
-      if (!hasPatternFilter && hasTextColor && allCandidates.length < matchCount) {
+      } else if (hasPatternFilter) {
+        // 색상명 없으면 패턴만 필터 (텍스트 검색 등)
+        let q = supabase.from("fabrics").select("*")
+          .not("embedding", "is", null).not("image_url", "is", null);
+        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
+        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+        if (hasTextColor) q = q.ilike("notes", `%${dominantColor}%`);
+        const { data } = await q;
+        addResults(data);
+      } else if (hasTextColor) {
         const { data } = await supabase.from("fabrics").select("*")
           .not("embedding", "is", null).not("image_url", "is", null)
           .ilike("notes", `%${dominantColor}%`);
         addResults(data);
       }
 
-      // 패턴 필터 결과가 부족하면 CLIP 벡터로 확장
+      // 1차 필터 부족하면 CLIP으로 확장
       if (allCandidates.length < matchCount) {
         const { data } = await supabase.rpc("search_fabrics", {
           query_embedding: vectorString,
@@ -218,19 +223,23 @@ export async function POST(request: NextRequest) {
         addResults(data as Record<string, unknown>[] | null);
       }
 
-      // STEP 2: RGB 색상 필터 (이미지 검색) — 패턴 후보 중 색상이 비슷한 것만
-      if (hasRGBData && allCandidates.length > matchCount) {
-        const colorFiltered = allCandidates.filter((fabric) =>
-          passesColorFilter(queryColors!, (fabric.notes as string) || "", 0.3)
-        );
-        // 색상 필터 결과가 충분하면 사용, 아니면 전체 유지
-        if (colorFiltered.length >= Math.min(matchCount, 15)) {
-          allCandidates = colorFiltered;
-        }
+      // ═══ STEP 2: 색상명 비율로 정밀 필터 (불일치 제거) ═══
+      if (hasColorNames && allCandidates.length > matchCount) {
+        const colorScored = allCandidates.map(fabric => {
+          const fabricColorNames = parseColorNames((fabric.notes as string) || "");
+          const score = fabricColorNames ? colorNameSimilarity(queryColorNames!, fabricColorNames) : 0;
+          return { fabric, score };
+        });
+        colorScored.sort((a, b) => b.score - a.score);
+        // 색상 매칭 상위만 유지 (최소 matchCount개)
+        allCandidates = colorScored
+          .filter(c => c.score > 0.3)
+          .slice(0, Math.max(matchCount * 3, 300))
+          .map(c => c.fabric);
       }
 
       if (allCandidates.length > 0) {
-        // STEP 3: CLIP + RGB로 정렬
+        // ═══ STEP 3: CLIP 텍스처 유사도로 100개 추출 ═══
         const queryVec = embedding as number[];
 
         const scored = allCandidates.map((fabric: Record<string, unknown>) => {
@@ -243,7 +252,7 @@ export async function POST(request: NextRequest) {
           }
           if (!fabVec || fabVec.length !== 512) return null;
 
-          // CLIP 코사인 유사도
+          // CLIP 코사인 유사도 (텍스처 비교)
           let dot = 0, normA = 0, normB = 0;
           for (let i = 0; i < 512; i++) {
             dot += queryVec[i] * fabVec[i];
@@ -252,7 +261,7 @@ export async function POST(request: NextRequest) {
           }
           const clipSim = dot / (Math.sqrt(normA) * Math.sqrt(normB));
 
-          // RGB 색상 분포 유사도
+          // RGB 색상 점수 (톤 세밀 정렬)
           let rgbSim = 0;
           if (queryColors) {
             const fabricClusters = parseColorClusters((fabric.notes as string) || "");
@@ -261,20 +270,9 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // 색상명 비율 유사도
-          let nameSim = 0;
-          if (queryColorNames) {
-            const fabricColorNames = parseColorNames((fabric.notes as string) || "");
-            if (fabricColorNames) {
-              nameSim = colorNameSimilarity(queryColorNames, fabricColorNames);
-            }
-          }
-
-          // 색상명 있을 때: 색상명 50%(필터) + RGB 30%(톤 정렬) + CLIP 20%(텍스처)
-          // 색상명 없으면 기존: CLIP 40% + RGB 60%
-          const similarity = queryColorNames
-            ? nameSim * 0.5 + rgbSim * 0.3 + clipSim * 0.2
-            : clipSim * 0.4 + rgbSim * 0.6;
+          // CLIP 텍스처 60% + RGB 톤 40%
+          // (색상은 이미 STEP 1-2에서 필터됨, 여기서는 텍스처+톤만)
+          const similarity = clipSim * 0.6 + rgbSim * 0.4;
 
           const { embedding: _, ...rest } = fabric;
           return { ...rest, similarity, category_match: true };
@@ -282,6 +280,7 @@ export async function POST(request: NextRequest) {
 
         scored.sort((a, b) => (b.similarity as number) - (a.similarity as number));
 
+        // → 이 100개가 GPT-4o 랭킹으로 넘어감 (텍스처+패턴 최종 비교)
         return NextResponse.json({
           results: scored.slice(0, matchCount),
           total: scored.length,

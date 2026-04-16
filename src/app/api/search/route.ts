@@ -384,10 +384,10 @@ export async function GET(request: NextRequest) {
 
     if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
     if (subtype) {
-      query = query.eq("pattern_detail", subtype);
+      query = query.ilike("pattern_detail", `%${subtype}%`);
       if (type && type !== "패턴") query = query.eq("fabric_type", type);
     } else if (type) {
-      if (type === "패턴") query = query.not("pattern_detail", "is", null);
+      if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
       else query = query.eq("fabric_type", type);
     }
     if (usage) query = query.contains("usage_types", [usage]);
@@ -432,10 +432,10 @@ export async function GET(request: NextRequest) {
 
   if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
   if (subtype) {
-    query = query.eq("pattern_detail", subtype);
+    query = query.ilike("pattern_detail", `%${subtype}%`);
     if (type && type !== "패턴") query = query.eq("fabric_type", type);
   } else if (type) {
-    if (type === "패턴") query = query.not("pattern_detail", "is", null);
+    if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
     else query = query.eq("fabric_type", type);
   }
   if (usage) query = query.contains("usage_types", [usage]);

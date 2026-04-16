@@ -23,6 +23,8 @@ export default function FabricDetailPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [hoverImage, setHoverImage] = useState<string | null>(null);
+  const [hoverColor, setHoverColor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -117,10 +119,10 @@ export default function FabricDetailPage() {
             className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => setShowLightbox(true)}
           >
-            {fabric.image_url ? (
+            {(hoverImage || fabric.image_url) ? (
               <Image
-                src={fabric.image_url}
-                alt={`${fabric.name}-${fabric.color_code}`}
+                src={hoverImage || fabric.image_url!}
+                alt={`${fabric.name}-${hoverColor || fabric.color_code}`}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -130,6 +132,11 @@ export default function FabricDetailPage() {
               <div className="w-full h-full flex items-center justify-center text-gray-400">
                 No Image
               </div>
+            )}
+            {hoverColor && (
+              <span className="absolute top-3 left-3 bg-black/70 text-white text-xs font-semibold px-3 py-1 rounded-lg">
+                {hoverColor}
+              </span>
             )}
           </div>
 
@@ -163,6 +170,8 @@ export default function FabricDetailPage() {
                     key={v.id}
                     href={`/fabric/${v.id}`}
                     className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#C49A6C] transition-all"
+                    onMouseEnter={() => { setHoverImage(v.image_url); setHoverColor(v.color_code); }}
+                    onMouseLeave={() => { setHoverImage(null); setHoverColor(null); }}
                   >
                     {v.image_url ? (
                       <Image

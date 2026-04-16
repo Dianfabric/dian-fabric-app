@@ -379,6 +379,17 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // 검색어에서 원단명-컬러번호 분리 (MONCLER-24, MONCLER#24, MONCLER 24 등)
+  let searchName = "";
+  let searchColor = "";
+  if (search) {
+    const sep = search.match(/^(.+?)[\s\-#]+(.+)$/);
+    if (sep) {
+      searchName = sep[1].trim();
+      searchColor = sep[2].trim();
+    }
+  }
+
   // 색상 필터 있으면 → 전체 가져와서 RGB 비율순 정렬
   // 다중 색상 지원: "그레이,블루" → 두 색상 모두 포함
   const colors = color ? color.split(",").filter(Boolean) : [];
@@ -394,7 +405,13 @@ export async function GET(request: NextRequest) {
       query = query.ilike("notes", `%${c}%`);
     }
 
-    if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+    if (search) {
+      if (searchName && searchColor) {
+        query = query.ilike("name", `%${searchName}%`).ilike("color_code", `%${searchColor}%`);
+      } else {
+        query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+      }
+    }
     if (subtype) {
       query = query.ilike("pattern_detail", `%${subtype}%`);
       if (type && type !== "패턴") query = query.eq("fabric_type", type);

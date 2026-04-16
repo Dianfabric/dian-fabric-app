@@ -9,8 +9,11 @@
 
 import sharp from "sharp";
 
-const SUPABASE_URL = "https://qkkobestkhkxlrjeuakt.supabase.co";
-const SUPABASE_KEY = "sb_secret_E3My_drxjYewUCJDwUyE1A_racGwILj";
+const envContent = fs.readFileSync(".env.local", "utf-8");
+const envVars = {};
+envContent.split("\n").forEach((line) => { const [k, ...v] = line.split("="); if (k && v.length) envVars[k.trim()] = v.join("=").trim(); });
+const SUPABASE_URL = envVars.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = envVars.SUPABASE_SERVICE_KEY;
 const BATCH_SIZE = 20;
 
 // JPEG 파일에서 모든 SOF 마커의 해상도를 추출

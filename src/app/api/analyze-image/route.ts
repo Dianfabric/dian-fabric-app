@@ -145,12 +145,12 @@ export async function POST(request: NextRequest) {
 
       const isPlain = patterns.length === 1 && patterns[0] === "무지";
       if (!isPlain) patterns = patterns.filter(p => p !== "무지");
-      const patternDetail = isPlain ? null : patterns.join(",");
+      const patternDetail = patterns.join(","); // 무지도 "무지"로 전달
 
       // 타입 리맵 (스웨이드→벨벳 등)
       let rawType = item.type || "패브릭";
       rawType = TYPE_REMAP[rawType] || rawType;
-      const fabricType = !isPlain ? "패턴" : (VALID_TYPES.has(rawType) ? rawType : "패브릭");
+      const fabricType = VALID_TYPES.has(rawType) ? rawType : "패브릭";
 
       const confidence = Math.min(100, Math.max(0, item.confidence || 50));
 

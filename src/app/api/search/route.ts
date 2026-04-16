@@ -88,16 +88,29 @@ function parseColorNames(notes: string | null): ColorName[] | null {
 }
 
 // 색상명 비율 유사도 (0~1, 1이 완전 같음)
+// 쿼리에 없는 색상이 원단에 있으면 페널티
 function colorNameSimilarity(query: ColorName[], fabric: ColorName[]): number {
-  let score = 0;
+  let matchScore = 0;
+
+  // 1. 쿼리 색상과 원단 색상 매칭 점수
   for (const qc of query) {
     const match = fabric.find(fc => fc.name === qc.name);
     if (match) {
       const pctSim = 1 - Math.abs(qc.pct - match.pct) / 100;
-      score += pctSim * (qc.pct / 100);
+      matchScore += pctSim * (qc.pct / 100);
     }
   }
-  return score;
+
+  // 2. 원단에만 있고 쿼리에 없는 색상 → 페널티
+  let penalty = 0;
+  for (const fc of fabric) {
+    const inQuery = query.find(qc => qc.name === fc.name);
+    if (!inQuery) {
+      penalty += fc.pct / 100; // 없는 색상 비율만큼 감점
+    }
+  }
+
+  return Math.max(0, matchScore - penalty * 0.8);
 }
 
 // RGB 클러스터 기반 색상 필터 (임계값 이상이면 통과)

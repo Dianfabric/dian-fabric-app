@@ -461,7 +461,13 @@ export async function GET(request: NextRequest) {
     .order("name")
     .range(from, to);
 
-  if (search) query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+  if (search) {
+    if (searchName && searchColor) {
+      query = query.ilike("name", `%${searchName}%`).ilike("color_code", `%${searchColor}%`);
+    } else {
+      query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
+    }
+  }
   if (subtype) {
     query = query.ilike("pattern_detail", `%${subtype}%`);
     if (type && type !== "패턴") query = query.eq("fabric_type", type);

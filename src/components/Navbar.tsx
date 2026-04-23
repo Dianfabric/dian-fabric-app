@@ -14,20 +14,20 @@ export default function Navbar() {
 
         <div className="flex gap-7 text-sm font-medium text-gray-500">
           <Link
-            href="/search"
-            className={`transition-colors hover:text-gray-900 ${
-              pathname === "/search" ? "text-gray-900" : ""
-            }`}
-          >
-            원단 찾기
-          </Link>
-          <Link
             href="/fabrics"
             className={`transition-colors hover:text-gray-900 ${
               pathname === "/fabrics" ? "text-gray-900" : ""
             }`}
           >
             원단 목록
+          </Link>
+          <Link
+            href="/search"
+            className={`transition-colors hover:text-gray-900 ${
+              pathname === "/search" ? "text-gray-900" : ""
+            }`}
+          >
+            원단 찾기
           </Link>
         </div>
 

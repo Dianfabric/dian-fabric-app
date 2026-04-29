@@ -101,7 +101,6 @@ export default function SearchPage() {
     );
   }, []);
 
-  // CLIP 검색 — 텍스트 검색 전용 (DINOv2는 텍스트 인코더 없음)
   const searchWithEmbedding = async (
     embedding: number[],
     fabricType?: string,
@@ -112,35 +111,6 @@ export default function SearchPage() {
     colorNames?: { name: string; pct: number }[],
   ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
     const res = await fetch("/api/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        embedding,
-        matchThreshold: 1.5,
-        colorNames,
-        matchCount: matchCount || FETCH_COUNT,
-        fabricType,
-        patternDetail,
-        dominantColor,
-        rgb,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "검색 실패");
-    return { results: data.results || [], detectedCategory: data.detectedCategory, filteredCount: data.filteredCount };
-  };
-
-  // DINOv2 검색 — 이미지 검색 전용 (텍스쳐 매칭 정확도 ↑)
-  const searchWithDinoEmbedding = async (
-    embedding: number[],
-    fabricType?: string,
-    patternDetail?: string,
-    dominantColor?: string,
-    rgb?: number[] | { rgb: number[]; pct: number }[],
-    matchCount?: number,
-    colorNames?: { name: string; pct: number }[],
-  ): Promise<{ results: SearchResult[]; detectedCategory?: string; filteredCount?: number }> => {
-    const res = await fetch("/api/search-dino", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -256,8 +226,8 @@ export default function SearchPage() {
       setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
       const [embedding, geminiFabrics, imageColors, queryBase64] = await Promise.all([
-        import("@/lib/dino-client").then(({ getDinoEmbedding }) =>
-          getDinoEmbedding(file, (status) => {
+        import("@/lib/clip-client").then(({ getClipEmbedding }) =>
+          getClipEmbedding(file, (status) => {
             if (status.status === "loading") setStatusMessage(status.message);
           })
         ),
@@ -291,7 +261,7 @@ export default function SearchPage() {
           ? `${detectedParts.join(" · ")} (${fab.confidence}%)`
           : "RGB 색상 기반 검색";
 
-        // STEP 1: DINOv2+RGB로 100개 후보 추출
+        // STEP 1: CLIP+RGB로 100개 후보 추출
         setStatusMessage(`${fab.location} 원단 후보 추출 중... (${i + 1}/${fabricsToSearch.length})`);
 
         // Gemini 색상명 비율을 검색에 전달
@@ -299,7 +269,7 @@ export default function SearchPage() {
           ? fab.colors.map(c => ({ name: c.color, pct: c.pct }))
           : undefined;
 
-        const { results: dinoResults } = await searchWithDinoEmbedding(
+        const { results: clipResults } = await searchWithEmbedding(
           embedding,
           useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
           useFilter ? fab.patternDetail || undefined : undefined,
@@ -311,11 +281,11 @@ export default function SearchPage() {
 
         // STEP 2: Gemini 최종 랭킹 (100개 → 순위 정렬)
         let finalResults: SearchResult[];
-        if (dinoResults.length > VISIBLE_COUNT) {
+        if (clipResults.length > VISIBLE_COUNT) {
           setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
-          finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", dinoResults);
+          finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", clipResults);
         } else {
-          finalResults = dinoResults;
+          finalResults = clipResults;
         }
 
         newGroups.push({

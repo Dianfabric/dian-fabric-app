@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# notebooks with hardcoded credentials
+scripts/*.ipynb
+
+# generated HTML reports (regenerable)
+scripts/samples-*.html
+scripts/batch-compare.html
+
 # vercel
 .vercel
 

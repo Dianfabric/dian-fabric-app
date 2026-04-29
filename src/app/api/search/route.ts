@@ -87,6 +87,25 @@ function parseColorNames(notes: string | null): ColorName[] | null {
   return colors.length > 0 ? colors : null;
 }
 
+// 다중 패턴/타입 필터 — Gemini가 "헤링본,스트라이프" 같은 결합 값 반환 시 OR로 분리
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCategoryFilter(q: any, patternDetail?: string, fabricType?: string) {
+  if (patternDetail) {
+    const parts = patternDetail.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 1) return q.ilike("pattern_detail", `%${parts[0]}%`);
+    if (parts.length > 1) {
+      return q.or(parts.map((p) => `pattern_detail.ilike.%${p}%`).join(","));
+    }
+  } else if (fabricType) {
+    const parts = fabricType.split(",").map((t) => t.trim()).filter(Boolean);
+    if (parts.length === 1) return q.ilike("fabric_type", `%${parts[0]}%`);
+    if (parts.length > 1) {
+      return q.or(parts.map((t) => `fabric_type.ilike.%${t}%`).join(","));
+    }
+  }
+  return q;
+}
+
 // 색상명 비율 유사도 (0~1, 1이 완전 같음)
 // 쿼리에 없는 색상이 원단에 있으면 페널티
 function colorNameSimilarity(query: ColorName[], fabric: ColorName[]): number {
@@ -191,9 +210,8 @@ export async function POST(request: NextRequest) {
             q = q.ilike("notes", `%${cn.name}%`);
           }
         }
-        // 패턴 필터도 함께 적용
-        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
-        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+        // 패턴 필터 (다중 패턴은 OR로 분리)
+        q = applyCategoryFilter(q, patternDetail, fabricType);
 
         const { data } = await q;
         addResults(data);
@@ -201,8 +219,7 @@ export async function POST(request: NextRequest) {
         // 색상명 없으면 패턴만 필터 (텍스트 검색 등)
         let q = supabase.from("fabrics").select("*")
           .not("embedding", "is", null).not("image_url", "is", null);
-        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
-        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+        q = applyCategoryFilter(q, patternDetail, fabricType);
         if (hasTextColor) q = q.ilike("notes", `%${dominantColor}%`);
         const { data } = await q;
         addResults(data);

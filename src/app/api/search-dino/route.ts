@@ -75,6 +75,26 @@ function parseColorNames(notes: string | null): ColorName[] | null {
   return colors.length > 0 ? colors : null;
 }
 
+// 다중 패턴/타입 필터 적용 — Gemini가 "헤링본,스트라이프" 같은 결합 값 반환 시 OR로 분리
+type Q = ReturnType<ReturnType<typeof createServiceClient>["from"]>["select"] extends (...a: unknown[]) => infer R ? R : never;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCategoryFilter(q: any, patternDetail?: string, fabricType?: string) {
+  if (patternDetail) {
+    const parts = patternDetail.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 1) return q.ilike("pattern_detail", `%${parts[0]}%`);
+    if (parts.length > 1) {
+      return q.or(parts.map((p) => `pattern_detail.ilike.%${p}%`).join(","));
+    }
+  } else if (fabricType) {
+    const parts = fabricType.split(",").map((t) => t.trim()).filter(Boolean);
+    if (parts.length === 1) return q.ilike("fabric_type", `%${parts[0]}%`);
+    if (parts.length > 1) {
+      return q.or(parts.map((t) => `fabric_type.ilike.%${t}%`).join(","));
+    }
+  }
+  return q;
+}
+
 function colorNameSimilarity(query: ColorName[], fabric: ColorName[]): number {
   let matchScore = 0;
   for (const qc of query) {
@@ -165,8 +185,7 @@ export async function POST(request: NextRequest) {
         for (const cn of queryColorNames) {
           if (cn.pct >= 20) q = q.ilike("notes", `%${cn.name}%`);
         }
-        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
-        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+        q = applyCategoryFilter(q, patternDetail, fabricType);
 
         const { data } = await q;
         addResults(data);
@@ -176,8 +195,7 @@ export async function POST(request: NextRequest) {
           .select("*")
           .not("embedding_dino", "is", null)
           .not("image_url", "is", null);
-        if (patternDetail) q = q.ilike("pattern_detail", `%${patternDetail}%`);
-        else if (fabricType) q = q.ilike("fabric_type", `%${fabricType}%`);
+        q = applyCategoryFilter(q, patternDetail, fabricType);
         if (hasTextColor) q = q.ilike("notes", `%${dominantColor}%`);
         const { data } = await q;
         addResults(data);

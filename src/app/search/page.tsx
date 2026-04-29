@@ -1,13 +1,12 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
-import FabricCard from "@/components/FabricCard";
 import ImageLightbox from "@/components/ImageLightbox";
 import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSelector";
+import SearchComparisonView, { type GeminiInfo } from "@/components/SearchComparisonView";
 import type { SearchResult } from "@/lib/types";
 
-const VISIBLE_COUNT = 15; // 화면에 보이는 원단 수
 const FETCH_COUNT = 50;   // 텍스트 검색용
-const IMAGE_FETCH_COUNT = 100; // 이미지 검색: CLIP+RGB 후보 100개 → Gemini 랭킹
+const IMAGE_FETCH_COUNT = 100; // 이미지 검색: 후보 100개 → Gemini 랭킹
 const CACHE_KEY = "dian-search-cache";
 
 interface SearchGroup {
@@ -15,8 +14,9 @@ interface SearchGroup {
   type: "image" | "text";
   label: string;
   preview?: string;
-  visible: SearchResult[];   // 화면에 보이는 15개
-  waitlist: SearchResult[];  // 대기열 (X 누르면 여기서 보충)
+  results: SearchResult[];        // 모든 매칭 결과 (정렬됨)
+  activeIndex: number;            // 현재 가운데 표시 중인 인덱스
+  geminiInfo?: GeminiInfo;        // 좌측 AI 분석 박스용
   loading: boolean;
   error?: string;
 }
@@ -25,8 +25,13 @@ function loadCachedGroups(): SearchGroup[] {
   try {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (!cached) return [];
-    const groups: SearchGroup[] = JSON.parse(cached);
-    return groups.map(g => ({ ...g, loading: false }));
+    // 이전 캐시(visible/waitlist) 호환 처리
+    const groups = JSON.parse(cached) as Array<SearchGroup & { visible?: SearchResult[]; waitlist?: SearchResult[] }>;
+    return groups.map(g => {
+      if (Array.isArray(g.results)) return { ...g, loading: false } as SearchGroup;
+      const merged = [...(g.visible || []), ...(g.waitlist || [])];
+      return { ...g, results: merged, activeIndex: 0, loading: false } as SearchGroup;
+    });
   } catch { return []; }
 }
 
@@ -40,7 +45,7 @@ export default function SearchPage() {
   // 검색 결과 변경 시 sessionStorage에 저장
   useEffect(() => {
     if (isInitial.current) { isInitial.current = false; return; }
-    const toCache = searchGroups.filter(g => !g.loading && !g.error && g.visible.length > 0);
+    const toCache = searchGroups.filter(g => !g.loading && !g.error && g.results.length > 0);
     if (toCache.length > 0) {
       try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(toCache)); } catch {}
     } else {
@@ -60,7 +65,7 @@ export default function SearchPage() {
     file: File;
   } | null>(null);
 
-  // 라이트박스 열기
+  // 라이트박스 열기 (group의 모든 결과 + 업로드 원본을 묶어서 큐로)
   const openLightbox = useCallback((group: SearchGroup, fabricIndex: number) => {
     const images: { src: string; name: string; colorCode?: string; similarity?: number; patternDetail?: string; fabricType?: string; price?: number }[] = [];
 
@@ -68,7 +73,7 @@ export default function SearchPage() {
       images.push({ src: group.preview, name: "업로드 원본" });
     }
 
-    group.visible.forEach((fabric) => {
+    group.results.forEach((fabric) => {
       images.push({
         src: fabric.image_url || "",
         name: fabric.name,
@@ -84,20 +89,29 @@ export default function SearchPage() {
     setLightbox({ images, index: actualIndex });
   }, []);
 
-  // 카드 X 버튼: 해당 원단 제거 → 대기열에서 보충
+  // X 버튼 / Delete 키: 해당 원단을 results에서 제거 → 다음 원단 자동 활성화
   const dismissFabric = useCallback((groupId: string, fabricId: string) => {
     setSearchGroups((prev) =>
       prev.map((g) => {
         if (g.id !== groupId) return g;
-        const newVisible = g.visible.filter((f) => f.id !== fabricId);
-        const toAdd = g.waitlist.slice(0, VISIBLE_COUNT - newVisible.length);
-        const newWaitlist = g.waitlist.slice(toAdd.length);
-        return {
-          ...g,
-          visible: [...newVisible, ...toAdd],
-          waitlist: newWaitlist,
-        };
+        const idx = g.results.findIndex((f) => f.id === fabricId);
+        if (idx === -1) return g;
+
+        const newResults = g.results.filter((_, i) => i !== idx);
+        let newActive = g.activeIndex;
+        if (idx < g.activeIndex) newActive = g.activeIndex - 1;
+        else if (idx === g.activeIndex) newActive = Math.min(g.activeIndex, newResults.length - 1);
+        if (newActive < 0) newActive = 0;
+
+        return { ...g, results: newResults, activeIndex: newActive };
       })
+    );
+  }, []);
+
+  // 대기열 카드 클릭 → 활성 인덱스 변경
+  const setActiveIndex = useCallback((groupId: string, idx: number) => {
+    setSearchGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, activeIndex: idx } : g))
     );
   }, []);
 
@@ -309,9 +323,9 @@ export default function SearchPage() {
           geminiColorNames,                              // Gemini 색상명 비율 매칭
         );
 
-        // STEP 2: Gemini 최종 랭킹 (100개 → 순위 정렬)
+        // STEP 2: Gemini 최종 랭킹 (15개 초과면 GPT-4o 그리드 랭킹)
         let finalResults: SearchResult[];
-        if (dinoResults.length > VISIBLE_COUNT) {
+        if (dinoResults.length > 15) {
           setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
           finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", dinoResults);
         } else {
@@ -323,8 +337,15 @@ export default function SearchPage() {
           type: "image",
           label,
           preview: i === 0 ? preview : preview,
-          visible: finalResults.slice(0, VISIBLE_COUNT),
-          waitlist: finalResults.slice(VISIBLE_COUNT),
+          results: finalResults,
+          activeIndex: 0,
+          geminiInfo: geminiOk ? {
+            location: fab.location,
+            patternDetail: fab.patternDetail,
+            fabricType: fab.fabricType,
+            colors: fab.colors,
+            confidence: fab.confidence,
+          } : undefined,
           loading: false,
         });
       }
@@ -353,8 +374,8 @@ export default function SearchPage() {
           type: "image" as const,
           label: `영역 선택 — 분석 중...`,
           preview: region.preview,
-          visible: [],
-          waitlist: [],
+          results: [],
+          activeIndex: 0,
           loading: true,
         }, ...prev]);
         handleImageSearch(region.file, [placeholderId]);
@@ -376,8 +397,8 @@ export default function SearchPage() {
       type: "image" as const,
       label: file.name + " — 분석 중...",
       preview: URL.createObjectURL(file),
-      visible: [],
-      waitlist: [],
+      results: [],
+      activeIndex: 0,
       loading: true,
     }, ...prev]);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -478,8 +499,8 @@ export default function SearchPage() {
       id: groupId,
       type: "text",
       label: query,
-      visible: [],
-      waitlist: [],
+      results: [],
+      activeIndex: 0,
       loading: true,
     };
     setSearchGroups((prev) => [...prev, newGroup]);
@@ -505,8 +526,8 @@ export default function SearchPage() {
           g.id === groupId
             ? {
                 ...g,
-                visible: allResults.slice(0, VISIBLE_COUNT),
-                waitlist: allResults.slice(VISIBLE_COUNT),
+                results: allResults,
+                activeIndex: 0,
                 loading: false,
               }
             : g
@@ -668,101 +689,36 @@ export default function SearchPage() {
           )}
         </div>
 
-        {/* 검색 결과들 */}
+        {/* 검색 결과들 — 3열 비교 뷰 */}
         {hasResults && (
-          <div className="space-y-12">
-            {searchGroups.map((group) => (
+          <div className="space-y-10 max-w-[1700px] mx-auto">
+            {searchGroups.map((group, groupIdx) => (
               <div key={group.id}>
-                {/* 그룹 헤더 */}
-                <div className="flex items-center gap-4 mb-5">
-                  {group.type === "image" && group.preview && (
-                    <img
-                      src={group.preview}
-                      alt={group.label}
-                      className="w-16 h-16 rounded-xl object-cover border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => openLightbox(group, -1)}
-                    />
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-white bg-[#8B6914] px-2 py-0.5 rounded">
-                        {group.type === "image" ? "이미지" : "텍스트"}
-                      </span>
-                      <h2 className="text-lg font-extrabold">{group.label}</h2>
-                    </div>
-                    {!group.loading && !group.error && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {group.visible.length}개 표시 · {group.waitlist.length}개 대기 중
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => removeGroup(group.id)}
-                    className="text-gray-400 hover:text-gray-600 p-2"
-                    title="검색 결과 전체 제거"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* 결과 그리드 */}
                 {group.loading ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="bg-white rounded-2xl overflow-hidden border border-gray-100"
-                      >
-                        <div className="aspect-square bg-gray-100 animate-pulse" />
-                        <div className="p-4 space-y-2">
-                          <div className="h-4 bg-gray-100 rounded animate-pulse w-2/3" />
-                          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="bg-white rounded-2xl p-12 text-center text-gray-500">
+                    <div className="inline-block w-8 h-8 border-2 border-gray-200 border-t-[#8B6914] rounded-full animate-spin mb-3"></div>
+                    <div className="text-sm font-semibold">{group.label}</div>
                   </div>
                 ) : group.error ? (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                     {group.error}
                   </div>
-                ) : group.visible.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {group.visible.map((fabric, fabricIdx) => (
-                      <div
-                        key={fabric.id}
-                        className="relative group/card"
-                      >
-                        {/* X 버튼 — 호버 시 표시 */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            dismissFabric(group.id, fabric.id);
-                          }}
-                          className="absolute top-2 right-2 z-10 w-7 h-7 bg-black/50 hover:bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover/card:opacity-100 transition-all"
-                          title="이 원단 제외 → 다음 대기 원단 표시"
-                        >
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                        <FabricCard
-                          fabric={fabric}
-                          onImageClick={() => openLightbox(group, fabricIdx)}
-                        />
-                      </div>
-                    ))}
-                  </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    검색 결과가 없습니다
-                  </div>
+                  <SearchComparisonView
+                    preview={group.preview}
+                    label={group.label}
+                    type={group.type}
+                    results={group.results}
+                    activeIndex={group.activeIndex}
+                    geminiInfo={group.geminiInfo}
+                    onSelect={(idx) => setActiveIndex(group.id, idx)}
+                    onDismiss={(fabricId) => dismissFabric(group.id, fabricId)}
+                    onRemoveGroup={() => removeGroup(group.id)}
+                    onPreviewClick={() => openLightbox(group, -1)}
+                    onMainImageClick={() => openLightbox(group, group.activeIndex)}
+                    enableKeyboard={groupIdx === 0}
+                  />
                 )}
-
-                <hr className="mt-8 border-gray-100" />
               </div>
             ))}
           </div>

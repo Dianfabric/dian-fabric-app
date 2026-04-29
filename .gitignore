@@ -39,6 +39,7 @@ scripts/*.ipynb
 # generated HTML reports (regenerable)
 scripts/samples-*.html
 scripts/batch-compare.html
+scripts/mockup-*.html
 
 # vercel
 .vercel

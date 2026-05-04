@@ -11,7 +11,7 @@ const FABRIC_TYPES = [
 ];
 
 const PATTERN_DETAILS = [
-  "전체", "무지", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
+  "전체", "무지", "패턴", "부클", "하운드투스", "스트라이프", "체크", "헤링본",
   "추상", "기하학", "자연", "동물", "식물", "큰패턴", "다마스크",
 ];
 
@@ -280,15 +280,23 @@ export default function FabricsPage() {
                   onClick={() => {
                     if (sub === "전체") {
                       setSelectedSubType("");
+                      if (selectedType === "패턴") setSelectedType("전체");
+                    } else if (sub === "패턴") {
+                      // "패턴" = 무지를 제외한 모든 패턴 (API에서 type=패턴으로 처리)
+                      setSelectedSubType("");
+                      setSelectedType(selectedType === "패턴" ? "전체" : "패턴");
                     } else if (selectedSubType === sub) {
                       setSelectedSubType("");
                     } else {
                       setSelectedSubType(sub);
+                      if (selectedType === "패턴") setSelectedType("전체");
                     }
                     setPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    (sub === "전체" && !selectedSubType) || selectedSubType === sub
+                    (sub === "전체" && !selectedSubType && selectedType !== "패턴")
+                    || (sub === "패턴" && selectedType === "패턴")
+                    || (sub !== "전체" && sub !== "패턴" && selectedSubType === sub)
                       ? "bg-[#8B6914] text-white"
                       : "bg-[rgba(139,105,20,0.08)] text-[#8B6914] hover:bg-[rgba(139,105,20,0.15)]"
                   }`}

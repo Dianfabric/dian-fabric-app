@@ -501,7 +501,7 @@ export default function SearchPage() {
   const hasResults = searchGroups.length > 0;
 
   return (
-    <div className="pt-24 pb-20 px-6">
+    <div className="pt-36 pb-20 px-6">
       {lightbox && (
         <ImageLightbox
           images={lightbox.images}

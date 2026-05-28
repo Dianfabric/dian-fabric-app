@@ -244,7 +244,7 @@ export default function TrainingPage() {
   /* ───────── 로딩 ───────── */
   if (loading) {
     return (
-      <div className="pt-24 pb-16 flex flex-col items-center justify-center gap-3">
+      <div className="pt-36 pb-16 flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 border-3 border-[#C49A6C] border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-gray-400">원단 불러오는 중...</p>
       </div>
@@ -254,7 +254,7 @@ export default function TrainingPage() {
   /* ───────── 1. 카테고리 선택 ───────── */
   if (phase === "category-select") {
     return (
-      <div className="pt-24 pb-16 max-w-lg mx-auto px-4">
+      <div className="pt-36 pb-16 max-w-lg mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-extrabold mb-1">
             레퍼런스 <span className="text-gradient">강화</span>
@@ -354,7 +354,7 @@ export default function TrainingPage() {
     const total = stats.correct + stats.corrected;
     const accuracy = total > 0 ? ((stats.correct / total) * 100).toFixed(0) : "0";
     return (
-      <div className="pt-24 pb-16 max-w-lg mx-auto px-4 text-center">
+      <div className="pt-36 pb-16 max-w-lg mx-auto px-4 text-center">
         <h1 className="text-3xl font-extrabold mb-2">학습 완료!</h1>
         <p className="text-sm text-gray-400 mb-6">{trainingLabel}</p>
 
@@ -443,7 +443,7 @@ export default function TrainingPage() {
 
   if (fabrics.length === 0) {
     return (
-      <div className="pt-24 pb-16 text-center">
+      <div className="pt-36 pb-16 text-center">
         <h1 className="text-2xl font-extrabold mb-4">검증할 원단이 없습니다</h1>
         <p className="text-gray-500 mb-6">{trainingLabel} — 미검증 원단이 없습니다</p>
         <button
@@ -460,7 +460,7 @@ export default function TrainingPage() {
   const rejectedCount = fabrics.length - selectedCount;
 
   return (
-    <div className="pt-24 pb-32 max-w-4xl mx-auto px-4">
+    <div className="pt-36 pb-32 max-w-4xl mx-auto px-4">
       {/* 헤더 */}
       <div className="text-center mb-5">
         <h1 className="text-xl font-extrabold mb-1">

@@ -280,7 +280,7 @@ export default function ComparePage() {
   }, [handleFile]);
 
   return (
-    <main className="min-h-screen bg-gray-50 pt-24 pb-16">
+    <main className="min-h-screen bg-gray-50 pt-36 pb-16">
       <div className="max-w-[1400px] mx-auto px-4">
         {/* 헤더 */}
         <div className="mb-6">

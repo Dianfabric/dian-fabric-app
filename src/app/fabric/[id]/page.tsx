@@ -49,7 +49,7 @@ export default function FabricDetailPage() {
 
   if (loading) {
     return (
-      <div className="pt-24 pb-16 flex justify-center">
+      <div className="pt-36 pb-16 flex justify-center">
         <div className="w-8 h-8 border-3 border-[#C49A6C] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -57,7 +57,7 @@ export default function FabricDetailPage() {
 
   if (!fabric) {
     return (
-      <div className="pt-24 pb-16 text-center">
+      <div className="pt-36 pb-16 text-center">
         <p className="text-gray-500 mb-4">원단을 찾을 수 없습니다</p>
         <Link href="/fabrics" className="text-[#8B6914] underline">
           원단 목록으로 돌아가기
@@ -87,7 +87,7 @@ export default function FabricDetailPage() {
     : null;
 
   return (
-    <div className="pt-24 pb-16 max-w-5xl mx-auto px-4">
+    <div className="pt-36 pb-16 max-w-5xl mx-auto px-4">
       {/* 뒤로가기 */}
       <button
         onClick={() => router.back()}

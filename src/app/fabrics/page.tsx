@@ -180,7 +180,7 @@ export default function FabricsPage() {
   };
 
   return (
-    <div className="pt-24 pb-20 px-6">
+    <div className="pt-36 pb-20 px-6">
       {lightbox && (
         <ImageLightbox
           images={lightbox.images}

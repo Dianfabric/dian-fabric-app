@@ -55,9 +55,9 @@ export default function Navbar() {
         <div className="pt-2 pb-3">
           <Link
             href="/"
-            className="inline-block text-3xl md:text-4xl font-extrabold tracking-tight"
+            className="inline-block text-3xl md:text-4xl font-extrabold tracking-tight text-black"
           >
-            DIAN <span className="text-gradient">fabric</span>
+            DIAN FABRIC
           </Link>
         </div>
 

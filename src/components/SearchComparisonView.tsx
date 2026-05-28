@@ -1,8 +1,16 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { SearchResult } from "@/lib/types";
+
+type Variant = {
+  id: string;
+  name: string;
+  color_code: string;
+  image_url: string | null;
+  price_per_yard?: number | null;
+};
 
 export type GeminiInfo = {
   location: string;
@@ -46,6 +54,10 @@ export default function SearchComparisonView({
   const waitlistRef = useRef<HTMLDivElement>(null);
   const active = results[activeIndex];
 
+  // 컬러웨이 (활성 fabric의 다른 컬러 변형)
+  const [variants, setVariants] = useState<Variant[]>([]);
+  const [hoveredVariant, setHoveredVariant] = useState<Variant | null>(null);
+
   // 활성 카드를 시야 안으로 스크롤
   useEffect(() => {
     if (!waitlistRef.current) return;
@@ -54,6 +66,24 @@ export default function SearchComparisonView({
     );
     if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeIndex]);
+
+  // 활성 fabric 변경 시 컬러 변형 로드
+  useEffect(() => {
+    if (!active) {
+      setVariants([]);
+      setHoveredVariant(null);
+      return;
+    }
+    setHoveredVariant(null);
+    let cancelled = false;
+    fetch(`/api/fabrics/${active.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setVariants(d.colorVariants || []);
+      })
+      .catch(() => { if (!cancelled) setVariants([]); });
+    return () => { cancelled = true; };
+  }, [active?.id]);
 
   // 키보드 단축키
   useEffect(() => {
@@ -190,9 +220,9 @@ export default function SearchComparisonView({
             <>
               <div className="h-[380px] bg-gray-50 relative cursor-zoom-in" onClick={onMainImageClick}>
                 <img
-                  src={active.image_url || ""}
+                  src={hoveredVariant?.image_url || active.image_url || ""}
                   alt={active.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity"
                 />
                 <button
                   onClick={(e) => {
@@ -255,6 +285,53 @@ export default function SearchComparisonView({
                       : "-"}
                   </span>
                 </div>
+
+                {/* 컬러웨이 (다른 컬러 변형) */}
+                {variants.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-500 tracking-wide">🎨 다른 컬러</span>
+                      <span className="text-[11px] text-gray-400">{variants.length}개 (호버: 미리보기)</span>
+                    </div>
+                    <div className="grid grid-cols-8 gap-1.5">
+                      {variants.slice(0, 16).map((v) => (
+                        <Link
+                          key={v.id}
+                          href={`/fabric/${v.id}`}
+                          onMouseEnter={() => setHoveredVariant(v)}
+                          onMouseLeave={() => setHoveredVariant(null)}
+                          className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
+                            hoveredVariant?.id === v.id
+                              ? "border-[#8B6914] scale-110 shadow-md z-10"
+                              : "border-transparent hover:border-[#C49A6C]"
+                          }`}
+                          title={`Color: ${v.color_code}`}
+                        >
+                          {v.image_url && (
+                            <img
+                              src={v.image_url}
+                              alt={v.color_code}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/65 text-white text-[8px] py-0.5 text-center font-bold leading-none">
+                            {v.color_code}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                    {variants.length > 16 && (
+                      <div className="text-center mt-2">
+                        <button
+                          onClick={onQuickView}
+                          className="text-xs text-[#8B6914] font-semibold hover:underline"
+                        >
+                          +{variants.length - 16}개 더 보기 →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (

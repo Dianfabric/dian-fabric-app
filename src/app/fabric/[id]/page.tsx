@@ -21,7 +21,6 @@ export default function FabricDetailPage() {
   const [fabric, setFabric] = useState<Fabric | null>(null);
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
   const [showLightbox, setShowLightbox] = useState(false);
   const [hoverImage, setHoverImage] = useState<string | null>(null);
   const [hoverColor, setHoverColor] = useState<string | null>(null);
@@ -39,13 +38,6 @@ export default function FabricDetailPage() {
       .catch(() => setFabric(null))
       .finally(() => setLoading(false));
   }, [id]);
-
-  const handleQuantity = useCallback(
-    (delta: number) => {
-      setQuantity((prev) => Math.max(1, Math.min(105, prev + delta)));
-    },
-    []
-  );
 
   if (loading) {
     return (
@@ -77,13 +69,6 @@ export default function FabricDetailPage() {
 
   const pricePerMeter = fabric.price_per_yard
     ? Math.round(fabric.price_per_yard * 1.094)
-    : null;
-  const subtotal = pricePerMeter ? pricePerMeter * quantity : null;
-  const shipping = 10000;
-  const discount = quantity >= 20 ? 0.05 : 0;
-  const freeShipping = quantity >= 50;
-  const total = subtotal
-    ? Math.round(subtotal * (1 - discount)) + (freeShipping ? 0 : shipping)
     : null;
 
   return (
@@ -278,82 +263,7 @@ export default function FabricDetailPage() {
             </div>
           )}
 
-          {/* 가격 계산기 */}
-          {pricePerMeter && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h3 className="font-bold text-[15px] mb-4 flex items-center gap-2">
-                🧮 가격 계산기
-              </h3>
-              <p className="text-xs text-gray-500 mb-2">수량 (미터)</p>
-              <div className="flex items-center gap-4 mb-2">
-                <button
-                  onClick={() => handleQuantity(-1)}
-                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg hover:bg-gray-50 transition-colors"
-                >
-                  −
-                </button>
-                <div className="flex-1 text-center">
-                  <span className="text-3xl font-extrabold">{quantity}</span>
-                  <span className="text-sm text-gray-400 ml-1">m</span>
-                </div>
-                <button
-                  onClick={() => handleQuantity(1)}
-                  className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg hover:bg-gray-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 text-center mb-5">
-                최소 주문: 1m · 재고: 105m
-              </p>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">단가</span>
-                  <span>&#8361;{pricePerMeter.toLocaleString()}/m</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#8B6914]">소계</span>
-                  <span className="font-semibold">
-                    &#8361;{subtotal!.toLocaleString()}
-                  </span>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-red-500">
-                    <span>할인 (5%)</span>
-                    <span>
-                      -&#8361;{Math.round(subtotal! * discount).toLocaleString()}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">🚛 배송비</span>
-                  <span>
-                    {freeShipping ? (
-                      <span className="text-green-600">무료</span>
-                    ) : (
-                      `₩${shipping.toLocaleString()}`
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <hr className="my-4 border-gray-100" />
-              <div className="flex justify-between items-center">
-                <span className="font-bold">총 결제금액</span>
-                <span className="text-2xl font-extrabold">
-                  &#8361;{total!.toLocaleString()}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 text-center mt-3">
-                20m 이상 주문 시 5% 할인, 50m 이상 무료배송
-              </p>
-
-              <button className="w-full mt-5 bg-gradient-to-r from-[#B8956A] to-[#8B6914] text-white py-3.5 rounded-xl font-semibold text-sm hover:shadow-lg transition-all">
-                샘플 신청하기 (₩3,000)
-              </button>
-            </div>
-          )}
+          {/* 가격 계산기/주문 영역은 추후 정식 오픈 시 추가 예정 */}
         </div>
       </div>
     </div>

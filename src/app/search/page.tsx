@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import ImageLightbox from "@/components/ImageLightbox";
 import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSelector";
 import SearchComparisonView, { type GeminiInfo } from "@/components/SearchComparisonView";
+import QuickViewPanel from "@/components/QuickViewPanel";
 import type { SearchResult } from "@/lib/types";
 
 const FETCH_COUNT = 50;   // 텍스트 검색용
@@ -64,6 +65,7 @@ export default function SearchPage() {
     imageUrl: string;
     file: File;
   } | null>(null);
+  const [quickViewFabric, setQuickViewFabric] = useState<SearchResult | null>(null);
 
   // 라이트박스 열기 (group의 모든 결과 + 업로드 원본을 묶어서 큐로)
   const openLightbox = useCallback((group: SearchGroup, fabricIndex: number) => {
@@ -108,10 +110,16 @@ export default function SearchPage() {
     );
   }, []);
 
-  // 대기열 카드 클릭 → 활성 인덱스 변경
+  // 대기열 카드 클릭 → 활성 인덱스 변경 + 퀵뷰 열기
   const setActiveIndex = useCallback((groupId: string, idx: number) => {
     setSearchGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, activeIndex: idx } : g))
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        // 클릭한 원단으로 퀵뷰 패널 열기
+        const target = g.results[idx];
+        if (target) setQuickViewFabric(target);
+        return { ...g, activeIndex: idx };
+      })
     );
   }, []);
 
@@ -569,6 +577,11 @@ export default function SearchPage() {
           onCancel={() => setCropModal(null)}
         />
       )}
+      {/* 퀵뷰 슬라이드 패널 — Designtex 스타일 */}
+      <QuickViewPanel
+        fabric={quickViewFabric}
+        onClose={() => setQuickViewFabric(null)}
+      />
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
@@ -715,7 +728,10 @@ export default function SearchPage() {
                     onDismiss={(fabricId) => dismissFabric(group.id, fabricId)}
                     onRemoveGroup={() => removeGroup(group.id)}
                     onPreviewClick={() => openLightbox(group, -1)}
-                    onMainImageClick={() => openLightbox(group, group.activeIndex)}
+                    onMainImageClick={() => {
+                      const target = group.results[group.activeIndex];
+                      if (target) setQuickViewFabric(target);
+                    }}
                     enableKeyboard={groupIdx === 0}
                   />
                 )}

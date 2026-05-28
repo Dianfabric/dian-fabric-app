@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
         addResults(data as Record<string, unknown>[] | null);
       }
 
-      // STEP 2: 색상명 비율 정밀 필터
+      // STEP 2: 색상명 비율 정밀 필터 — 임계값 완화 + 최소 보장
       if (hasColorNames && allCandidates.length > matchCount) {
         const colorScored = allCandidates.map((fabric) => {
           const fabricColorNames = parseColorNames((fabric.notes as string) || "");
@@ -229,8 +229,17 @@ export async function POST(request: NextRequest) {
           return { fabric, score };
         });
         colorScored.sort((a, b) => b.score - a.score);
-        allCandidates = colorScored
-          .filter((c) => c.score > 0.3)
+
+        // 점수 0.1 이상 통과 (이전 0.3은 너무 빡세서 정답 누락)
+        const passed = colorScored.filter((c) => c.score > 0.1);
+
+        // 통과 적으면 점수 상관없이 상위 100개 보장 (Recall 우선)
+        const MIN_GUARANTEED = 100;
+        const candidates = passed.length >= MIN_GUARANTEED
+          ? passed
+          : colorScored.slice(0, Math.max(MIN_GUARANTEED, passed.length));
+
+        allCandidates = candidates
           .slice(0, Math.max(matchCount * 3, 300))
           .map((c) => c.fabric);
       }

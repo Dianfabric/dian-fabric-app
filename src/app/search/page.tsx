@@ -110,18 +110,18 @@ export default function SearchPage() {
     );
   }, []);
 
-  // 활성 인덱스 변경 (카드 클릭 / 화살표 키 둘 다 호출 — 퀵뷰는 X)
+  // 활성 인덱스 변경 (카드 클릭 / 화살표 키)
   const setActiveIndex = useCallback((groupId: string, idx: number) => {
     setSearchGroups((prev) =>
       prev.map((g) => (g.id === groupId ? { ...g, activeIndex: idx } : g))
     );
   }, []);
 
-  // 카드 마우스 클릭 시에만 퀵뷰 열기 (화살표 키 영향 안 받음)
-  const openQuickViewByCard = useCallback((groupId: string, idx: number) => {
+  // 🎨 퀵뷰 버튼 클릭 시 — 현재 활성 카드의 퀵뷰 열기
+  const openQuickViewForActive = useCallback((groupId: string) => {
     setSearchGroups((prev) => {
       const g = prev.find((x) => x.id === groupId);
-      const target = g?.results[idx];
+      const target = g?.results[g.activeIndex];
       if (target) setQuickViewFabric(target);
       return prev;
     });
@@ -729,14 +729,11 @@ export default function SearchPage() {
                     activeIndex={group.activeIndex}
                     geminiInfo={group.geminiInfo}
                     onSelect={(idx) => setActiveIndex(group.id, idx)}
-                    onCardClick={(idx) => openQuickViewByCard(group.id, idx)}
                     onDismiss={(fabricId) => dismissFabric(group.id, fabricId)}
                     onRemoveGroup={() => removeGroup(group.id)}
                     onPreviewClick={() => openLightbox(group, -1)}
-                    onMainImageClick={() => {
-                      const target = group.results[group.activeIndex];
-                      if (target) setQuickViewFabric(target);
-                    }}
+                    onMainImageClick={() => openLightbox(group, group.activeIndex)}
+                    onQuickView={() => openQuickViewForActive(group.id)}
                     enableKeyboard={groupIdx === 0}
                   />
                 )}

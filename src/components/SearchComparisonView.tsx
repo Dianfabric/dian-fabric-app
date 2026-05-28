@@ -20,11 +20,11 @@ type Props = {
   activeIndex: number;
   geminiInfo?: GeminiInfo;
   onSelect: (idx: number) => void;
-  onCardClick?: (idx: number) => void;  // 카드 마우스 클릭 전용 (화살표 키 X)
   onDismiss: (fabricId: string) => void;
   onRemoveGroup: () => void;
   onPreviewClick?: () => void;
   onMainImageClick?: () => void;
+  onQuickView?: () => void;  // 🎨 퀵뷰 버튼 클릭 시
   enableKeyboard?: boolean;
 };
 
@@ -36,11 +36,11 @@ export default function SearchComparisonView({
   activeIndex,
   geminiInfo,
   onSelect,
-  onCardClick,
   onDismiss,
   onRemoveGroup,
   onPreviewClick,
   onMainImageClick,
+  onQuickView,
   enableKeyboard = false,
 }: Props) {
   const waitlistRef = useRef<HTMLDivElement>(null);
@@ -212,10 +212,21 @@ export default function SearchComparisonView({
                 </div>
               </div>
               <div className="px-6 py-5">
-                <Link href={`/fabric/${active.id}`} className="block hover:opacity-70 transition-opacity">
-                  <div className="text-2xl font-extrabold mb-1">{active.name}</div>
-                  <div className="text-base text-gray-500 mb-4">Color: {active.color_code}</div>
-                </Link>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <Link href={`/fabric/${active.id}`} className="block hover:opacity-70 transition-opacity flex-1 min-w-0">
+                    <div className="text-2xl font-extrabold mb-1 truncate">{active.name}</div>
+                    <div className="text-base text-gray-500">Color: {active.color_code}</div>
+                  </Link>
+                  {onQuickView && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onQuickView(); }}
+                      className="flex-shrink-0 bg-gradient-to-r from-[#8B6914] to-[#C49A6C] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg hover:scale-105 transition-all flex items-center gap-1.5"
+                      title="다른 컬러 + 상세 보기"
+                    >
+                      <span>🎨</span> <span>퀵뷰</span>
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex gap-2 flex-wrap mb-4">
                   {active.fabric_type && (
@@ -276,10 +287,7 @@ export default function SearchComparisonView({
                 <div
                   key={f.id}
                   data-idx={i}
-                  onClick={() => {
-                    onSelect(i);
-                    onCardClick?.(i);  // 마우스 클릭 시에만 추가 호출 (화살표 키 X)
-                  }}
+                  onClick={() => onSelect(i)}
                   className={`flex gap-3 p-2.5 rounded-xl cursor-pointer border-2 transition-all ${
                     i === activeIndex
                       ? "border-[#8B6914] bg-[#faf6eb]"

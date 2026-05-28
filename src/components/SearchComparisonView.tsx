@@ -20,6 +20,7 @@ type Props = {
   activeIndex: number;
   geminiInfo?: GeminiInfo;
   onSelect: (idx: number) => void;
+  onCardClick?: (idx: number) => void;  // 카드 마우스 클릭 전용 (화살표 키 X)
   onDismiss: (fabricId: string) => void;
   onRemoveGroup: () => void;
   onPreviewClick?: () => void;
@@ -35,6 +36,7 @@ export default function SearchComparisonView({
   activeIndex,
   geminiInfo,
   onSelect,
+  onCardClick,
   onDismiss,
   onRemoveGroup,
   onPreviewClick,
@@ -274,7 +276,10 @@ export default function SearchComparisonView({
                 <div
                   key={f.id}
                   data-idx={i}
-                  onClick={() => onSelect(i)}
+                  onClick={() => {
+                    onSelect(i);
+                    onCardClick?.(i);  // 마우스 클릭 시에만 추가 호출 (화살표 키 X)
+                  }}
                   className={`flex gap-3 p-2.5 rounded-xl cursor-pointer border-2 transition-all ${
                     i === activeIndex
                       ? "border-[#8B6914] bg-[#faf6eb]"

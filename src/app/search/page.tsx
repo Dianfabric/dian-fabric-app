@@ -110,17 +110,21 @@ export default function SearchPage() {
     );
   }, []);
 
-  // 대기열 카드 클릭 → 활성 인덱스 변경 + 퀵뷰 열기
+  // 활성 인덱스 변경 (카드 클릭 / 화살표 키 둘 다 호출 — 퀵뷰는 X)
   const setActiveIndex = useCallback((groupId: string, idx: number) => {
     setSearchGroups((prev) =>
-      prev.map((g) => {
-        if (g.id !== groupId) return g;
-        // 클릭한 원단으로 퀵뷰 패널 열기
-        const target = g.results[idx];
-        if (target) setQuickViewFabric(target);
-        return { ...g, activeIndex: idx };
-      })
+      prev.map((g) => (g.id === groupId ? { ...g, activeIndex: idx } : g))
     );
+  }, []);
+
+  // 카드 마우스 클릭 시에만 퀵뷰 열기 (화살표 키 영향 안 받음)
+  const openQuickViewByCard = useCallback((groupId: string, idx: number) => {
+    setSearchGroups((prev) => {
+      const g = prev.find((x) => x.id === groupId);
+      const target = g?.results[idx];
+      if (target) setQuickViewFabric(target);
+      return prev;
+    });
   }, []);
 
   // CLIP 검색 — 텍스트 검색 전용 (DINOv2는 텍스트 인코더 없음)
@@ -725,6 +729,7 @@ export default function SearchPage() {
                     activeIndex={group.activeIndex}
                     geminiInfo={group.geminiInfo}
                     onSelect={(idx) => setActiveIndex(group.id, idx)}
+                    onCardClick={(idx) => openQuickViewByCard(group.id, idx)}
                     onDismiss={(fabricId) => dismissFabric(group.id, fabricId)}
                     onRemoveGroup={() => removeGroup(group.id)}
                     onPreviewClick={() => openLightbox(group, -1)}

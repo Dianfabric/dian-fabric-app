@@ -595,6 +595,9 @@ export default function SearchPage() {
           <p className="text-gray-400 text-[15px]">
             이미지를 업로드하거나 텍스트로 검색하세요
           </p>
+          <p className="text-gray-400 text-[13px] mt-1.5">
+            📸 가까이서 또렷하게 촬영한 이미지일수록 매칭 정확도가 높아집니다
+          </p>
         </div>
 
         {/* 검색 입력 영역 */}

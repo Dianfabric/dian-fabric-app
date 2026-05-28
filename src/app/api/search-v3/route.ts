@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Soft Scoring RPC 호출 (사용자 분류 보너스 포함)
+    // Soft Scoring RPC 호출 — 색상 최우선 (사용자 피드백 반영)
     const { data, error } = await supabase.rpc("search_fabrics_soft", {
       query_global: `[${embedding_global.join(",")}]`,
       query_crop: `[${embedding_crop.join(",")}]`,
@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
       query_patterns: query_patterns || null,
       query_types: query_types || null,
       query_colors: query_colors || null,
-      weight_global: weight_global ?? 0.35,
-      weight_crop: weight_crop ?? 0.25,
-      weight_color: weight_color ?? 0.40,
-      bonus_pattern: bonus_pattern ?? 0.15,
-      bonus_type: bonus_type ?? 0.05,
+      weight_global: weight_global ?? 0.20,   // 35 → 20
+      weight_crop: weight_crop ?? 0.15,        // 25 → 15
+      weight_color: weight_color ?? 0.65,      // 40 → 65 ⭐ 색상 최우선
+      bonus_pattern: bonus_pattern ?? 0.08,    // 15 → 8 (보너스 ↓)
+      bonus_type: bonus_type ?? 0.03,          // 5 → 3
       bonus_color_name: bonus_color_name ?? 0.10,
-      color_scale: 200.0,
+      color_scale: 100.0,                       // 200 → 100 (색 거리 더 민감하게)
       match_count: matchCount,
     });
 

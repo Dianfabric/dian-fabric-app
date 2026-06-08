@@ -1,0 +1,1228 @@
+{
+  "created_at": "2026-05-28T00:17:28.595Z",
+  "total_queries": 100,
+  "completed_count": 88,
+  "is_partial": true,
+  "current_idx": 99,
+  "labels": [
+    {
+      "query": {
+        "id": "ad8dc7ea-5af9-4926-a28c-7df76aa4dd5f",
+        "name": "PS3052",
+        "color_code": "7",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "7028cdcc-4114-4b33-8ed9-dde6de8384a5",
+        "46c16c23-7855-4d67-84da-5334c8465ca6",
+        "78ef73aa-ccfe-446a-bbbe-51f1ec0ce979",
+        "7ab06638-4114-4866-b6b7-f8d711a946f6"
+      ]
+    },
+    {
+      "query": {
+        "id": "922813d1-7a64-44ab-b216-9087ec499f97",
+        "name": "PS3104",
+        "color_code": "26",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "653d65f4-85f5-48d4-82ae-e836b1059fd6",
+        "8be91eb6-42bf-4ed8-aa81-4531004b07cd"
+      ]
+    },
+    {
+      "query": {
+        "id": "7028cdcc-4114-4b33-8ed9-dde6de8384a5",
+        "name": "2312",
+        "color_code": "02",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "ad8dc7ea-5af9-4926-a28c-7df76aa4dd5f",
+        "00a3a76a-fc19-413d-ac8a-1bd1d6c17bcb",
+        "863d221b-bc13-4575-a298-fad74fdbdd55",
+        "cbaca13b-ace9-4fc5-b9bd-b878c86be286"
+      ]
+    },
+    {
+      "query": {
+        "id": "1116da83-039e-40c4-baa0-8ca7d7041085",
+        "name": "2528",
+        "color_code": "9",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "fe40cf30-c710-4b24-8747-a790e6cdec98",
+        "2ed0ce56-a073-4281-9e60-37a52b3e7ed0",
+        "f1f1dc4d-949a-4a43-83ce-6f54098eed16",
+        "9a0336a5-1b0c-4827-a632-11aa216d6c7f",
+        "adec3093-92a1-4775-9c97-40b73d438dc1"
+      ]
+    },
+    {
+      "query": {
+        "id": "e9a39cc3-23b0-48ca-84da-d0a7f5915d5c",
+        "name": "PS3081",
+        "color_code": "25",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "a39b87b8-124f-48af-922d-aa86b91edff5",
+        "c34dba90-cf2b-4003-9f29-a455a7342df3"
+      ]
+    },
+    {
+      "query": {
+        "id": "da93c7f9-f2ae-4a59-bb6f-43644d76cc53",
+        "name": "PS3087",
+        "color_code": "8",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "488a12b3-df03-4d01-a328-59ea922bb76a",
+        "9e64e8e3-005f-4633-8c89-112aff45d03a",
+        "31507c33-3961-4102-9efa-b4e8d4460f93"
+      ]
+    },
+    {
+      "query": {
+        "id": "d203c4df-ba97-4791-91ed-bb7d9199c242",
+        "name": "2551",
+        "color_code": "2",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "bbdb3d92-103a-4ba4-80be-9a2cf0cf00f4",
+        "1b97983b-648f-4b3e-a2e9-772c9c749a51"
+      ]
+    },
+    {
+      "query": {
+        "id": "cb97fe70-28bd-4da1-9453-d589eef7ae97",
+        "name": "PS3112",
+        "color_code": "4",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "0daf5e67-fbe6-4474-9fcd-4cbc3330343d",
+        "0369d8cb-87d1-4349-be48-69e89af5d916",
+        "9b22b56f-0734-4bcf-9d09-9a1f564ea0a6",
+        "0ff83728-dacd-4229-b7fa-38b7d622185b",
+        "13c3c6d7-a149-450f-b28c-0ff48c99223b"
+      ]
+    },
+    {
+      "query": {
+        "id": "94eabbd0-18d3-4240-8ed6-c3dc536419ac",
+        "name": "CORSICA",
+        "color_code": "CS701",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "da0cdd89-2807-44d9-8ab3-202d18d9e85a"
+      ]
+    },
+    {
+      "query": {
+        "id": "be8cc408-421b-4315-9ace-8caa47aac5a4",
+        "name": "PS5012",
+        "color_code": "16",
+        "pattern_detail": "무지"
+      },
+      "similar_ids": [
+        "c9e74898-92bc-4458-bb9f-4eee6168a711"
+      ]
+    },
+    {
+      "query": {
+        "id": "2824119b-a4d9-400f-af69-9efa10f09bcd",
+        "name": "LAHTERH",
+        "color_code": "06",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "b5849087-1483-4768-bc14-1a71f01171d6"
+      ]
+    },
+    {
+      "query": {
+        "id": "a5b72cf2-2800-4197-93ff-fb42c851046f",
+        "name": "LAHTERH",
+        "color_code": "10",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "3efb9e47-d692-41f6-9c88-151246ee4b73"
+      ]
+    },
+    {
+      "query": {
+        "id": "0785c8fe-b488-4d16-93c5-6f78343b58a3",
+        "name": "WOLLY",
+        "color_code": "10",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "cf494556-9fb9-4fd2-923a-175ddf369f99",
+        "name": "2123",
+        "color_code": "01",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "763f77a9-2ab8-4015-8fa2-1af4974d13b4",
+        "8953ce6c-d7e1-4d67-a26a-ebcfd97cf426",
+        "3e02fb6f-efb2-401a-98bf-e506b0a93b12",
+        "319226a5-9cd9-4307-b6ed-4a82f8777e32",
+        "f4e2913e-b817-4659-9166-25766d60609c",
+        "ecc62c28-d903-470f-8446-65c37e8eeb1c"
+      ]
+    },
+    {
+      "query": {
+        "id": "f3354ed2-ea2d-452e-a556-e66e56450ee9",
+        "name": "LAHTERH",
+        "color_code": "08",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "337454c2-1c70-4179-803e-fea76610cd62"
+      ]
+    },
+    {
+      "query": {
+        "id": "f531122d-5e07-444f-8c83-3dae04845b47",
+        "name": "LAHTERH",
+        "color_code": "03",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "a617194c-d785-4614-b54a-4efcf0e7d2d9",
+        "4f9db946-fa20-4368-aec3-c1535fa882a2"
+      ]
+    },
+    {
+      "query": {
+        "id": "e2088131-9587-4150-a27f-f16708176ed7",
+        "name": "LAHTERH",
+        "color_code": "07",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "82de401b-a0b2-41a5-a383-d85b4e39bc1c",
+        "54478c3f-7cf4-40f9-b8eb-660a46245787"
+      ]
+    },
+    {
+      "query": {
+        "id": "9f747862-d4f0-4d57-8063-e0009fa784cb",
+        "name": "LD2335P",
+        "color_code": "03",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "1eeea691-aeba-48a7-8b69-714cf914217d",
+        "758e2bff-0ceb-486b-8848-8d95a473ce06"
+      ]
+    },
+    {
+      "query": {
+        "id": "54be4d1e-7898-4d60-9553-feafb34de200",
+        "name": "2129",
+        "color_code": "05",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "700527fa-42c2-4cc1-8253-a7b7f3f72bf5",
+        "name": "2307",
+        "color_code": "08",
+        "pattern_detail": "부클"
+      },
+      "similar_ids": [
+        "562c139f-cf48-4c29-99d4-9105464135df",
+        "6357d005-1e67-45c6-a7fe-100350867341"
+      ]
+    },
+    {
+      "query": {
+        "id": "fc390dc8-b7f3-46a0-805f-54993fadd124",
+        "name": "1808",
+        "color_code": "15",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "c37fc743-4475-4dda-9795-985bea181267",
+        "name": "8623",
+        "color_code": "20",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "7bf34cfa-2f4b-4178-8a5b-82555f50f3c1",
+        "name": "1808",
+        "color_code": "25",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "3c4dfcad-e4d9-4c6c-a757-3fcc99e344f2",
+        "name": "PS3120",
+        "color_code": "6",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "68b493ea-0d1e-4b7b-8167-bca08bfa50f6"
+      ]
+    },
+    {
+      "query": {
+        "id": "bc617ef0-7a87-470b-936f-e1291cd4b7f8",
+        "name": "1808",
+        "color_code": "09",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "047a4794-378c-4493-904c-83c0794bb1ca",
+        "name": "1808",
+        "color_code": "18",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "cdc6546c-9732-4c15-90f9-21d80a983f90",
+        "01c3c651-3500-44a8-baaf-ef1e84ef7159"
+      ]
+    },
+    {
+      "query": {
+        "id": "62f9d903-ff46-49a7-9b16-0ba28e580c47",
+        "name": "8623",
+        "color_code": "25",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "862ac5af-76e0-4f8a-8b49-7a635f8362df",
+        "f2ad1892-2192-41ae-893b-abf2c224de29"
+      ]
+    },
+    {
+      "query": {
+        "id": "3fadd6b0-c725-45ec-a6d5-851bc8333ea8",
+        "name": "PS3120",
+        "color_code": "17",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "b8513fee-435f-4c5e-9c2f-c5baa8389922"
+      ]
+    },
+    {
+      "query": {
+        "id": "ca4f802e-b65a-4c32-ab97-dd0a9e730d2e",
+        "name": "8623",
+        "color_code": "03",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "b40703ac-b107-4410-b50f-bfad1ca19f3d"
+      ]
+    },
+    {
+      "query": {
+        "id": "5e4a443c-0288-492a-854e-5fe86a296c6b",
+        "name": "68272",
+        "color_code": "05",
+        "pattern_detail": "하운드투스"
+      },
+      "similar_ids": [
+        "33df0ab1-e6f0-4de3-8649-a9904dd7575a",
+        "cb97fe70-28bd-4da1-9453-d589eef7ae97",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "d931a1af-d661-4082-be3c-cd5170467f67",
+        "name": "Filomour",
+        "color_code": "14",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "4fb55ec1-af70-4d15-8fb3-b7a1dd077b27",
+        "name": "PS3115",
+        "color_code": "11",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "960ae79e-9d68-4a3a-abf4-cef3f18cbed0",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "e100a920-08ae-4a7a-9945-33e54d422696",
+        "name": "NORMAL",
+        "color_code": "02",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "030addf3-c04e-4b2d-b9e5-f57dcc20b0d0",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "b133a7f7-e761-4adf-85d3-7987f8d3b3ec",
+        "name": "2519",
+        "color_code": "05",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "ed2e8a4e-33f2-4119-9f8e-d0cbc490f91d",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "f772d3b0-fb1c-4157-ae46-5ada54ca0371",
+        "name": "PS3110",
+        "color_code": "12",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "172e4c74-2e9e-4a4a-9deb-3633821b2ec5",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "ed05f2a2-a8f1-49f8-885a-ab058069f811",
+        "name": "MJG82315",
+        "color_code": "24",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "7ca8a768-cd28-4f50-ad0a-319744fa7fd5",
+        "67879b5f-03e3-4f2e-a9ea-54f1787f8c8a",
+        "10413237-8efe-4572-8a6d-1aa8b8af54a6",
+        "53b6cf8d-729a-4b03-a675-2032ca61de07",
+        "7a0785e2-51f6-46fb-88a9-41e8ad1018dc",
+        "84591ee6-dad1-47c6-a752-2775e0a5ebe0",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "827a9940-c9db-4103-8a4f-76853266746b",
+        "name": "PS6104-2",
+        "color_code": "Gemini_Generated_Image_q9odlxq9odlxq9od",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "64d4dc76-4915-49e8-a175-1c366394b15a",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "231e5ba8-ac97-4daa-b151-e35d51e57580",
+        "name": "S019",
+        "color_code": "03",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "78ec4ecf-6c89-490a-ab49-a94dceba6c03",
+        "3acf09de-7fd9-49eb-895b-66d3ba5b78cd",
+        "2d2eca69-cf52-4481-baf9-efc1bfac3d04",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "a5c37618-000b-47d4-a510-c8f12644a30b",
+        "name": "S010",
+        "color_code": "01",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        "c0eaa43c-b9aa-4d1c-bcd3-09dff44050aa",
+        "3b5e2e39-392b-49dc-84d5-b70a9e724a93",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "5a5cd77c-6d5c-497d-a44d-719c2f45fdcf",
+        "name": "BEVERLY",
+        "color_code": "12",
+        "pattern_detail": "스트라이프"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "5e863623-2d89-4428-b69b-2f569de52558",
+        "name": "W19531",
+        "color_code": "08",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "e6640db2-756d-40c3-931e-ba779df6ff23",
+        "d769903f-7541-40d5-ae64-e5cc005a8502",
+        "0c49ab2a-b89f-4e22-8f01-2d9dd894dbd0",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "d280328d-06bd-4af5-aea9-f3a95614de49",
+        "name": "68502",
+        "color_code": "03",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "ff4d0457-37cc-49aa-8c19-0a3290125d1e",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "7eb103aa-d969-40ea-a166-ebd5965b99a6",
+        "name": "2229",
+        "color_code": "05",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "860578b5-5abd-41a2-bbfb-ab77b3f8fa88",
+        "73f25bae-4d52-42b6-9e1c-c6f257a5809c",
+        "e4580510-ee2c-44db-b778-3b56efae407d",
+        "d8890ed9-0b48-424b-bfaa-8287c63520a2",
+        "24d3c617-91b0-4711-9fee-442a480b36c6",
+        "ae17f0a1-9615-4bb3-88f9-a781713edde5",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "19af30bd-b9da-4895-bc57-e661443153dc",
+        "name": "PS5004",
+        "color_code": "3",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "5a61dd5c-249b-46d2-9ec5-ed53360e5b66",
+        "name": "68502",
+        "color_code": "04",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "6433af9d-3881-4b0e-8ad5-489ce0df2acf",
+        "25ba4282-605d-40f8-8125-7a8b88075acd",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "c0231408-5cc5-499c-9a69-a60a70da37c4",
+        "name": "G1830",
+        "color_code": "02",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "df9259d5-b552-417f-a5da-f187dff59e3f",
+        "f4525b6f-8375-4d12-a4ec-fabf07991447",
+        "ca6f4791-a3a2-405e-84f5-65a2897cf4ca",
+        "0ed33206-202d-49bf-923d-21135421fafe",
+        "f98ed0d2-c1b9-44cc-a619-a9773f38c232",
+        "82499d30-0757-4d1a-9fa9-bb4a132d7488",
+        "b50fe2ad-110f-4162-973a-2025501ec297",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "a1135d35-fb43-4038-b728-41568f7ba3c2",
+        "name": "PS3050A",
+        "color_code": "1",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "25a2f59c-3704-4d81-88db-33239b145649",
+        "name": "PS5073",
+        "color_code": "3",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "a9712507-4927-460e-a6ab-e79cc88a322d",
+        "name": "G1770",
+        "color_code": "16",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "310cdba1-d787-4848-89df-d4105e1d812d",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "df9259d5-b552-417f-a5da-f187dff59e3f",
+        "name": "G1830",
+        "color_code": "01",
+        "pattern_detail": "체크"
+      },
+      "similar_ids": [
+        "c0231408-5cc5-499c-9a69-a60a70da37c4",
+        "f4525b6f-8375-4d12-a4ec-fabf07991447",
+        "0ed33206-202d-49bf-923d-21135421fafe",
+        "c191c497-bf55-4dcc-bbe1-a3ae2aaa75f5",
+        "f98ed0d2-c1b9-44cc-a619-a9773f38c232",
+        "82499d30-0757-4d1a-9fa9-bb4a132d7488",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "f26473ed-d630-4bc4-bb3d-736eaea6cdfe",
+        "name": "PS3123",
+        "color_code": "1",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "21163ff5-d353-4a8e-9f3d-6d6d42e83392",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "e1d9a7b8-345f-4372-909a-1296dca52086",
+        "name": "G1815",
+        "color_code": "09",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "8fcd0968-bfd9-49e3-b00f-803ed20cac7a",
+        "name": "G8109",
+        "color_code": "03",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "2381a90b-1b8f-4877-9840-c22e7f519b35",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "108fa68c-0a39-4370-b44d-a92dc2b24233",
+        "name": "AW5608",
+        "color_code": "01",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "12479b11-0ae7-4838-8d3b-4c601ce0793f",
+        "9eb3b713-a4a4-4e77-8e49-204deea452b0",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "32207431-04b9-4599-b19a-3b9e7af40734",
+        "name": "PS3016",
+        "color_code": "10",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "8ad0b574-1847-4dfe-9b51-51a768c9109f",
+        "bc9fb5eb-255f-47c8-a5d7-dbb6b1f5f1a4",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "379505c3-c7e0-4d6d-9382-70642a3aa1a2",
+        "name": "PS3016",
+        "color_code": "9",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "fbadfd62-6ade-4a08-8fb1-a6829db56f21",
+        "23ba2840-d508-4bc9-8e9f-9f41c6f7dfe0",
+        "081a54fc-2904-4738-ade8-3b986ff69ece",
+        "369103fd-7721-47ee-8470-f0ebce5f8bb6",
+        "9e6376a2-3d2d-4b44-a68f-4428295330f8",
+        "0439a86e-c5ce-429c-9cf6-8307fa7966f9",
+        "a2b66487-3579-4030-af5a-abd8828e4b8c",
+        "eecd1c7f-5bcb-481c-afc2-235800e612ae",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "3c182ab8-8bc5-4e55-8051-17507af1f2f9",
+        "name": "2205",
+        "color_code": "04",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "08bcb66a-16de-45d3-ba8b-f24596978a53",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "4b8d3217-23bf-491b-86d8-8f0b3a51650a",
+        "name": "G1920",
+        "color_code": "07",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "0e964c95-80fe-44f1-b27b-32575368bbff",
+        "fcb262b1-b078-49bc-ad92-645b88599bbe",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "d8b24667-0dc3-48dd-8cb1-65e823e43003",
+        "name": "PS3016",
+        "color_code": "14",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "3080d858-43c5-47a5-9fd5-4c81701daedd",
+        "950f42f9-3732-4166-a66e-b84842964d8e",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "132aba2c-bfd8-44ca-b0de-74a9c9a370bc",
+        "name": "AMAZON",
+        "color_code": "07",
+        "pattern_detail": "헤링본"
+      },
+      "similar_ids": [
+        "70d02ad6-9c16-4f22-ba75-d8c264bf7630",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "04d1cd03-5f3f-46ba-a71e-0cfd2830966c",
+        "name": "G8133",
+        "color_code": "02",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "d2d09815-530b-41fb-8237-7de18eaba2e7",
+        "c3dfaf06-ef28-4b66-93f4-cccf5c8bead9",
+        "f8cef1d4-b57a-4057-b5f4-7ac9e924f0e4",
+        "674cb26f-109d-445d-b20a-561a2d245a70",
+        "9eaca2df-4183-4fe3-aeb5-1614a5043b01",
+        "70c88ea1-d562-4d5b-a7e6-2258d41d576a",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "62084214-01ff-4dea-a31e-3f8dfa1dd0bb",
+        "name": "G8034",
+        "color_code": "06",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "f8b2aa69-1de7-46dc-8432-c052c2af4dee",
+        "df317d47-564b-4a60-bf46-739d0a12f00c",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "7ebc8d4a-c8c4-4547-a15c-0e17a41af8bd",
+        "name": "1802",
+        "color_code": "23",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "1221abb3-5b31-46fa-ade9-f9d60b9153bb",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "394a9695-4a60-4fb3-9515-076cb15fd182",
+        "name": "G1809",
+        "color_code": "12",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "c54c5c86-a028-417a-b575-1f2fde65c616",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "af7f1646-cc17-49b6-aaab-5bf6f9d5bbc0",
+        "name": "G8043",
+        "color_code": "06",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "f8b2aa69-1de7-46dc-8432-c052c2af4dee",
+        "d6d93998-d0a2-426c-aa01-cd4afc606546",
+        "100338c8-b434-41e4-b6b7-200e37d2ef0b",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "f071de88-2a86-4fa4-9f78-5120a20c2d1a",
+        "name": "G8841",
+        "color_code": "02",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "15ff7d73-a3bb-497b-9893-31e5e466b237",
+        "e833692a-a81c-47e9-bd5d-b86d3b563345",
+        "71963150-0fca-45a7-b618-fecd404032d6",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "1baa4a7d-9c61-4442-b062-ebf71c5904ba",
+        "name": "1821",
+        "color_code": "08",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "32183b43-32d2-4a6b-a436-3ce6886f0311",
+        "aa0c365a-09e8-4123-943c-621eb0501d06",
+        "8c224ce4-aeba-4e0d-a44a-e035ddc3dcab",
+        "6adf4133-20fb-4a16-9691-d10a2ee54d28",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "e763784e-7ae3-4cb3-ba38-aca3f7d4f7e4",
+        "name": "PS806C",
+        "color_code": "12",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "d4404726-ceec-4e16-8f16-021167ed035d",
+        "f9e67e16-f16b-4f0a-bc5b-678cc1e3087a",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "e3564526-601c-4e5b-b6e3-8eeec6b98bad",
+        "name": "GEORGIA",
+        "color_code": "03",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "fbd5d93f-9be0-40e1-ad4c-079c61bce5ca",
+        "a6c2fcd4-1869-4c80-8845-8be12667e70d",
+        "e7de314d-2616-4e6f-982a-45ccaf749931",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "8fd8282f-d1e5-49df-afe1-dd39faa2d53f",
+        "name": "G1916",
+        "color_code": "09",
+        "pattern_detail": "추상"
+      },
+      "similar_ids": [
+        "99bf094a-eb9a-4308-a7c5-b2b82d82d517",
+        "abff31c8-e3d2-4920-b801-1144b547aa9d",
+        "b3482a5a-71b1-4020-a9b4-178961c481ef",
+        "21e34e9b-c8ea-497d-8a1d-bf54f5943693",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "b82aff58-59e6-43f4-a736-a4126b935499",
+        "name": "HL2140",
+        "color_code": "01",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        "2950a0cb-9443-4f23-b88b-2bd6e27bf481",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "ffe3157c-5234-4e67-9a0d-a73101aecad5",
+        "name": "G1704",
+        "color_code": "05",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "79a3937a-527c-42b2-b636-c5506ca7ace5",
+        "name": "G1711",
+        "color_code": "08",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        "b6055860-5993-4425-bafb-567ff80755a4",
+        "5e3530eb-be44-49d3-9f4b-54521d07da4b",
+        "325e6a1f-8cf9-4fe8-a170-5e6059576c14",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "52518638-a8a7-4cf0-af0f-4999c97c6328",
+        "name": "G1904",
+        "color_code": "02",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "8d23efc5-6a69-4aa9-b957-1b770968b05d",
+        "name": "PS3039",
+        "color_code": "6",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "c6125c54-9eeb-4e40-9149-a163d6edab25",
+        "name": "G1816",
+        "color_code": "08",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        "8dfe7bda-a7e3-4cca-84aa-397a63ea30af",
+        "645909f8-1f16-415c-9ac7-c3613a5d9e5f",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "c5062713-f7f3-41f8-8ae8-041da7cfd002",
+        "name": "PS3039",
+        "color_code": "24",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "e40414fa-5a96-418b-aab9-41da652cfec8",
+        "name": "G1710",
+        "color_code": "06",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        "f0a86b09-fa5d-43da-9b3c-f97ac010f4bf",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "5a1b8791-5371-4f63-8c3d-2359755f9ab6",
+        "name": "1822",
+        "color_code": "04",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "0240c021-1a6d-4e84-a33b-79d775019abb",
+        "name": "PS901C",
+        "color_code": "7",
+        "pattern_detail": "기하학"
+      },
+      "similar_ids": [
+        "6e912a5b-24f0-4e43-a23c-a3d60053c13a",
+        "c5af27e8-e3ba-41f4-b7f3-60560342d5af",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "4ad67184-33cf-43e6-a74a-a52098c9f665",
+        "name": "R1936",
+        "color_code": "02",
+        "pattern_detail": "자연"
+      },
+      "similar_ids": [
+        "afec5e56-d165-4041-9c49-17d50a01ec10",
+        "1f1bfdee-a96e-41f4-9833-36c9ef52b725",
+        "510ded8f-86b4-4b76-835a-79d8ddfadb14",
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "7da19e20-6413-417a-84ee-c612b3441e84",
+        "name": "R1936",
+        "color_code": "04",
+        "pattern_detail": "자연"
+      },
+      "similar_ids": [
+        null
+      ]
+    },
+    {
+      "query": {
+        "id": "f9853aa5-abe7-43b9-9348-4cd1794d7024",
+        "name": "R1936",
+        "color_code": "01",
+        "pattern_detail": "자연"
+      },
+      "similar_ids": [
+        "1957644d-2983-4878-ad44-bbb88ce6712d",
+        "1803c785-7d0f-4679-b66b-fa3742df6855",
+        "57ec2446-6b62-4b9b-a8e8-5be53616cb8f",
+        "ae5d4033-9fa4-473d-ac1d-b55059421cb6",
+        "3b4ec1ff-d5e2-4de1-b098-8333b6f23a1a"
+      ]
+    },
+    {
+      "query": {
+        "id": "3bf5a938-932a-4cd5-80e6-faa537c372fa",
+        "name": "R1936",
+        "color_code": "03",
+        "pattern_detail": "자연"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "34cd61c7-601b-42c2-be32-386193add0dd",
+        "name": "PS3027",
+        "color_code": "31",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "0bdd810e-3aa3-49d4-bb1e-7b13eb2b562e",
+        "c7858793-e41e-457b-992e-0d04ac7c0ab1",
+        "bbd8dcf4-8008-434f-82c2-e532748301a8"
+      ]
+    },
+    {
+      "query": {
+        "id": "1b571da6-e4b2-43f9-a04b-c006d0558938",
+        "name": "BRONCO",
+        "color_code": "01",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "8eeb0c50-0b61-43d4-a858-a174b72dac98",
+        "name": "PS3027",
+        "color_code": "21",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "a571e09a-613e-4068-9353-749bcea9d96b"
+      ]
+    },
+    {
+      "query": {
+        "id": "0e7e33d4-a2a6-480b-aa35-b42177f12a00",
+        "name": "PS3069",
+        "color_code": "7",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "0c3f1edb-e3be-4706-96fc-b7880132cb4e",
+        "name": "PS3069",
+        "color_code": "13",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "fa6e26e7-1bf0-4ca4-95e2-dc3989874221",
+        "6a6a9f0d-9062-4aba-8539-8f5ba928c9de"
+      ]
+    },
+    {
+      "query": {
+        "id": "1f4b8cb8-d988-4ab3-bf09-e257c2653686",
+        "name": "PS3069",
+        "color_code": "6",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "3c18bed6-8612-4b8b-b37b-0e9ab6f672be",
+        "name": "PS3027",
+        "color_code": "15",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "a75618c3-09d5-4594-9324-141db0013b62"
+      ]
+    },
+    {
+      "query": {
+        "id": "10b26452-6400-4aa3-95a0-7cb837e10501",
+        "name": "PS3027",
+        "color_code": "29",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "c2f0133b-a3e2-4c97-95a7-b31eecd05528"
+      ]
+    },
+    {
+      "query": {
+        "id": "4387c9d4-4fa3-4d86-a8ec-b23f789caa6a",
+        "name": "PS3027",
+        "color_code": "28",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "c4a27ea8-d7c4-4df1-8a55-8cbf03b00ecd",
+        "name": "BRONCO",
+        "color_code": "06",
+        "pattern_detail": "동물"
+      },
+      "similar_ids": [
+        "498ec3b9-0650-4ce8-b6c1-dfa83104c29f",
+        "0bebdc52-2425-4659-b15c-ae6947e274b6"
+      ]
+    },
+    {
+      "query": {
+        "id": "d557df9c-c82d-41ce-83d5-65bcfd5103c9",
+        "name": "68267",
+        "color_code": "02",
+        "pattern_detail": "식물"
+      },
+      "similar_ids": []
+    },
+    {
+      "query": {
+        "id": "bda5958d-0e0b-47c7-ba11-c1ead8b32652",
+        "name": "68267",
+        "color_code": "04",
+        "pattern_detail": "식물"
+      },
+      "similar_ids": [
+        "fd670e31-3b40-45ec-ab10-ab55a803e56c"
+      ]
+    },
+    {
+      "query": {
+        "id": "4d6b17fa-90c6-476d-8f98-7908e83b5671",
+        "name": "68267",
+        "color_code": "05",
+        "pattern_detail": "식물"
+      },
+      "similar_ids": [
+        "649e49f8-ac25-4089-b36b-4dbd8d9dbe0c"
+      ]
+    },
+    {
+      "query": {
+        "id": "758b7c67-ad76-4158-a4a8-71dbcaadfb39",
+        "name": "68267",
+        "color_code": "01",
+        "pattern_detail": "식물"
+      },
+      "similar_ids": [
+        "bda5958d-0e0b-47c7-ba11-c1ead8b32652"
+      ]
+    },
+    {
+      "query": {
+        "id": "084ce3ee-ae17-41c3-b33e-1841562539d1",
+        "name": "MINERVA",
+        "color_code": "11",
+        "pattern_detail": "다마스크"
+      },
+      "similar_ids": [
+        "a495fcb7-acbc-4175-b101-0f69f1a5fa69"
+      ]
+    },
+    {
+      "query": {
+        "id": "2833b2de-9d88-43d1-b840-e97b5f0c859b",
+        "name": "MINERVA",
+        "color_code": "06",
+        "pattern_detail": "다마스크"
+      },
+      "similar_ids": [
+        "451b151b-efeb-423f-9ec5-df3b39fee024"
+      ]
+    }
+  ]
+}

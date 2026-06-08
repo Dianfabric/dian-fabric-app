@@ -153,6 +153,11 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const vectorString = `[${embedding.join(",")}]`;
 
+    // RPC 후보 검색용 threshold: search_fabrics_dino는 (1 - 코사인거리) > threshold 기준이라
+    // 유사도 최댓값이 1.0 → 1.5 같은 값이 오면 0건이 됨. 후보 회수는 관대하게(0) 가져오고
+    // 최종 순위는 JS 스코어링 / RPC의 ORDER BY similarity 가 담당.
+    const rpcThreshold = Math.min(matchThreshold, 0.05);
+
     const dominantColor = body.dominantColor as string | undefined;
     const hasColorNames = queryColorNames && queryColorNames.length > 0;
     const hasPatternFilter = patternDetail || fabricType;
@@ -213,7 +218,7 @@ export async function POST(request: NextRequest) {
       if (allCandidates.length < matchCount) {
         const { data } = await supabase.rpc("search_fabrics_dino", {
           query_embedding: vectorString,
-          match_threshold: matchThreshold,
+          match_threshold: rpcThreshold,
           match_count: 300,
         });
         addResults(data as Record<string, unknown>[] | null);
@@ -302,7 +307,7 @@ export async function POST(request: NextRequest) {
     // 필터 없거나 결과 0 → 순수 DINOv2 검색
     const { data: results, error } = await supabase.rpc("search_fabrics_dino", {
       query_embedding: vectorString,
-      match_threshold: matchThreshold,
+      match_threshold: rpcThreshold,
       match_count: matchCount,
     });
 

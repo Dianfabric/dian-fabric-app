@@ -28,6 +28,7 @@ export async function GET(
     .from("fabrics")
     .select("id, name, color_code, image_url, price_per_yard")
     .eq("name", data.name)
+    .eq("is_active", true)
     .neq("id", id)
     .order("color_code", { ascending: true })
     .limit(50);

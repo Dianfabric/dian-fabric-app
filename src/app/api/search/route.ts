@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { getHiddenFabricIds } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -175,6 +176,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient();
     const vectorString = `[${embedding.join(",")}]`;
+    const hiddenIds = await getHiddenFabricIds(supabase);
+    const visible = (rows: Record<string, unknown>[]) =>
+      rows.filter((r) => !hiddenIds.has(r.id as string));
 
     // ─── 단계별 검색: 1.Gemini필터 → 2.CLIP텍스처 → 3.RGB+GPT-4o ───
     const dominantColor = body.dominantColor as string | undefined;
@@ -298,11 +302,12 @@ export async function POST(request: NextRequest) {
         scored.sort((a, b) => (b.similarity as number) - (a.similarity as number));
 
         // → 이 100개가 GPT-4o 랭킹으로 넘어감 (텍스처+패턴 최종 비교)
+        const visibleScored = visible(scored);
         return NextResponse.json({
-          results: scored.slice(0, matchCount),
-          total: scored.length,
+          results: visibleScored.slice(0, matchCount),
+          total: visibleScored.length,
           detectedCategory: patternDetail || fabricType || null,
-          filteredCount: scored.length,
+          filteredCount: visibleScored.length,
         });
       }
     }
@@ -322,11 +327,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const visibleResults = visible(
+      (results || []).map(({ embedding, ...rest }: Record<string, unknown>) => rest)
+    );
     return NextResponse.json({
-      results: (results || []).map(
-        ({ embedding, ...rest }: Record<string, unknown>) => rest
-      ).slice(0, matchCount),
-      total: (results || []).length,
+      results: visibleResults.slice(0, matchCount),
+      total: visibleResults.length,
       detectedCategory: null,
     });
   } catch (err) {
@@ -415,6 +421,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("fabrics")
       .select("*")
+      .eq("is_active", true)
       .not("image_url", "is", null);
 
     // 모든 선택 색상을 포함하는 원단 필터 (AND 조건)
@@ -473,6 +480,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("fabrics")
     .select("*", { count: "exact" })
+    .eq("is_active", true)
     .not("image_url", "is", null)
     .order("image_width", { ascending: false })
     .order("name")

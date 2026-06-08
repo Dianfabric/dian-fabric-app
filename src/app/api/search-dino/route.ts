@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { getHiddenFabricIds } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,9 @@ export async function POST(request: NextRequest) {
     // 유사도 최댓값이 1.0 → 1.5 같은 값이 오면 0건이 됨. 후보 회수는 관대하게(0) 가져오고
     // 최종 순위는 JS 스코어링 / RPC의 ORDER BY similarity 가 담당.
     const rpcThreshold = Math.min(matchThreshold, 0.05);
+    const hiddenIds = await getHiddenFabricIds(supabase);
+    const visible = (rows: Record<string, unknown>[]) =>
+      rows.filter((r) => !hiddenIds.has(r.id as string));
 
     const dominantColor = body.dominantColor as string | undefined;
     const hasColorNames = queryColorNames && queryColorNames.length > 0;
@@ -294,11 +298,12 @@ export async function POST(request: NextRequest) {
 
         scored.sort((a, b) => (b.similarity as number) - (a.similarity as number));
 
+        const visibleScored = visible(scored);
         return NextResponse.json({
-          results: scored.slice(0, matchCount),
-          total: scored.length,
+          results: visibleScored.slice(0, matchCount),
+          total: visibleScored.length,
           detectedCategory: patternDetail || fabricType || null,
-          filteredCount: scored.length,
+          filteredCount: visibleScored.length,
           embeddingWeight,
         });
       }
@@ -319,11 +324,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const visibleResults = visible(
+      (results || []).map(
+        ({ embedding_dino, embedding, ...rest }: Record<string, unknown>) => rest
+      )
+    );
     return NextResponse.json({
-      results: (results || [])
-        .map(({ embedding_dino, embedding, ...rest }: Record<string, unknown>) => rest)
-        .slice(0, matchCount),
-      total: (results || []).length,
+      results: visibleResults.slice(0, matchCount),
+      total: visibleResults.length,
       detectedCategory: null,
       embeddingWeight,
     });

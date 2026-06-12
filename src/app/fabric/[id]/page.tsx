@@ -183,7 +183,12 @@ export default function FabricDetailPage() {
         <div className="flex flex-col gap-5">
           {/* 제목 */}
           <div>
-            <h1 className="text-2xl font-extrabold mb-1">{fabric.name}</h1>
+            <h1 className="text-2xl font-extrabold mb-1">
+              {fabric.name}
+              {fabric.color_code && (
+                <span className="text-gray-400 font-bold ml-2">#{fabric.color_code}</span>
+              )}
+            </h1>
             <p className="text-sm text-gray-500">
               {fabric.fabric_type || "원단"} · {compositionStr}
             </p>

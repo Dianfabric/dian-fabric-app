@@ -399,6 +399,8 @@ export async function GET(request: NextRequest) {
   const usage = searchParams.get("usage") || "";
   const color = searchParams.get("color") || "";
   const search = searchParams.get("search") || "";
+  const wide = searchParams.get("wide") === "1"; // 대폭만 (width_mm >= 2000 = 200cm)
+  const WIDE_MIN_MM = 2000;
 
   const supabase = createServiceClient();
 
@@ -423,6 +425,8 @@ export async function GET(request: NextRequest) {
       .select("*")
       .eq("is_active", true)
       .not("image_url", "is", null);
+
+    if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
 
     // 모든 선택 색상을 포함하는 원단 필터 (AND 조건)
     for (const c of colors) {
@@ -485,6 +489,8 @@ export async function GET(request: NextRequest) {
     .order("image_width", { ascending: false })
     .order("name")
     .range(from, to);
+
+  if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
 
   if (search) {
     if (searchName && searchColor) {

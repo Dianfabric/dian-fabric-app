@@ -113,11 +113,10 @@ async function loadSheetMeta() {
       const name = (r[0] || "").trim();
       if (!name) continue;
       const priceRaw = (r[1] || "").replace(/[^0-9]/g, "");
-      let width = Number((r[3] || "").replace(/[^0-9]/g, ""));
-      if (Number.isFinite(width) && width > 0 && width < 500) width *= 10; // cm → mm
+      const width = Number((r[3] || "").replace(/[^0-9]/g, ""));
       map[name.toUpperCase()] = {
         price_per_yard: priceRaw ? Number(priceRaw) : null,
-        width_mm: Number.isFinite(width) && width > 0 ? width : null,
+        width_mm: normalizeWidthMm(width),
         composition_note: (r[2] || "").trim() || null,
       };
     }
@@ -148,6 +147,19 @@ function num(v) {
   if (v === undefined || v === null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// 폭 단위 정규화: 14/140/1400 → 1400mm, 28/280/2800 → 2800mm (normalize-width.mjs와 동일 규칙)
+function normalizeWidthMm(v) {
+  if (v == null || !Number.isFinite(v) || v <= 0) return null;
+  let cm = v;
+  let i = 0;
+  while (cm < 100 && i++ < 6) cm *= 10;
+  i = 0;
+  while (cm > 1000 && i++ < 6) cm /= 10;
+  const norm = Math.round(cm) * 10;
+  const c = norm / 10;
+  return c >= 100 && c <= 330 ? norm : v; // 현실 범위 밖이면 원값 유지
 }
 
 // ─── 메인 ───
@@ -200,7 +212,7 @@ async function main() {
       image_url: publicUrl,
       image_path: storagePath,
       price_per_yard: num(m.price_per_yard) ?? s.price_per_yard ?? null,
-      width_mm: num(m.width_mm) ?? s.width_mm ?? DEFAULT_WIDTH_MM,
+      width_mm: normalizeWidthMm(num(m.width_mm)) ?? s.width_mm ?? DEFAULT_WIDTH_MM,
       pl_percent: num(m.pl_percent) ?? 0,
       co_percent: num(m.co_percent) ?? 0,
       li_percent: num(m.li_percent) ?? 0,

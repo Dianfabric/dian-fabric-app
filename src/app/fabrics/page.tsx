@@ -54,6 +54,7 @@ export default function FabricsPage() {
   const [selectedSubType, setSelectedSubType] = useState(restored.current?.selectedSubType || "");
   const [selectedUsage, setSelectedUsage] = useState(restored.current?.selectedUsage || "전체");
   const [selectedColors, setSelectedColors] = useState<string[]>(restored.current?.selectedColors || []);
+  const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
   const [goToPage, setGoToPage] = useState("");
   const [searchQuery, setSearchQuery] = useState(restored.current?.searchQuery || "");
   const [searchInput, setSearchInput] = useState(restored.current?.searchQuery || "");
@@ -66,10 +67,10 @@ export default function FabricsPage() {
   useEffect(() => {
     try {
       sessionStorage.setItem(FABRICS_STATE_KEY, JSON.stringify({
-        page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery,
+        page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery, wideOnly,
       }));
     } catch {}
-  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery]);
+  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery, wideOnly]);
 
   const openLightbox = useCallback((fabricIdx: number) => {
     const images = fabrics.map((f) => ({
@@ -85,7 +86,7 @@ export default function FabricsPage() {
 
   useEffect(() => {
     fetchFabrics();
-  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery]);
+  }, [page, selectedType, selectedSubType, selectedUsage, selectedColors, searchQuery, wideOnly]);
 
   const fetchFabrics = async () => {
     setLoading(true);
@@ -102,6 +103,7 @@ export default function FabricsPage() {
     if (selectedUsage !== "전체") params.set("usage", selectedUsage);
     if (selectedColors.length > 0) params.set("color", selectedColors.join(","));
     if (searchQuery) params.set("search", searchQuery);
+    if (wideOnly) params.set("wide", "1");
 
     try {
       const res = await fetch(`/api/search?${params}`);
@@ -250,6 +252,22 @@ export default function FabricsPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-gray-100">
+          {/* 대폭만 보기 토글 */}
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-500">폭</p>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={wideOnly}
+                onChange={(e) => { setWideOnly(e.target.checked); setPage(1); }}
+                className="w-4 h-4 accent-[#8B6914] cursor-pointer"
+              />
+              <span className={`text-sm font-semibold ${wideOnly ? "text-[#8B6914]" : "text-gray-600"}`}>
+                대폭만 보기 <span className="text-gray-400 font-normal">(200cm 이상)</span>
+              </span>
+            </label>
+          </div>
+
           {/* 원단 종류 (메인) */}
           <div className="mb-4">
             <p className="text-xs font-bold text-gray-500 mb-2">원단 종류</p>

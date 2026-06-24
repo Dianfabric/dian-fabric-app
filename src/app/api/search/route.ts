@@ -401,6 +401,18 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") || "";
   const wide = searchParams.get("wide") === "1"; // 대폭만 (width_mm >= 2000 = 200cm)
   const WIDE_MIN_MM = 2000;
+  const sort = searchParams.get("sort") || "newest"; // newest | name | price_high | price_low
+
+  // 색상 필터 경로용 JS 정렬 비교자
+  const sortCmp = (a: Record<string, unknown>, b: Record<string, unknown>): number => {
+    switch (sort) {
+      case "name": return String(a.name || "").localeCompare(String(b.name || ""));
+      case "price_high": return Number(b.price_per_yard || 0) - Number(a.price_per_yard || 0);
+      case "price_low": return Number(a.price_per_yard ?? 1e12) - Number(b.price_per_yard ?? 1e12);
+      case "newest":
+      default: return new Date(String(b.created_at || 0)).getTime() - new Date(String(a.created_at || 0)).getTime();
+    }
+  };
 
   const supabase = createServiceClient();
 
@@ -452,21 +464,20 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // RGB 비율순 정렬 + 해상도 우선 (동점 시 고해상도 먼저)
+    // 선택한 정렬 우선, 동점 시 색상 일치도
     const sorted = (data || [])
       .map((fabric) => ({
         ...fabric,
         _colorScore: colors.reduce((sum, c) => sum + getColorRelevanceScore(fabric.notes, c), 0),
-        _imgW: (fabric.image_width as number) || 0,
       }))
-      .sort((a, b) => b._colorScore - a._colorScore || b._imgW - a._imgW);
+      .sort((a, b) => sortCmp(a, b) || b._colorScore - a._colorScore);
 
     const total = sorted.length;
     const from = (page - 1) * limit;
     const paged = sorted.slice(from, from + limit);
 
     const fabrics = paged.map(
-      ({ embedding, _colorScore, _imgW, ...rest }: Record<string, unknown>) => rest
+      ({ embedding, _colorScore, ...rest }: Record<string, unknown>) => rest
     );
 
     return NextResponse.json({
@@ -485,10 +496,15 @@ export async function GET(request: NextRequest) {
     .from("fabrics")
     .select("*", { count: "exact" })
     .eq("is_active", true)
-    .not("image_url", "is", null)
-    .order("image_width", { ascending: false })
-    .order("name")
-    .range(from, to);
+    .not("image_url", "is", null);
+
+  // 정렬 적용
+  if (sort === "name") query = query.order("name", { ascending: true });
+  else if (sort === "price_high") query = query.order("price_per_yard", { ascending: false, nullsFirst: false });
+  else if (sort === "price_low") query = query.order("price_per_yard", { ascending: true, nullsFirst: false });
+  else query = query.order("created_at", { ascending: false }); // newest (기본)
+
+  query = query.range(from, to);
 
   if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
 

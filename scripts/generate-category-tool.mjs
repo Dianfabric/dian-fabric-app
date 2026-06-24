@@ -11,7 +11,7 @@ fs.readFileSync(".env.local", "utf-8").split("\n").forEach((l) => { const [k, ..
 import { createClient } from "@supabase/supabase-js";
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 
-const FABRIC_TYPES = ["패브릭", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어"];
+const FABRIC_TYPES = ["패브릭", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어", "아웃도어"];
 const PATTERNS = ["무지", "부클", "하운드투스", "스트라이프", "체크", "헤링본", "추상", "기하학", "자연", "동물", "식물", "큰패턴", "다마스크", "자카드"];
 
 async function main() {

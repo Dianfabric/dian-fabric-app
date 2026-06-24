@@ -61,7 +61,12 @@ h1{font-size:18px;font-weight:800}
 .card{background:#fff;border:1px solid #eee;border-radius:14px;overflow:hidden}
 .card.done{outline:2px solid #C49A6C}
 .imgwrap{position:relative;aspect-ratio:1;background:#f0f0f0}
-.imgwrap img{width:100%;height:100%;object-fit:cover}
+.imgwrap img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.lb{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.9);align-items:center;justify-content:center;cursor:zoom-out}
+.lb.open{display:flex}
+.lb img{max-width:94vw;max-height:92vh;object-fit:contain;border-radius:8px}
+.lb .cap{position:absolute;top:16px;left:0;right:0;text-align:center;color:#fff;font-size:15px;font-weight:700}
+.lb .x{position:absolute;top:14px;right:20px;color:#fff;font-size:30px;cursor:pointer;line-height:1}
 .tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px}
 .tag.sup{right:8px;left:auto;background:rgba(139,105,20,.85)}
 .body{padding:12px}
@@ -82,6 +87,7 @@ h1{font-size:18px;font-weight:800}
   <button class="btn gold" onclick="exportJson()">📥 JSON 내보내기</button>
 </header>
 <div class="grid" id="grid"></div>
+<div class="lb" id="lb" onclick="closeLb()"><span class="x">&times;</span><div class="cap" id="lbcap"></div><img id="lbimg"></div>
 <script>
 const FT=${JSON.stringify(FABRIC_TYPES)};
 const PD=${JSON.stringify(PATTERNS)};
@@ -97,7 +103,7 @@ function render(){
     const st=state[d.code];
     const card=document.createElement('div');card.className='card'+(st.touched?' done':'');
     card.innerHTML=
-      '<div class="imgwrap"><img loading="lazy" src="'+d.image+'"><span class="tag">'+d.colors+'색</span><span class="tag sup">'+d.supplier+'</span></div>'+
+      '<div class="imgwrap"><img class="thumb" data-img="'+d.image+'" data-code="'+d.code+'" loading="lazy" src="'+d.image+'"><span class="tag">'+d.colors+'색</span><span class="tag sup">'+d.supplier+'</span></div>'+
       '<div class="body"><div class="code">'+d.code+'</div>'+
       '<div class="lbl">원단 종류 (1개)</div><div class="chips">'+
         FT.map(t=>'<span class="chip ft '+(st.ft===t?'on':'')+'" data-c="'+d.code+'" data-t="'+t+'">'+t+'</span>').join('')+'</div>'+
@@ -111,7 +117,11 @@ function render(){
 function bind(){
   document.querySelectorAll('.chip.ft').forEach(el=>el.onclick=()=>{const c=el.dataset.c;state[c].ft=el.dataset.t;state[c].touched=true;render();});
   document.querySelectorAll('.chip.pat').forEach(el=>el.onclick=()=>{const c=el.dataset.c,p=el.dataset.p;const a=state[c].pd;const i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);state[c].touched=true;render();});
+  document.querySelectorAll('.thumb').forEach(el=>el.onclick=()=>openLb(el.dataset.img,el.dataset.code));
 }
+function openLb(src,code){document.getElementById('lbimg').src=src;document.getElementById('lbcap').textContent=code||'';document.getElementById('lb').classList.add('open');}
+function closeLb(){document.getElementById('lb').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLb();});
 function updateStat(){const done=Object.values(state).filter(s=>s.touched).length;document.getElementById('stat').textContent=done+' / '+DATA.length+' 검수함';}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));alert('저장됨');}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s){Object.assign(state,s);render();alert('불러옴');}}catch{alert('저장된 거 없음')}}

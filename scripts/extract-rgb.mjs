@@ -169,16 +169,18 @@ async function main() {
   console.log("=== 원단 이미지 주요 색상 추출 (K-means) ===\n");
   const startTime = Date.now();
 
-  // 전체 원단 로드
+  // 전체 원단 로드 (--new: 신규 auto_classified=false 만)
+  const NEW_ONLY = process.argv.includes("--new");
   let allFabrics = [];
   let page = 0;
   while (true) {
     const from = page * 1000;
-    const { data, error } = await supabase
+    let q = supabase
       .from("fabrics")
       .select("id, name, image_url, notes")
-      .not("image_url", "is", null)
-      .range(from, from + 999);
+      .not("image_url", "is", null);
+    if (NEW_ONLY) q = q.eq("auto_classified", false);
+    const { data, error } = await q.range(from, from + 999);
     if (error) { console.error("DB 에러:", error.message); break; }
     if (!data || data.length === 0) break;
     allFabrics = allFabrics.concat(data);

@@ -70,15 +70,28 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 }
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
+// ─── CSV 파서 (따옴표 안 쉼표/줄바꿈 처리) ───
+function parseCsv(t) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"' && t[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
+    else { if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; } else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (c === "\r") {} else f += c; }
+  }
+  if (f.length || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+
 // ─── meta.csv 로드 (선택) ───
 function loadMeta() {
   const metaPath = path.join(folder, "meta.csv");
   if (!fs.existsSync(metaPath)) return {};
-  const lines = fs.readFileSync(metaPath, "utf-8").trim().split(/\r?\n/);
-  const header = lines[0].split(",").map((h) => h.trim());
+  const text = fs.readFileSync(metaPath, "utf-8").replace(/^﻿/, "");
+  const rows = parseCsv(text); // 따옴표 안 쉼표 처리
+  const header = rows[0].map((h) => h.trim());
   const map = {};
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",");
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
     const row = {};
     header.forEach((h, idx) => { row[h] = (cols[idx] || "").trim(); });
     const key = `${row.name}__${row.color_code}`;
@@ -216,8 +229,9 @@ async function main() {
       pl_percent: num(m.pl_percent) ?? 0,
       co_percent: num(m.co_percent) ?? 0,
       li_percent: num(m.li_percent) ?? 0,
-      other_percent: 0,
+      other_percent: num(m.other_percent) ?? 0,
       composition_note: m.composition_note || s.composition_note || null,
+      supplier: m.supplier || null,
       usage_types: [],
       features: [],
       is_curtain_eligible: false,

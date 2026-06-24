@@ -7,7 +7,7 @@ import type { Fabric } from "@/lib/types";
 const FABRICS_STATE_KEY = "dian-fabrics-state";
 
 const FABRIC_TYPES = [
-  "전체", "패브릭", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어",
+  "전체", "패브릭", "벨벳", "스웨이드", "인조가죽", "린넨", "면", "울", "커튼", "시어", "아웃도어",
 ];
 
 const PATTERN_DETAILS = [

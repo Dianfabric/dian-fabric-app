@@ -564,7 +564,7 @@ export default function SearchPage() {
   const hasResults = searchGroups.length > 0;
 
   return (
-    <div className="pt-36 pb-20 px-6">
+    <div className="pt-14 pb-20 px-6">
       {lightbox && (
         <ImageLightbox
           images={lightbox.images}
@@ -611,7 +611,7 @@ export default function SearchPage() {
               onKeyDown={(e) => e.key === "Enter" && handleTextSearch()}
               placeholder="예: 노란색 하운드투스 패턴, 파란 벨벳 무지..."
               disabled={isTextSearching}
-              className="flex-1 h-12 px-5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-[#C49A6C] transition-colors"
+              className="flex-1 h-12 px-5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-[#1E2A3A] transition-colors"
             />
             <button
               onClick={handleTextSearch}
@@ -626,7 +626,7 @@ export default function SearchPage() {
           <label
             className={`block bg-white rounded-3xl p-8 text-center border-2 border-dashed cursor-pointer upload-hover ${
               dragActive
-                ? "border-[#C49A6C] bg-[#FFFDF9]"
+                ? "border-[#1E2A3A] bg-[#F6F6F4]"
                 : "border-gray-200"
             }`}
             onDragOver={(e) => {
@@ -650,9 +650,9 @@ export default function SearchPage() {
                 e.target.value = "";
               }}
             />
-            <div className="w-14 h-14 bg-[linear-gradient(135deg,rgba(139,105,20,0.1),rgba(196,154,108,0.15))] rounded-[16px] flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 bg-[rgba(30,42,58,0.06)] rounded-[16px] flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-6 h-6 text-[#8B6914]"
+                className="w-6 h-6 text-[#1E2A3A]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -684,7 +684,7 @@ export default function SearchPage() {
 
           {/* 상태 메시지 */}
           {statusMessage && (
-            <div className="flex items-center justify-center gap-2 text-[#8B6914] text-sm font-semibold">
+            <div className="flex items-center justify-center gap-2 text-[#1E2A3A] text-sm font-semibold">
               <svg
                 className="w-5 h-5 animate-spin"
                 viewBox="0 0 24 24"
@@ -716,7 +716,7 @@ export default function SearchPage() {
               <div key={group.id}>
                 {group.loading ? (
                   <div className="bg-white rounded-2xl p-12 text-center text-gray-500">
-                    <div className="inline-block w-8 h-8 border-2 border-gray-200 border-t-[#8B6914] rounded-full animate-spin mb-3"></div>
+                    <div className="inline-block w-8 h-8 border-2 border-gray-200 border-t-[#1E2A3A] rounded-full animate-spin mb-3"></div>
                     <div className="text-sm font-semibold">{group.label}</div>
                   </div>
                 ) : group.error ? (

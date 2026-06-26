@@ -41,17 +41,17 @@ export default function FabricDetailPage() {
 
   if (loading) {
     return (
-      <div className="pt-36 pb-16 flex justify-center">
-        <div className="w-8 h-8 border-3 border-[#C49A6C] border-t-transparent rounded-full animate-spin" />
+      <div className="pt-14 pb-16 flex justify-center">
+        <div className="w-8 h-8 border-3 border-[#1E2A3A] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!fabric) {
     return (
-      <div className="pt-36 pb-16 text-center">
+      <div className="pt-14 pb-16 text-center">
         <p className="text-gray-500 mb-4">원단을 찾을 수 없습니다</p>
-        <Link href="/fabrics" className="text-[#8B6914] underline">
+        <Link href="/fabrics" className="text-[#1E2A3A] underline">
           원단 목록으로 돌아가기
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default function FabricDetailPage() {
     : null;
 
   return (
-    <div className="pt-36 pb-16 max-w-5xl mx-auto px-4">
+    <div className="pt-14 pb-16 max-w-5xl mx-auto px-4">
       {/* 뒤로가기 */}
       <button
         onClick={() => router.back()}
@@ -133,7 +133,7 @@ export default function FabricDetailPage() {
               </p>
               <div className="flex gap-2 flex-wrap">
                 {/* 현재 컬러 (선택 상태) */}
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden ring-2 ring-[#8B6914] cursor-default">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden ring-2 ring-[#1E2A3A] cursor-default">
                   {fabric.image_url ? (
                     <Image
                       src={fabric.image_url}
@@ -154,7 +154,7 @@ export default function FabricDetailPage() {
                   <Link
                     key={v.id}
                     href={`/fabric/${v.id}`}
-                    className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#C49A6C] transition-all"
+                    className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#1E2A3A] transition-all"
                     onMouseEnter={() => { setHoverImage(v.image_url); setHoverColor(v.color_code); }}
                     onMouseLeave={() => { setHoverImage(null); setHoverColor(null); }}
                   >
@@ -195,19 +195,19 @@ export default function FabricDetailPage() {
             {/* 태그 */}
             <div className="flex gap-2 flex-wrap mt-3">
               {fabric.fabric_type && (
-                <span className="text-xs font-semibold text-[#8B6914] bg-[rgba(139,105,20,0.08)] px-3 py-1 rounded-lg">
+                <span className="text-xs font-semibold text-[#1E2A3A] bg-[rgba(30,42,58,0.06)] px-3 py-1 rounded-lg">
                   {fabric.fabric_type}
                 </span>
               )}
               {fabric.pattern_detail && (
-                <span className="text-xs font-semibold text-white bg-[#8B6914] px-3 py-1 rounded-lg">
+                <span className="text-xs font-semibold text-white bg-[#1E2A3A] px-3 py-1 rounded-lg">
                   {fabric.pattern_detail}
                 </span>
               )}
               {fabric.usage_types?.map((u) => (
                 <span
                   key={u}
-                  className="text-xs font-semibold text-[#8B6914] bg-[rgba(139,105,20,0.08)] px-3 py-1 rounded-lg"
+                  className="text-xs font-semibold text-[#1E2A3A] bg-[rgba(30,42,58,0.06)] px-3 py-1 rounded-lg"
                 >
                   {u}
                 </span>
@@ -221,7 +221,7 @@ export default function FabricDetailPage() {
 
           {/* 상세 정보 */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-bold text-[15px] text-[#8B6914] mb-4">
+            <h3 className="font-bold text-[15px] text-[#1E2A3A] mb-4">
               상세 정보
             </h3>
             <div className="space-y-3 text-sm">

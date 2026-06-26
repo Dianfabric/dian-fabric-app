@@ -162,7 +162,7 @@ export default function ImageLightbox({ images, currentIndex, onClose }: Props) 
               <span className="text-white/60 text-sm">Color: {img.colorCode}</span>
             )}
             {img.similarity && (
-              <span className="text-[#C49A6C] text-sm font-semibold">
+              <span className="text-[#1E2A3A] text-sm font-semibold">
                 {(img.similarity * 100).toFixed(1)}%
               </span>
             )}
@@ -174,12 +174,12 @@ export default function ImageLightbox({ images, currentIndex, onClose }: Props) 
               </span>
             )}
             {img.patternDetail && (
-              <span className="text-xs text-white bg-[#8B6914] px-2 py-0.5 rounded">
+              <span className="text-xs text-white bg-[#1E2A3A] px-2 py-0.5 rounded">
                 {img.patternDetail}
               </span>
             )}
             {img.price && (
-              <span className="text-xs text-[#C49A6C]">
+              <span className="text-xs text-[#1E2A3A]">
                 ₩{img.price.toLocaleString()}/Y
               </span>
             )}
@@ -201,7 +201,7 @@ export default function ImageLightbox({ images, currentIndex, onClose }: Props) 
               onClick={() => goTo(i)}
               className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
                 i === index
-                  ? "border-[#C49A6C] opacity-100 scale-110"
+                  ? "border-[#1E2A3A] opacity-100 scale-110"
                   : "border-transparent opacity-50 hover:opacity-80"
               }`}
             >

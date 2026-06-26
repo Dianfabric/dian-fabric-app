@@ -126,7 +126,7 @@ export default function SearchComparisonView({
     <div className="bg-transparent">
       {/* 그룹 헤더 */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs font-bold text-white bg-[#8B6914] px-2.5 py-1 rounded">
+        <span className="text-xs font-bold text-white bg-[#1E2A3A] px-2.5 py-1 rounded">
           {type === "image" ? "이미지" : "텍스트"}
         </span>
         <h2 className="text-lg font-extrabold flex-1 truncate">{label}</h2>
@@ -210,8 +210,8 @@ export default function SearchComparisonView({
         {/* 중: 활성 매칭 원단 */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8B6914]">✨ 비슷한 원단</span>
-            <span className="text-xs font-bold text-white bg-[#8B6914] px-2.5 py-1 rounded">
+            <span className="text-xs font-bold text-[#1E2A3A]">✨ 비슷한 원단</span>
+            <span className="text-xs font-bold text-white bg-[#1E2A3A] px-2.5 py-1 rounded">
               {results.length > 0 ? `#${activeIndex + 1} / ${results.length}` : "0개"}
             </span>
           </div>
@@ -237,7 +237,7 @@ export default function SearchComparisonView({
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
-                <div className="absolute top-3.5 right-3.5 bg-gradient-to-br from-[#8B6914] to-[#C49A6C] text-white px-4 py-2 rounded-lg font-bold text-[15px] shadow-md">
+                <div className="absolute top-3.5 right-3.5 bg-gradient-to-br from-[#1E2A3A] to-[#1E2A3A] text-white px-4 py-2 rounded-lg font-bold text-[15px] shadow-md">
                   {((active.similarity || 0) * 100).toFixed(0)}% 매칭
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function SearchComparisonView({
                   {onQuickView && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onQuickView(); }}
-                      className="flex-shrink-0 bg-gradient-to-r from-[#8B6914] to-[#C49A6C] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg hover:scale-105 transition-all flex items-center gap-1.5"
+                      className="flex-shrink-0 bg-gradient-to-r from-[#1E2A3A] to-[#1E2A3A] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg hover:scale-105 transition-all flex items-center gap-1.5"
                       title="다른 컬러 + 상세 보기"
                     >
                       <span>🎨</span> <span>퀵뷰</span>
@@ -260,12 +260,12 @@ export default function SearchComparisonView({
 
                 <div className="flex gap-2 flex-wrap mb-4">
                   {active.fabric_type && (
-                    <span className="text-sm font-semibold text-[#8B6914] bg-[#f0e9d6] px-3 py-1.5 rounded-md">
+                    <span className="text-sm font-semibold text-[#1E2A3A] bg-[#EEF1F4] px-3 py-1.5 rounded-md">
                       {active.fabric_type}
                     </span>
                   )}
                   {active.pattern_detail && (
-                    <span className="text-sm font-semibold text-white bg-[#8B6914] px-3 py-1.5 rounded-md">
+                    <span className="text-sm font-semibold text-white bg-[#1E2A3A] px-3 py-1.5 rounded-md">
                       {active.pattern_detail}
                     </span>
                   )}
@@ -279,7 +279,7 @@ export default function SearchComparisonView({
                 </div>
                 <div className="flex justify-between py-2.5 text-base">
                   <span className="text-gray-500">가격</span>
-                  <span className="font-bold text-[#8B6914]">
+                  <span className="font-bold text-[#1E2A3A]">
                     {active.price_per_yard
                       ? `₩${active.price_per_yard.toLocaleString()}/Y`
                       : "-"}
@@ -302,8 +302,8 @@ export default function SearchComparisonView({
                           onMouseLeave={() => setHoveredVariant(null)}
                           className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
                             hoveredVariant?.id === v.id
-                              ? "border-[#8B6914] scale-110 shadow-md z-10"
-                              : "border-transparent hover:border-[#C49A6C]"
+                              ? "border-[#1E2A3A] scale-110 shadow-md z-10"
+                              : "border-transparent hover:border-[#1E2A3A]"
                           }`}
                           title={`Color: ${v.color_code}`}
                         >
@@ -324,7 +324,7 @@ export default function SearchComparisonView({
                       <div className="text-center mt-2">
                         <button
                           onClick={onQuickView}
-                          className="text-xs text-[#8B6914] font-semibold hover:underline"
+                          className="text-xs text-[#1E2A3A] font-semibold hover:underline"
                         >
                           +{variants.length - 16}개 더 보기 →
                         </button>
@@ -367,8 +367,8 @@ export default function SearchComparisonView({
                   onClick={() => onSelect(i)}
                   className={`flex gap-3 p-2.5 rounded-xl cursor-pointer border-2 transition-all ${
                     i === activeIndex
-                      ? "border-[#8B6914] bg-[#faf6eb]"
-                      : "border-transparent bg-gray-50 hover:bg-[#f5f0e0]"
+                      ? "border-[#1E2A3A] bg-[#F3F5F7]"
+                      : "border-transparent bg-gray-50 hover:bg-[#EEF1F4]"
                   }`}
                 >
                   <div className="relative flex-shrink-0 w-[110px] h-[110px] rounded-lg overflow-hidden bg-gray-100">
@@ -384,7 +384,7 @@ export default function SearchComparisonView({
                     <span className="absolute top-1 left-1 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded">
                       #{i + 1}
                     </span>
-                    <span className="absolute bottom-1 right-1 bg-gradient-to-br from-[#8B6914] to-[#C49A6C] text-white text-[11px] font-bold px-1.5 py-0.5 rounded">
+                    <span className="absolute bottom-1 right-1 bg-gradient-to-br from-[#1E2A3A] to-[#1E2A3A] text-white text-[11px] font-bold px-1.5 py-0.5 rounded">
                       {((f.similarity || 0) * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -393,18 +393,18 @@ export default function SearchComparisonView({
                     <div className="text-[13px] text-gray-500">Color: {f.color_code}</div>
                     <div className="flex gap-1 flex-wrap mt-1">
                       {f.fabric_type && (
-                        <span className="text-[10px] font-semibold text-[#8B6914] bg-[#f0e9d6] px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-semibold text-[#1E2A3A] bg-[#EEF1F4] px-1.5 py-0.5 rounded">
                           {f.fabric_type}
                         </span>
                       )}
                       {f.pattern_detail && (
-                        <span className="text-[10px] font-semibold text-white bg-[#8B6914] px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-semibold text-white bg-[#1E2A3A] px-1.5 py-0.5 rounded">
                           {f.pattern_detail}
                         </span>
                       )}
                     </div>
                     {f.price_per_yard && (
-                      <div className="text-[13px] font-extrabold text-[#8B6914] mt-0.5">
+                      <div className="text-[13px] font-extrabold text-[#1E2A3A] mt-0.5">
                         ₩{f.price_per_yard.toLocaleString()}/Y
                       </div>
                     )}

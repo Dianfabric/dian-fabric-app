@@ -99,7 +99,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
       <div className="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white z-50 shadow-[-8px_0_30px_rgba(0,0,0,0.15)] overflow-y-auto animate-slide-in-right">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
-          <span className="text-xs font-bold text-[#8B6914] tracking-wider">🎨 퀵뷰</span>
+          <span className="text-xs font-bold text-[#1E2A3A] tracking-wider">🎨 퀵뷰</span>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
@@ -127,7 +127,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           )}
           {loading && (
             <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-gray-200 border-t-[#8B6914] rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-2 border-gray-200 border-t-[#1E2A3A] rounded-full animate-spin"></div>
             </div>
           )}
         </div>
@@ -139,12 +139,12 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
 
           <div className="flex gap-2 flex-wrap mb-4">
             {f.fabric_type && (
-              <span className="text-sm font-semibold text-[#8B6914] bg-[#f0e9d6] px-3 py-1.5 rounded-md">
+              <span className="text-sm font-semibold text-[#1E2A3A] bg-[#EEF1F4] px-3 py-1.5 rounded-md">
                 {f.fabric_type}
               </span>
             )}
             {f.pattern_detail && (
-              <span className="text-sm font-semibold text-white bg-[#8B6914] px-3 py-1.5 rounded-md">
+              <span className="text-sm font-semibold text-white bg-[#1E2A3A] px-3 py-1.5 rounded-md">
                 {f.pattern_detail}
               </span>
             )}
@@ -159,7 +159,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           {f.price_per_yard && (
             <div className="flex justify-between py-2.5 text-base">
               <span className="text-gray-500">가격</span>
-              <span className="font-bold text-[#8B6914]">
+              <span className="font-bold text-[#1E2A3A]">
                 ₩{f.price_per_yard.toLocaleString()}/Y
               </span>
             </div>
@@ -180,8 +180,8 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
                   onClick={() => selectVariant(v)}
                   className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-square ${
                     v.id === f.id
-                      ? "border-[#8B6914] scale-105 shadow-md"
-                      : "border-transparent hover:border-[#C49A6C]"
+                      ? "border-[#1E2A3A] scale-105 shadow-md"
+                      : "border-transparent hover:border-[#1E2A3A]"
                   }`}
                   title={v.color_code}
                 >
@@ -211,7 +211,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
         <div className="px-6 py-5 border-t border-gray-100 sticky bottom-0 bg-white">
           <Link
             href={`/fabric/${f.id}`}
-            className="block w-full text-center bg-gradient-to-r from-[#8B6914] to-[#C49A6C] text-white py-3 rounded-xl font-bold hover:shadow-lg transition-shadow"
+            className="block w-full text-center bg-gradient-to-r from-[#1E2A3A] to-[#1E2A3A] text-white py-3 rounded-xl font-bold hover:shadow-lg transition-shadow"
           >
             상세 페이지로 이동 →
           </Link>

@@ -1,30 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --gold-dark: #8B6914;
-  --gold-mid: #B8956A;
-  --gold-light: #C49A6C;
-  --warm-bg: #FAFAFA;
+  --navy: #1E2A3A;
+  --navy2: #47515F;
+  --ink: #272C34;
+  --muted: #9B9C9E;
+  --bg: #FFFFFF;
+  --soft: #F6F6F4;
+  --line: #EAEAE7;
+
+  /* legacy 클래스/컴포넌트 호환용 — 네이비로 재정의(골드 제거) */
+  --gold-dark: #1E2A3A;
+  --gold-mid: #2E3D57;
+  --gold-light: #47515F;
+  --warm-bg: #FFFFFF;
 }
 
 @theme inline {
-  --color-background: #FAFAFA;
-  --color-foreground: #1a1a1a;
-  --font-sans: var(--font-pretendard);
+  --color-background: #FFFFFF;
+  --color-foreground: #272C34;
+  --font-sans: 'Pretendard', sans-serif;
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* legacy gradient utilities — search page still uses them */
 .text-gradient {
   background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 50%, var(--gold-dark) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 .bg-gradient-gold {
   background: linear-gradient(135deg, var(--gold-dark), var(--gold-light));
 }
@@ -34,7 +44,7 @@ body {
 }
 .upload-hover:hover {
   border-color: var(--gold-light);
-  box-shadow: 0 16px 48px rgba(139, 105, 20, 0.08);
+  box-shadow: 0 16px 48px rgba(30, 42, 58, 0.08);
   transform: translateY(-4px);
 }
 

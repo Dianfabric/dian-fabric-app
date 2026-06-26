@@ -453,7 +453,12 @@ export async function GET(request: NextRequest) {
       }
     }
     if (subtype) {
-      query = query.ilike("pattern_detail", `%${subtype}%`);
+      const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
+      if (subtypes.length === 1) {
+        query = query.ilike("pattern_detail", `%${subtypes[0]}%`);
+      } else if (subtypes.length > 1) {
+        query = query.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
+      }
       if (type && type !== "패턴") query = query.eq("fabric_type", type);
     } else if (type) {
       if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
@@ -516,7 +521,12 @@ export async function GET(request: NextRequest) {
     }
   }
   if (subtype) {
-    query = query.ilike("pattern_detail", `%${subtype}%`);
+    const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
+    if (subtypes.length === 1) {
+      query = query.ilike("pattern_detail", `%${subtypes[0]}%`);
+    } else if (subtypes.length > 1) {
+      query = query.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
+    }
     if (type && type !== "패턴") query = query.eq("fabric_type", type);
   } else if (type) {
     if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");

@@ -142,7 +142,7 @@ export default function ImageCropSelector({
             <button
               onClick={addRegion}
               disabled={!crop || !crop.width || !crop.height}
-              className="px-6 py-2.5 rounded-xl bg-[#8B6914] text-white text-sm font-semibold disabled:opacity-30 hover:bg-[#7A5C10] transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-[#1E2A3A] text-white text-sm font-semibold disabled:opacity-30 hover:bg-[#0E1830] transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -162,7 +162,7 @@ export default function ImageCropSelector({
             <div className="flex gap-3 flex-wrap">
               {regions.map((region, idx) => (
                 <div key={region.id} className="relative group">
-                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-[#C49A6C] shadow-sm">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-[#1E2A3A] shadow-sm">
                     <img
                       src={region.preview}
                       alt={`영역 ${idx + 1}`}
@@ -170,7 +170,7 @@ export default function ImageCropSelector({
                     />
                   </div>
                   {/* 번호 */}
-                  <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#8B6914] text-white rounded-full flex items-center justify-center text-xs font-bold shadow">
+                  <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#1E2A3A] text-white rounded-full flex items-center justify-center text-xs font-bold shadow">
                     {idx + 1}
                   </div>
                   {/* 삭제 */}

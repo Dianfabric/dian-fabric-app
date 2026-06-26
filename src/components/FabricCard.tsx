@@ -12,11 +12,18 @@ type Props = {
 export default function FabricCard({ fabric, showSimilarity, disableLink, onImageClick }: Props) {
   const similarity = "similarity" in fabric ? fabric.similarity : null;
 
-  return (
-    <div className="block bg-white rounded-2xl overflow-hidden border border-gray-100 card-hover">
-      {/* Image — 클릭 시 라이트박스 */}
+  const widthLabel = fabric.width_mm
+    ? `${(fabric.width_mm / 10).toFixed(0)}cm`
+    : null;
+
+  const compositionText = fabric.composition_note || null;
+
+  const card = (
+    <div className="cursor-pointer group">
+      {/* Thumbnail */}
       <div
-        className="relative aspect-square bg-gray-100 cursor-pointer"
+        className="relative aspect-square overflow-hidden rounded-[3px]"
+        style={{ background: "var(--soft)", border: "1px solid var(--line)" }}
         onClick={(e) => {
           if (onImageClick) {
             e.preventDefault();
@@ -26,69 +33,76 @@ export default function FabricCard({ fabric, showSimilarity, disableLink, onImag
         }}
       >
         {fabric.image_url ? (
-          <Image
-            src={fabric.image_url}
-            alt={`${fabric.name}-${fabric.color_code}`}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, 25vw"
-          />
+          <div className="absolute inset-0 transition-transform duration-500" style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}>
+            <Image
+              src={fabric.image_url}
+              alt={`${fabric.name}-${fabric.color_code}`}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
+              sizes="(max-width: 768px) 50vw, 25vw"
+            />
+          </div>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-400 text-sm">
+          <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: "var(--muted)" }}>
             No Image
           </div>
         )}
         {showSimilarity && similarity !== null && (
-          <span className="absolute top-3 right-3 bg-gradient-gold text-white text-[11px] font-bold px-3 py-1 rounded-lg">
+          <span className="absolute top-3 right-3 bg-[var(--navy)] text-white text-[11px] font-bold px-3 py-1 rounded-[3px]">
             {(similarity * 100).toFixed(1)}%
           </span>
         )}
       </div>
 
-      {/* Info — 클릭 시 상세 페이지 */}
-      {disableLink ? (
-        <div className="p-4">
-          <CardInfo fabric={fabric} />
+      {/* Meta */}
+      <div className="pt-3 px-[2px]">
+        {/* Design name */}
+        <div
+          className="text-[15px] font-semibold tracking-[.01em] whitespace-nowrap overflow-hidden text-ellipsis"
+          style={{ color: "var(--navy)" }}
+        >
+          {fabric.name}
         </div>
-      ) : (
-        <Link href={`/fabric/${fabric.id}`} className="block p-4 cursor-pointer hover:bg-gray-50 transition-colors">
-          <CardInfo fabric={fabric} />
-        </Link>
-      )}
+        {/* Color code */}
+        <div className="text-[12px] mt-[3px]" style={{ color: "var(--muted)" }}>
+          {fabric.color_code}
+        </div>
+        {/* Composition */}
+        {compositionText && (
+          <div
+            className="text-[11.5px] mt-[9px] tracking-[.01em] whitespace-nowrap overflow-hidden text-ellipsis"
+            style={{ color: "#9B9C9E" }}
+            title={compositionText}
+          >
+            {compositionText}
+          </div>
+        )}
+        {/* Width */}
+        {widthLabel && (
+          <div className="text-[11.5px] mt-[3px]" style={{ color: "#AEAEAB" }}>
+            {widthLabel}
+          </div>
+        )}
+        {/* Price */}
+        {fabric.price_per_yard != null && fabric.price_per_yard > 0 && (
+          <div
+            className="text-[14px] font-semibold mt-2 tracking-[.01em]"
+            style={{ color: "var(--navy)", fontVariantNumeric: "tabular-nums" }}
+          >
+            &#8361;{fabric.price_per_yard.toLocaleString()}
+            <span className="text-[11px] font-normal ml-[2px]" style={{ color: "var(--muted)" }}>/Y</span>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
 
-function CardInfo({ fabric }: { fabric: Fabric | SearchResult }) {
+  if (disableLink) return card;
+
   return (
-    <>
-      <div className="text-[15px] font-bold">{fabric.name}</div>
-      <div className="text-xs text-gray-400 mb-2.5">Color: {fabric.color_code}</div>
-      <div className="flex gap-1.5 flex-wrap">
-        {fabric.fabric_type && (
-          <span className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md">
-            {fabric.fabric_type}
-          </span>
-        )}
-        {fabric.pattern_detail && (
-          <span className="text-[10px] font-semibold text-white bg-[#8B6914] px-2.5 py-1 rounded-md">
-            {fabric.pattern_detail}
-          </span>
-        )}
-        {fabric.usage_types?.slice(0, 2).map((u) => (
-          <span
-            key={u}
-            className="text-[10px] font-semibold text-[#8B6914] bg-[linear-gradient(135deg,rgba(139,105,20,0.08),rgba(196,154,108,0.08))] px-2.5 py-1 rounded-md"
-          >
-            {u}
-          </span>
-        ))}
-      </div>
-      {fabric.price_per_yard && (
-        <div className="text-sm font-extrabold text-gradient mt-3">
-          &#8361;{fabric.price_per_yard.toLocaleString()}/Y
-        </div>
-      )}
-    </>
+    <Link href={`/fabric/${fabric.id}`} className="block">
+      {card}
+    </Link>
   );
 }

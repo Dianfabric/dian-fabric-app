@@ -18,30 +18,23 @@ const PATTERN_DETAILS = [
 
 const USAGE_TYPES = ["소파", "커튼", "침대헤드", "월커버링", "쿠션", "스툴"];
 
-const FEATURE_TYPES = [
-  { label: "발수", value: "발수" },
-  { label: "방염 · 준불연", value: "방염" },
-  { label: "친환경 리사이클", value: "친환경" },
-  { label: "아웃도어", value: "아웃도어" },
-  { label: "이지크린", value: "이지크린" },
-];
-
+// DB(Gemini 분류) 15색 체계와 일치 — notes 색상명으로 필터됨
 const COLOR_SWATCHES: { label: string; value: string; hex: string }[] = [
   { label: "아이보리", value: "아이보리", hex: "#ECE6D8" },
-  { label: "베이지", value: "베이지", hex: "#CFB79A" },
-  { label: "카멜", value: "카멜", hex: "#B08D6A" },
-  { label: "토프", value: "토프", hex: "#A99C8A" },
-  { label: "브라운", value: "브라운", hex: "#6E4B34" },
-  { label: "올리브", value: "올리브", hex: "#6E7355" },
-  { label: "세이지", value: "세이지", hex: "#9CA68C" },
+  { label: "베이지", value: "베이지", hex: "#D4B896" },
+  { label: "브라운", value: "브라운", hex: "#8B5A2B" },
   { label: "그레이", value: "그레이", hex: "#9A9A95" },
   { label: "차콜", value: "차콜", hex: "#3C3F46" },
+  { label: "블랙", value: "블랙", hex: "#1E1E20" },
   { label: "네이비", value: "네이비", hex: "#2B3A55" },
-  { label: "테라코타", value: "테라코타", hex: "#B5704F" },
-  { label: "와인", value: "와인", hex: "#6B2B3A" },
-  { label: "머스타드", value: "머스타드", hex: "#C9A24B" },
-  { label: "더스티블루", value: "더스티블루", hex: "#7C8CA1" },
-  { label: "포레스트", value: "포레스트", hex: "#44513F" },
+  { label: "블루", value: "블루", hex: "#3A6FB0" },
+  { label: "그린", value: "그린", hex: "#4E7A4E" },
+  { label: "레드", value: "레드", hex: "#B0413E" },
+  { label: "핑크", value: "핑크", hex: "#D98BA6" },
+  { label: "옐로우", value: "옐로우", hex: "#D9B43C" },
+  { label: "오렌지", value: "오렌지", hex: "#D08440" },
+  { label: "퍼플", value: "퍼플", hex: "#7E5A9B" },
+  { label: "민트", value: "민트", hex: "#7FBFA8" },
 ];
 
 const SORT_OPTIONS = [
@@ -67,7 +60,10 @@ export default function FabricsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedType, setSelectedType] = useState(restored.current?.selectedType || "");
-  const [selectedPatterns, setSelectedPatterns] = useState<string[]>(restored.current?.selectedPatterns || restored.current?.selectedSubType ? [restored.current.selectedSubType].filter(Boolean) : []);
+  const [selectedPatterns, setSelectedPatterns] = useState<string[]>(
+    restored.current?.selectedPatterns ??
+    (restored.current?.selectedSubType ? [restored.current.selectedSubType] : [])
+  );
   const [selectedUsage, setSelectedUsage] = useState(restored.current?.selectedUsage || "");
   const [selectedColors, setSelectedColors] = useState<string[]>(restored.current?.selectedColors || []);
   const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
@@ -312,7 +308,7 @@ export default function FabricsPage() {
       </div>
 
       {/* Main: Sidebar + Grid */}
-      <div className="max-w-[1320px] mx-auto px-8 py-[30px] pb-20 grid gap-[46px]" style={{ gridTemplateColumns: "206px 1fr" }}>
+      <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-[30px] pb-20 grid gap-8 lg:gap-[46px] grid-cols-1 lg:grid-cols-[206px_1fr]">
         {/* Sidebar */}
         <aside>
           {/* 종류 */}
@@ -377,18 +373,6 @@ export default function FabricsPage() {
             ))}
           </FilterGroup>
 
-          {/* 기능 */}
-          <FilterGroup title="기능">
-            {FEATURE_TYPES.map(f => (
-              <FilterRow
-                key={f.value}
-                label={f.label}
-                active={false}
-                onClick={() => {}}
-              />
-            ))}
-          </FilterGroup>
-
           {/* 폭 */}
           <FilterGroup title="폭">
             <FilterRow
@@ -402,7 +386,7 @@ export default function FabricsPage() {
         {/* Grid + Pagination */}
         <main>
           {loading ? (
-            <div className="grid gap-[28px_22px]" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            <div className="grid gap-[28px_22px] grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 20 }).map((_, i) => (
                 <div key={i}>
                   <div
@@ -418,7 +402,7 @@ export default function FabricsPage() {
               ))}
             </div>
           ) : fabrics.length > 0 ? (
-            <div className="grid gap-[28px_22px]" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            <div className="grid gap-[28px_22px] grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
               {fabrics.map((fabric, idx) => (
                 <FabricCard
                   key={fabric.id}

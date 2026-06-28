@@ -459,9 +459,11 @@ export async function GET(request: NextRequest) {
       } else if (subtypes.length > 1) {
         query = query.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
       }
-      if (type && type !== "패턴") query = query.eq("fabric_type", type);
+      if (type === "커튼") query = query.eq("is_curtain_eligible", true);
+      else if (type && type !== "패턴") query = query.eq("fabric_type", type);
     } else if (type) {
       if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
+      else if (type === "커튼") query = query.eq("is_curtain_eligible", true);
       else query = query.eq("fabric_type", type);
     }
     if (usage) query = query.contains("usage_types", [usage]);
@@ -527,9 +529,11 @@ export async function GET(request: NextRequest) {
     } else if (subtypes.length > 1) {
       query = query.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
     }
-    if (type && type !== "패턴") query = query.eq("fabric_type", type);
+    if (type === "커튼") query = query.eq("is_curtain_eligible", true);
+    else if (type && type !== "패턴") query = query.eq("fabric_type", type);
   } else if (type) {
     if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
+    else if (type === "커튼") query = query.eq("is_curtain_eligible", true);
     else query = query.eq("fabric_type", type);
   }
   if (usage) query = query.contains("usage_types", [usage]);

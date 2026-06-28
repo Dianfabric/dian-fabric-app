@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import FabricCard from "@/components/FabricCard";
 import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
@@ -75,6 +76,12 @@ export default function FabricsPage() {
     images: { src: string; name: string; colorCode?: string; patternDetail?: string; fabricType?: string; price?: number }[];
     index: number;
   } | null>(null);
+  const [mode, setMode] = useState<"design" | "individual">("design");
+  const [colorway, setColorway] = useState<{
+    name: string;
+    loading: boolean;
+    items: { id: string; color_code: string; image_url: string | null; price_per_yard: number | null }[];
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -95,6 +102,25 @@ export default function FabricsPage() {
     }));
     setLightbox({ images, index: fabricIdx });
   }, [fabrics]);
+
+  // 대표모드: 디자인 카드 클릭 → 컬러웨이 모달
+  const openColorway = useCallback(async (fabric: Fabric) => {
+    setColorway({ name: fabric.name, loading: true, items: [] });
+    try {
+      const res = await fetch(`/api/fabrics/${fabric.id}`);
+      const data = await res.json();
+      const rep = { id: fabric.id, color_code: data.color_code, image_url: data.image_url, price_per_yard: data.price_per_yard };
+      setColorway({ name: fabric.name, loading: false, items: [rep, ...(data.colorVariants || [])] });
+    } catch {
+      setColorway({ name: fabric.name, loading: false, items: [] });
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setColorway(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     fetchFabrics();
@@ -118,6 +144,7 @@ export default function FabricsPage() {
       setFabrics(data.fabrics || []);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
+      setMode(data.mode === "individual" ? "individual" : "design");
     } catch (err) {
       console.error(err);
     } finally {
@@ -198,6 +225,39 @@ export default function FabricsPage() {
           currentIndex={Math.max(0, lightbox.index)}
           onClose={() => setLightbox(null)}
         />
+      )}
+
+      {/* 컬러웨이 모달 (대표모드 카드 클릭) */}
+      {colorway && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => setColorway(null)}>
+          <div className="bg-white rounded-[6px] max-w-[860px] w-full max-h-[85vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-semibold" style={{ color: "var(--navy)" }}>
+                {colorway.name}
+                {!colorway.loading && (
+                  <span className="text-[13px] font-normal ml-2" style={{ color: "var(--muted)" }}>· 컬러 {colorway.items.length}개</span>
+                )}
+              </h3>
+              <button onClick={() => setColorway(null)} className="text-[26px] leading-none" style={{ color: "var(--muted)" }}>&times;</button>
+            </div>
+            {colorway.loading ? (
+              <div className="py-16 text-center text-[14px]" style={{ color: "var(--muted)" }}>불러오는 중…</div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {colorway.items.map((v) => (
+                  <Link key={v.id} href={`/fabric/${v.id}`} className="block group">
+                    <div className="relative aspect-square rounded-[3px] overflow-hidden" style={{ background: "var(--soft)", border: "1px solid var(--line)" }}>
+                      {v.image_url && (
+                        <Image src={v.image_url} alt={v.color_code} fill className="object-cover group-hover:scale-105 transition-transform" sizes="20vw" />
+                      )}
+                    </div>
+                    <div className="text-[11px] mt-1 text-center" style={{ color: "var(--muted)" }}>{v.color_code}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Hero */}
@@ -283,7 +343,7 @@ export default function FabricsPage() {
       >
         <div className="flex items-center gap-3">
           <span className="text-[13px] tracking-[.03em]" style={{ color: "var(--muted)" }}>
-            전체 {total.toLocaleString()}개 컬러웨이
+            전체 {total.toLocaleString()}{mode === "design" ? "개 디자인" : "개 컬러웨이"}
           </span>
           {hasActiveFilters && (
             <button
@@ -407,7 +467,8 @@ export default function FabricsPage() {
                 <FabricCard
                   key={fabric.id}
                   fabric={fabric}
-                  onImageClick={() => openLightbox(idx)}
+                  colorCount={mode === "design" ? (fabric as Fabric & { color_count?: number }).color_count : undefined}
+                  onImageClick={() => (mode === "design" ? openColorway(fabric) : openLightbox(idx))}
                 />
               ))}
             </div>

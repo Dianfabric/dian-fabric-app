@@ -7,10 +7,12 @@ type Props = {
   showSimilarity?: boolean;
   disableLink?: boolean;
   onImageClick?: () => void;
+  colorCount?: number; // 대표모드: 이 디자인의 컬러웨이 수 (있으면 배지 + 클릭=모달)
 };
 
-export default function FabricCard({ fabric, showSimilarity, disableLink, onImageClick }: Props) {
+export default function FabricCard({ fabric, showSimilarity, disableLink, onImageClick, colorCount }: Props) {
   const similarity = "similarity" in fabric ? fabric.similarity : null;
+  const isDesign = colorCount != null; // 대표모드 카드
 
   const widthLabel = fabric.width_mm
     ? `${(fabric.width_mm / 10).toFixed(0)}cm`
@@ -53,6 +55,11 @@ export default function FabricCard({ fabric, showSimilarity, disableLink, onImag
             {(similarity * 100).toFixed(1)}%
           </span>
         )}
+        {isDesign && colorCount! > 1 && (
+          <span className="absolute bottom-2.5 right-2.5 bg-black/55 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+            {colorCount}색
+          </span>
+        )}
       </div>
 
       {/* Meta */}
@@ -64,9 +71,9 @@ export default function FabricCard({ fabric, showSimilarity, disableLink, onImag
         >
           {fabric.name}
         </div>
-        {/* Color code */}
+        {/* Color code (개별) 또는 컬러웨이 수 (대표) */}
         <div className="text-[12px] mt-[3px]" style={{ color: "var(--muted)" }}>
-          {fabric.color_code}
+          {isDesign ? `컬러 ${colorCount}개` : fabric.color_code}
         </div>
         {/* Composition */}
         {compositionText && (
@@ -97,6 +104,15 @@ export default function FabricCard({ fabric, showSimilarity, disableLink, onImag
       </div>
     </div>
   );
+
+  // 대표모드: 카드 전체 클릭 → 컬러웨이 모달 (상세 이동 X)
+  if (isDesign) {
+    return (
+      <div onClick={() => onImageClick?.()} className="block">
+        {card}
+      </div>
+    );
+  }
 
   if (disableLink) return card;
 

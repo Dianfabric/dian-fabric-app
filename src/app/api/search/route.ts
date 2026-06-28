@@ -427,10 +427,38 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 색상 필터 있으면 → 전체 가져와서 RGB 비율순 정렬
-  // 다중 색상 지원: "그레이,블루" → 두 색상 모두 포함
   const colors = color ? color.split(",").filter(Boolean) : [];
 
+  // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드, 아니면 대표(디자인)모드 ───
+  const individualMode = colors.length > 0 || !!search;
+
+  if (!individualMode) {
+    // 대표모드: 디자인(name) 단위 그룹핑 RPC
+    const subtypeArr = subtype ? subtype.split(",").map((s) => s.trim()).filter(Boolean) : null;
+    const { data, error } = await supabase.rpc("list_design_groups", {
+      p_type: type || null,
+      p_subtypes: subtypeArr && subtypeArr.length ? subtypeArr : null,
+      p_usage: usage || null,
+      p_wide: wide,
+      p_search: null,
+      p_sort: sort,
+      p_limit: limit,
+      p_offset: (page - 1) * limit,
+    });
+    if (!error) {
+      const total = data && data.length ? Number(data[0].total_count) : 0;
+      const fabrics = (data || []).map(({ total_count, color_count, ...rest }: Record<string, unknown>) => ({
+        ...rest,
+        color_count: Number(color_count),
+      }));
+      return NextResponse.json({
+        fabrics, total, page, totalPages: Math.ceil(total / limit), mode: "design",
+      });
+    }
+    // RPC 미생성/오류 시 → 개별모드로 폴백 (아래 로직 실행, 사이트 안 깨짐)
+  }
+
+  // 색상 필터 있으면 → 전체 가져와서 RGB 비율순 정렬
   if (colors.length > 0) {
     let query = supabase
       .from("fabrics")
@@ -492,10 +520,11 @@ export async function GET(request: NextRequest) {
       total,
       page,
       totalPages: Math.ceil(total / limit),
+      mode: "individual",
     });
   }
 
-  // 색상 필터 없으면 → 해상도 높은 순 + 이름순
+  // 검색(색상 없음) → 개별 원단
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -553,5 +582,6 @@ export async function GET(request: NextRequest) {
     total: count || 0,
     page,
     totalPages: Math.ceil((count || 0) / limit),
+    mode: "individual",
   });
 }

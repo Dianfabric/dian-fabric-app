@@ -7,6 +7,8 @@ import Link from "next/link";
 import ImageLightbox from "@/components/ImageLightbox";
 import type { Fabric } from "@/lib/types";
 
+const KAKAO_URL = "https://pf.kakao.com/_xbSuYK"; // 디안 카카오톡 채널
+
 interface ColorVariant {
   id: string;
   name: string;
@@ -267,6 +269,20 @@ export default function FabricDetailPage() {
               </div>
             </div>
           )}
+
+          {/* 카카오톡 문의하기 */}
+          <a
+            href={KAKAO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full rounded-2xl py-4 font-bold transition-opacity hover:opacity-90"
+            style={{ background: "#FEE500", color: "#3C1E1E" }}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#3C1E1E" aria-hidden="true">
+              <path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7-.2.7-.7 2.6-.8 3-.1.5.2.5.4.4.2-.1 2.6-1.8 3.7-2.5.6.1 1.3.1 2 .1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/>
+            </svg>
+            카카오톡으로 문의하기
+          </a>
 
           {/* 가격 계산기/주문 영역은 추후 정식 오픈 시 추가 예정 */}
         </div>

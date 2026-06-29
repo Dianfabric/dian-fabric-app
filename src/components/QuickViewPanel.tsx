@@ -99,7 +99,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
       <div className="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white z-50 shadow-[-8px_0_30px_rgba(0,0,0,0.15)] overflow-y-auto animate-slide-in-right">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
-          <span className="text-xs font-bold text-[#1E2A3A] tracking-wider">🎨 퀵뷰</span>
+          <span className="text-xs font-bold text-[#1E2A3A] tracking-wider">미리 보기</span>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
@@ -170,7 +170,7 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
         {variants.length > 0 && (
           <div className="px-6 py-5 border-t border-gray-100">
             <div className="text-sm font-bold text-gray-600 mb-3 flex items-center justify-between">
-              <span>🎨 다른 컬러</span>
+              <span>다른 컬러</span>
               <span className="text-xs text-gray-400 font-normal">{variants.length}개</span>
             </div>
             <div className="grid grid-cols-4 gap-2">

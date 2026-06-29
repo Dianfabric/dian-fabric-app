@@ -55,10 +55,10 @@ export default function FabricCard({
           <div className="hidden lg:flex absolute inset-x-0 bottom-0 justify-center pb-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickView(); }}
-              className="px-4 py-2 text-[11.5px] font-semibold tracking-[.08em] text-white rounded-[3px] backdrop-blur-sm hover:bg-black/90 transition-colors"
+              className="px-4 py-2 text-[12px] font-semibold tracking-[.02em] text-white rounded-[3px] backdrop-blur-sm hover:bg-black/90 transition-colors"
               style={{ background: "rgba(30,33,40,.82)" }}
             >
-              QUICK VIEW
+              미리 보기
             </button>
           </div>
         )}

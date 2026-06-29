@@ -70,6 +70,7 @@ function getRestoredState() {
 
 export default function FabricsPage() {
   const restored = useRef(getRestoredState());
+  const reqIdRef = useRef(0); // fetchFabrics 경쟁 상태 가드
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(restored.current?.page || 1);
@@ -151,6 +152,7 @@ export default function FabricsPage() {
   }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
 
   const fetchFabrics = async () => {
+    const myReq = ++reqIdRef.current; // 최신 요청만 반영 (경쟁 상태 방지)
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "20" });
     if (selectedType) params.set("type", selectedType);
@@ -168,6 +170,7 @@ export default function FabricsPage() {
     try {
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
+      if (myReq !== reqIdRef.current) return; // 더 최신 요청이 진행 중 → 이 응답 폐기
       setFabrics(data.fabrics || []);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
@@ -175,7 +178,7 @@ export default function FabricsPage() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (myReq === reqIdRef.current) setLoading(false);
     }
   };
 

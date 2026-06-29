@@ -21,6 +21,15 @@ export default function Navbar() {
           href="/"
           aria-label="dian"
           className="flex items-end gap-[7px] shrink-0"
+          onClick={(e) => {
+            // 로고 = 홈: 저장된 필터/스크롤 전부 해제하고 깨끗한 원단목록으로
+            e.preventDefault();
+            try {
+              sessionStorage.removeItem("dian-fabrics-state");
+              sessionStorage.removeItem("dian-fabrics-scrollY");
+            } catch {}
+            window.location.href = "/fabrics";
+          }}
         >
           <span
             className="leading-none text-[26px] sm:text-[30px] lowercase"

@@ -45,8 +45,8 @@ const SORT_OPTIONS = [
 ];
 
 const MOBILE_TABS = [
-  { key: "type", label: "종류" },
   { key: "pattern", label: "패턴" },
+  { key: "type", label: "종류" },
   { key: "color", label: "색상" },
   { key: "usage", label: "용도" },
   { key: "width", label: "폭" },
@@ -459,6 +459,18 @@ export default function FabricsPage() {
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-[30px] pb-20 grid gap-8 lg:gap-[40px] grid-cols-1 lg:grid-cols-[200px_1fr]">
         {/* Sidebar (데스크탑 전용) */}
         <aside className="hidden lg:block">
+          {/* 패턴 (단일선택) */}
+          <FilterGroup title="패턴">
+            {PATTERN_DETAILS.map(p => (
+              <FilterRow
+                key={p}
+                label={p}
+                active={selectedPatterns.includes(p)}
+                onClick={() => togglePattern(p)}
+              />
+            ))}
+          </FilterGroup>
+
           {/* 종류 */}
           <FilterGroup title="종류">
             {FABRIC_TYPES.map(t => (
@@ -479,18 +491,6 @@ export default function FabricsPage() {
                 />
               </div>
             )}
-          </FilterGroup>
-
-          {/* 패턴 (multi-select) */}
-          <FilterGroup title="패턴">
-            {PATTERN_DETAILS.map(p => (
-              <FilterRow
-                key={p}
-                label={p}
-                active={selectedPatterns.includes(p)}
-                onClick={() => togglePattern(p)}
-              />
-            ))}
           </FilterGroup>
 
           {/* 색상 */}

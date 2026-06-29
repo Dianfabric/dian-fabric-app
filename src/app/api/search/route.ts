@@ -4,6 +4,13 @@ import { getHiddenFabricIds } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
 
+// 목록/검색 응답에 필요한 컬럼만 (임베딩·lab_clusters 제외 → 응답 20배 가벼움)
+const LIST_COLS = "id,name,color_code,image_url,image_path,fabric_type,pattern_detail,width_mm,composition_note,price_per_yard,supplier,usage_types,co_percent,li_percent,wo_percent,is_curtain_eligible,created_at,is_active";
+// 색상 경로는 정렬에 notes(색상명/RGB) 필요 → 추가
+const COLOR_COLS = LIST_COLS + ",notes";
+// 목록 캐시 (CDN 60초 + 5분 stale-while-revalidate) — 반복 로딩 즉시
+const LIST_CACHE = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
+
 /**
  * 원단 유사도 검색 API
  *
@@ -463,7 +470,7 @@ export async function GET(request: NextRequest) {
       }));
       return NextResponse.json({
         fabrics, total, totalFabrics, page, totalPages: Math.ceil(total / limit), mode: "design",
-      });
+      }, { headers: LIST_CACHE });
     }
     // RPC 미생성/오류 시 → 개별모드로 폴백 (아래 로직 실행, 사이트 안 깨짐)
   }
@@ -472,7 +479,7 @@ export async function GET(request: NextRequest) {
   if (colors.length > 0) {
     let query = supabase
       .from("fabrics")
-      .select("*")
+      .select(COLOR_COLS)
       .eq("is_active", true)
       .not("image_url", "is", null);
 
@@ -513,10 +520,10 @@ export async function GET(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     // 선택한 정렬 우선, 동점 시 색상 일치도
-    const sorted = (data || [])
+    const sorted = ((data || []) as unknown as Record<string, unknown>[])
       .map((fabric) => ({
         ...fabric,
-        _colorScore: colors.reduce((sum, c) => sum + getColorRelevanceScore(fabric.notes, c), 0),
+        _colorScore: colors.reduce((sum, c) => sum + getColorRelevanceScore(fabric.notes as string | null, c), 0),
       }))
       .sort((a, b) => sortCmp(a, b) || b._colorScore - a._colorScore);
 
@@ -534,7 +541,7 @@ export async function GET(request: NextRequest) {
       page,
       totalPages: Math.ceil(total / limit),
       mode: "individual",
-    });
+    }, { headers: LIST_CACHE });
   }
 
   // 검색(색상 없음) → 개별 원단
@@ -543,7 +550,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("fabrics")
-    .select("*", { count: "exact" })
+    .select(LIST_COLS, { count: "exact" })
     .eq("is_active", true)
     .not("image_url", "is", null);
 
@@ -572,11 +579,11 @@ export async function GET(request: NextRequest) {
       query = query.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
     }
     if (type === "커튼") query = query.eq("is_curtain_eligible", true);
-    else if (type && type !== "패턴") query = query.eq("fabric_type", type);
+    else if (type && type !== "패턴") query = query.ilike("fabric_type", `%${type}%`);
   } else if (type) {
     if (type === "패턴") query = query.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
     else if (type === "커튼") query = query.eq("is_curtain_eligible", true);
-    else query = query.eq("fabric_type", type);
+    else query = query.ilike("fabric_type", `%${type}%`);
   }
   if (usageCol) query = query.contains("usage_types", [usageCol]);
 
@@ -586,8 +593,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const fabrics = (data || []).map(
-    ({ embedding, ...rest }: Record<string, unknown>) => rest
+  const fabrics = ((data || []) as unknown as Record<string, unknown>[]).map(
+    ({ embedding, ...rest }) => rest
   );
 
   return NextResponse.json({
@@ -596,5 +603,5 @@ export async function GET(request: NextRequest) {
     page,
     totalPages: Math.ceil((count || 0) / limit),
     mode: "individual",
-  });
+  }, { headers: LIST_CACHE });
 }

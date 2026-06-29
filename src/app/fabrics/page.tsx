@@ -261,7 +261,7 @@ export default function FabricsPage() {
       )}
 
       {/* Hero */}
-      <section className="max-w-[1320px] mx-auto px-8 pt-14 pb-[30px] text-center">
+      <section className="max-w-[1320px] mx-auto px-4 sm:px-8 pt-9 sm:pt-14 pb-[30px] text-center">
         <div
           className="text-[11px] tracking-[.34em] uppercase font-medium"
           style={{ color: "var(--muted)" }}
@@ -269,7 +269,7 @@ export default function FabricsPage() {
           Dian Textile Collection
         </div>
         <h1
-          className="font-light text-[44px] mt-[14px] mb-3 tracking-[.04em]"
+          className="font-light text-[30px] sm:text-[44px] mt-[14px] mb-3 tracking-[.04em]"
           style={{ color: "var(--navy)" }}
         >
           원단 컬렉션
@@ -279,9 +279,9 @@ export default function FabricsPage() {
         </p>
 
         {/* Search + AI button */}
-        <div className="flex gap-3 justify-center mt-7">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mt-7">
           <div
-            className="flex items-center gap-[10px] h-12 px-4 w-[400px] rounded-[3px]"
+            className="flex items-center gap-[10px] h-12 px-4 w-full sm:w-[400px] rounded-[3px]"
             style={{ background: "var(--bg)", border: "1px solid var(--line)" }}
           >
             <span style={{ color: "var(--muted)" }}>
@@ -308,7 +308,7 @@ export default function FabricsPage() {
           </div>
           <Link
             href="/search"
-            className="flex items-center gap-2 h-12 px-[22px] rounded-[3px] text-[14px] tracking-[.03em] text-white transition-opacity hover:opacity-[.88]"
+            className="flex items-center justify-center gap-2 h-12 px-[22px] rounded-[3px] text-[14px] tracking-[.03em] text-white transition-opacity hover:opacity-[.88] shrink-0"
             style={{ background: "var(--navy)" }}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -338,7 +338,7 @@ export default function FabricsPage() {
 
       {/* Toolbar */}
       <div
-        className="max-w-[1320px] mx-auto px-8 py-5 flex justify-between items-baseline"
+        className="max-w-[1320px] mx-auto px-4 sm:px-8 py-5 flex justify-between items-baseline gap-3"
         style={{ borderBottom: "1px solid var(--line)" }}
       >
         <div className="flex items-center gap-3">

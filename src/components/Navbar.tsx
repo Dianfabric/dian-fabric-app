@@ -16,16 +16,30 @@ export default function Navbar() {
         borderColor: "var(--line)",
       }}
     >
-      <div className="max-w-[1320px] mx-auto h-[70px] px-8 flex items-center justify-between">
+      <div className="max-w-[1320px] mx-auto h-[64px] sm:h-[70px] px-4 sm:px-8 flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="font-semibold text-[27px] tracking-[.2em]"
-          style={{ fontFamily: "'Cormorant Garamond', serif", color: "var(--navy)" }}
+          aria-label="dian"
+          className="flex items-end gap-[7px] shrink-0"
         >
-          DIAN
+          <span
+            className="leading-none text-[26px] sm:text-[30px] lowercase"
+            style={{ fontFamily: "'Jost', sans-serif", fontWeight: 700, letterSpacing: "-.01em", color: "#16181d" }}
+          >
+            dian
+          </span>
+          <svg
+            viewBox="0 0 46 40"
+            className="h-[19px] sm:h-[22px] w-auto mb-[3px]"
+            aria-hidden="true"
+            fill="#16181d"
+          >
+            <rect x="2" y="29" width="42" height="7" rx="3.5" />
+            <circle cx="38" cy="12" r="5.4" />
+          </svg>
         </Link>
 
-        <nav className="flex gap-[30px] text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>
+        <nav className="flex gap-[18px] sm:gap-[30px] text-[13px] sm:text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>
           <Link
             href="/fabrics"
             className={`py-2 relative hover:text-[var(--navy)] transition-colors ${
@@ -56,7 +70,7 @@ export default function Navbar() {
           </Link>
         </nav>
 
-        <div className="flex gap-5 items-center text-[13px]" style={{ color: "var(--navy2)" }}>
+        <div className="hidden sm:flex gap-5 items-center text-[13px]" style={{ color: "var(--navy2)" }}>
           <a
             href="https://www.diantex.kr/"
             target="_blank"

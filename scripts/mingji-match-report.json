@@ -1,0 +1,519 @@
+{
+  "summary": {
+    "sheet_mingji_rows": 316,
+    "sheet_unique_products": 55,
+    "site_total": 196,
+    "matched_products": 42,
+    "missing_products": 13,
+    "site_only": 154
+  },
+  "matched": [
+    {
+      "code": "DH1539",
+      "site_codes": [
+        "DH1539C"
+      ],
+      "url": "https://www.mingji-textiles.com/interior-fabrics-48.html",
+      "images": 49
+    },
+    {
+      "code": "DH1605",
+      "site_codes": [
+        "DH1605C"
+      ],
+      "url": "https://www.mingji-textiles.com/product-52.html",
+      "images": 46
+    },
+    {
+      "code": "DH1620",
+      "site_codes": [
+        "DH1620"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-130.html",
+      "images": 79
+    },
+    {
+      "code": "DH1718",
+      "site_codes": [
+        "DH1718A"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-71.html",
+      "images": 45
+    },
+    {
+      "code": "DH1719",
+      "site_codes": [
+        "DH1719A"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-72.html",
+      "images": 53
+    },
+    {
+      "code": "DH1730",
+      "site_codes": [
+        "DH1730"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-73.html",
+      "images": 45
+    },
+    {
+      "code": "DH1732",
+      "site_codes": [
+        "DH1732"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-75.html",
+      "images": 69
+    },
+    {
+      "code": "DH1818",
+      "site_codes": [
+        "DH1818"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-80.html",
+      "images": 55
+    },
+    {
+      "code": "DH2020",
+      "site_codes": [
+        "DH2020"
+      ],
+      "url": "https://www.mingji-textiles.com/product-54.html",
+      "images": 64
+    },
+    {
+      "code": "DH2023",
+      "site_codes": [
+        "DH2023"
+      ],
+      "url": "https://www.mingji-textiles.com/product-55.html",
+      "images": 68
+    },
+    {
+      "code": "DH2036",
+      "site_codes": [
+        "DH2036"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-86.html",
+      "images": 77
+    },
+    {
+      "code": "DH2116",
+      "site_codes": [
+        "DH2116"
+      ],
+      "url": "https://www.mingji-textiles.com/product-56.html",
+      "images": 70
+    },
+    {
+      "code": "DH2130",
+      "site_codes": [
+        "DH2130"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-88.html",
+      "images": 53
+    },
+    {
+      "code": "DH2133",
+      "site_codes": [
+        "DH2133"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-44.html",
+      "images": 31
+    },
+    {
+      "code": "DH2136",
+      "site_codes": [
+        "DH2136"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-45.html",
+      "images": 55
+    },
+    {
+      "code": "DH2203",
+      "site_codes": [
+        "DH2203"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-144.html",
+      "images": 87
+    },
+    {
+      "code": "DH2205",
+      "site_codes": [
+        "DH2205"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-90.html",
+      "images": 79
+    },
+    {
+      "code": "DH2313",
+      "site_codes": [
+        "DH2313"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-148.html",
+      "images": 63
+    },
+    {
+      "code": "DH2402",
+      "site_codes": [
+        "DH2402"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-92.html",
+      "images": 25
+    },
+    {
+      "code": "DH2416",
+      "site_codes": [
+        "DH2416"
+      ],
+      "url": "https://www.mingji-textiles.com/jacquard-150.html",
+      "images": 29
+    },
+    {
+      "code": "DH2422",
+      "site_codes": [
+        "DH2422"
+      ],
+      "url": "https://www.mingji-textiles.com/velvet-154.html",
+      "images": 32
+    },
+    {
+      "code": "DH2425",
+      "site_codes": [
+        "DH2425"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-156.html",
+      "images": 43
+    },
+    {
+      "code": "DH2431",
+      "site_codes": [
+        "DH2431"
+      ],
+      "url": "https://www.mingji-textiles.com/linen-162.html",
+      "images": 31
+    },
+    {
+      "code": "DH2435",
+      "site_codes": [
+        "DH2435"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-165.html",
+      "images": 31
+    },
+    {
+      "code": "DH2436",
+      "site_codes": [
+        "DH2436"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-166.html",
+      "images": 53
+    },
+    {
+      "code": "DH2505",
+      "site_codes": [
+        "DH2505"
+      ],
+      "url": "https://www.mingji-textiles.com/chenille-169.html",
+      "images": 53
+    },
+    {
+      "code": "MJG82307",
+      "site_codes": [
+        "MJG82307"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-206.html",
+      "images": 29
+    },
+    {
+      "code": "MJG82313",
+      "site_codes": [
+        "MJG82313"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-207.html",
+      "images": 41
+    },
+    {
+      "code": "MJG82315",
+      "site_codes": [
+        "MJG82315"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-208.html",
+      "images": 41
+    },
+    {
+      "code": "MJG82316",
+      "site_codes": [
+        "MJG82316"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-209.html",
+      "images": 25
+    },
+    {
+      "code": "MJG82318",
+      "site_codes": [
+        "MJG82318"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-210.html",
+      "images": 35
+    },
+    {
+      "code": "MJG82319",
+      "site_codes": [
+        "MJG82319"
+      ],
+      "url": "https://www.mingji-textiles.com/outdoor-fabrics-211.html",
+      "images": 29
+    },
+    {
+      "code": "MJG82320",
+      "site_codes": [
+        "MJG82320"
+      ],
+      "url": "https://www.mingji-textiles.com/plain-fabric-212.html",
+      "images": 24
+    },
+    {
+      "code": "MJG82321",
+      "site_codes": [
+        "MJG82321"
+      ],
+      "url": "https://www.mingji-textiles.com/plain-fabric-213.html",
+      "images": 20
+    },
+    {
+      "code": "MJG82322",
+      "site_codes": [
+        "MJG82322"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-61.html",
+      "images": 25
+    },
+    {
+      "code": "MJG82323",
+      "site_codes": [
+        "MJG82323"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-214.html",
+      "images": 25
+    },
+    {
+      "code": "MJG82324",
+      "site_codes": [
+        "MJG82324"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-215.html",
+      "images": 25
+    },
+    {
+      "code": "MJG82325",
+      "site_codes": [
+        "MJG82325"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-216.html",
+      "images": 23
+    },
+    {
+      "code": "MJG82326",
+      "site_codes": [
+        "MJG82326"
+      ],
+      "url": "https://www.mingji-textiles.com/plain-fabric-217.html",
+      "images": 22
+    },
+    {
+      "code": "MJG82327",
+      "site_codes": [
+        "MJG82327"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-218.html",
+      "images": 21
+    },
+    {
+      "code": "MJG82328",
+      "site_codes": [
+        "MJG82328"
+      ],
+      "url": "https://www.mingji-textiles.com/solution-dyed-jacquard-219.html",
+      "images": 21
+    },
+    {
+      "code": "MJG83301",
+      "site_codes": [
+        "MJG83301"
+      ],
+      "url": "https://www.mingji-textiles.com/acrylic-plain-fabric-228.html",
+      "images": 35
+    }
+  ],
+  "missing_from_site": [
+    "DH1621",
+    "DH2207",
+    "DH2323",
+    "DH2403",
+    "DH2411",
+    "DH2415",
+    "MJG82301",
+    "MJG82302",
+    "MJG82303",
+    "MJG82304",
+    "MJG82305",
+    "MJG82306",
+    "MJG82309"
+  ],
+  "site_only": [
+    "DF2309",
+    "DH1219",
+    "DH1250",
+    "DH1306",
+    "DH1320",
+    "DH1415",
+    "DH1427",
+    "DH1429",
+    "DH1435",
+    "DH1501",
+    "DH1502",
+    "DH1506",
+    "DH1508",
+    "DH1532",
+    "DH1538",
+    "DH1541",
+    "DH1542",
+    "DH1543",
+    "DH1606",
+    "DH1607",
+    "DH1608",
+    "DH1610",
+    "DH1731",
+    "DH1739",
+    "DH1740",
+    "DH1743",
+    "DH1745",
+    "DH1746",
+    "DH1801",
+    "DH1803",
+    "DH1805",
+    "DH1806",
+    "DH1807",
+    "DH1808",
+    "DH1810",
+    "DH1812",
+    "DH1813",
+    "DH1816",
+    "DH1902",
+    "DH1903",
+    "DH1905",
+    "DH1909",
+    "DH1918",
+    "DH1919",
+    "DH2001",
+    "DH2002",
+    "DH2003",
+    "DH2005",
+    "DH2006",
+    "DH2007",
+    "DH2009",
+    "DH2010",
+    "DH2022",
+    "DH2026",
+    "DH2027",
+    "DH2028",
+    "DH2101",
+    "DH2103",
+    "DH2105",
+    "DH2106",
+    "DH2107",
+    "DH2108",
+    "DH2109",
+    "DH2111",
+    "DH2112",
+    "DH2117",
+    "DH2118",
+    "DH2119",
+    "DH2120",
+    "DH2121",
+    "DH2128",
+    "DH2131",
+    "DH2132",
+    "DH2135",
+    "DH2137",
+    "DH2139",
+    "DH2201",
+    "DH2202",
+    "DH2206",
+    "DH2215",
+    "DH2216",
+    "DH2310",
+    "DH2312",
+    "DH2315",
+    "DH2417",
+    "DH2419",
+    "DH2420",
+    "DH2423",
+    "DH2426",
+    "DH2427",
+    "DH2428",
+    "DH2429",
+    "DH2430",
+    "DH2432",
+    "DH2433",
+    "DH2501",
+    "DH2502",
+    "DH2521",
+    "DH2522",
+    "DH2523",
+    "DH2525",
+    "DH2526",
+    "DH2527",
+    "DH2528",
+    "DH2529",
+    "DH2530",
+    "DH2531",
+    "DH2532",
+    "MJG600",
+    "MJG6001",
+    "MJG6003",
+    "MJG6069",
+    "MJG609",
+    "MJG618",
+    "MJG622053",
+    "MJG62206",
+    "MJG622078",
+    "MJG62213",
+    "MJG622139",
+    "MJG626009",
+    "MJG6915",
+    "MJG6919",
+    "MJG6923",
+    "MJG6966",
+    "MJG83113",
+    "MJG83135",
+    "MJG83972",
+    "MJG84221",
+    "MJG84276",
+    "MJG84294",
+    "MJG84303",
+    "MJG8454",
+    "ZC32650",
+    "ZC32651",
+    "ZC32652",
+    "ZC32653",
+    "ZC32655",
+    "ZC32656",
+    "ZC32657",
+    "ZC32658",
+    "ZC32659",
+    "ZC32660",
+    "ZC32661",
+    "ZC32662",
+    "ZC32663",
+    "ZC32665",
+    "ZC32666",
+    "ZC32667",
+    "ZC32668",
+    "ZC32669",
+    "ZC32670",
+    "ZC32672",
+    "ZC32673",
+    "ZC32675"
+  ]
+}

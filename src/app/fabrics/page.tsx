@@ -49,16 +49,12 @@ const MOBILE_TABS = [
   { key: "type", label: "종류" },
   { key: "pattern", label: "패턴" },
   { key: "color", label: "색상" },
-  { key: "material", label: "소재" },
   { key: "usage", label: "용도" },
   { key: "width", label: "폭" },
 ];
 
-const MATERIALS: { key: "co" | "wo" | "li"; label: string }[] = [
-  { key: "co", label: "면" },
-  { key: "wo", label: "울" },
-  { key: "li", label: "린넨" },
-];
+// 종류 → 소재% 슬라이더 키 (이 종류를 선택했을 때만 해당 슬라이더 노출)
+const MAT_KEY: Record<string, "co" | "wo" | "li"> = { "면": "co", "울": "wo", "린넨": "li" };
 
 function getRestoredState() {
   try {
@@ -91,6 +87,12 @@ export default function FabricsPage() {
   const [sortBy, setSortBy] = useState<string>(restored.current?.sortBy || "newest");
   const setMat = useCallback((key: "co" | "wo" | "li", val: number) => {
     setMatMin((m) => ({ ...m, [key]: val }));
+    setPage(1);
+  }, []);
+  // 종류 선택/해제 — 바꿀 때 소재 슬라이더 값 초기화 (다른 종류에 잔류 안 되게)
+  const selectType = useCallback((t: string) => {
+    setSelectedType((prev: string) => (prev === t ? "" : t));
+    setMatMin({ co: 0, wo: 0, li: 0 });
     setPage(1);
   }, []);
   const [goToPage, setGoToPage] = useState("");
@@ -162,9 +164,10 @@ export default function FabricsPage() {
     if (selectedColors.length > 0) params.set("color", selectedColors.join(","));
     if (searchQuery) params.set("search", searchQuery);
     if (wideOnly) params.set("wide", "1");
-    if (matMin.co > 0) params.set("co_min", String(matMin.co));
-    if (matMin.wo > 0) params.set("wo_min", String(matMin.wo));
-    if (matMin.li > 0) params.set("li_min", String(matMin.li));
+    // 소재% 는 해당 종류를 선택했을 때만 전송 (면→co, 울→wo, 린넨→li)
+    if (selectedType === "면" && matMin.co > 0) params.set("co_min", String(matMin.co));
+    if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
+    if (selectedType === "린넨" && matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
 
     try {
@@ -407,7 +410,6 @@ export default function FabricsPage() {
               type: selectedType ? 1 : 0,
               pattern: selectedPatterns.length,
               color: selectedColors.length,
-              material: (matMin.co > 0 ? 1 : 0) + (matMin.wo > 0 ? 1 : 0) + (matMin.li > 0 ? 1 : 0),
               usage: selectedUsage ? 1 : 0,
               width: wideOnly ? 1 : 0,
             };
@@ -445,11 +447,22 @@ export default function FabricsPage() {
         {openFilter && (
           <div className="mt-3 p-3 rounded-[6px]" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>
             {openFilter === "type" && (
-              <div className="grid grid-cols-4 gap-2">
-                {FABRIC_TYPES.map(t => (
-                  <Pill key={t} label={t} active={selectedType === t}
-                    onClick={() => { setSelectedType(selectedType === t ? "" : t); setPage(1); }} />
-                ))}
+              <div>
+                <div className="grid grid-cols-4 gap-2">
+                  {FABRIC_TYPES.map(t => (
+                    <Pill key={t} label={t} active={selectedType === t} onClick={() => selectType(t)} />
+                  ))}
+                </div>
+                {/* 면/울/린넨 선택 시 → 해당 소재 함량 슬라이더 */}
+                {MAT_KEY[selectedType] && (
+                  <div className="mt-3 pt-3" style={{ borderTop: "1px dashed var(--line)" }}>
+                    <MaterialSlider
+                      label={`${selectedType} 함량`}
+                      value={matMin[MAT_KEY[selectedType]]}
+                      onChange={(v) => setMat(MAT_KEY[selectedType], v)}
+                    />
+                  </div>
+                )}
               </div>
             )}
             {openFilter === "pattern" && (
@@ -471,13 +484,6 @@ export default function FabricsPage() {
                     }} />
                     <span className="text-[10px]" style={{ color: selectedColors.includes(c.value) ? "var(--navy)" : "var(--muted)", fontWeight: selectedColors.includes(c.value) ? 600 : 400 }}>{c.label}</span>
                   </button>
-                ))}
-              </div>
-            )}
-            {openFilter === "material" && (
-              <div>
-                {MATERIALS.map((m) => (
-                  <MaterialSlider key={m.key} label={m.label} value={matMin[m.key]} onChange={(v) => setMat(m.key, v)} />
                 ))}
               </div>
             )}
@@ -510,9 +516,19 @@ export default function FabricsPage() {
                 key={t}
                 label={t}
                 active={selectedType === t}
-                onClick={() => { setSelectedType(selectedType === t ? "" : t); setPage(1); }}
+                onClick={() => selectType(t)}
               />
             ))}
+            {/* 면/울/린넨 선택 시 → 해당 소재 함량 슬라이더 */}
+            {MAT_KEY[selectedType] && (
+              <div className="mt-2 pt-3" style={{ borderTop: "1px dashed var(--line)" }}>
+                <MaterialSlider
+                  label={`${selectedType} 함량`}
+                  value={matMin[MAT_KEY[selectedType]]}
+                  onChange={(v) => setMat(MAT_KEY[selectedType], v)}
+                />
+              </div>
+            )}
           </FilterGroup>
 
           {/* 패턴 (multi-select) */}
@@ -561,18 +577,6 @@ export default function FabricsPage() {
                 label={u}
                 active={selectedUsage === u}
                 onClick={() => { setSelectedUsage(selectedUsage === u ? "" : u); setPage(1); }}
-              />
-            ))}
-          </FilterGroup>
-
-          {/* 소재 함량 */}
-          <FilterGroup title="소재 함량">
-            {MATERIALS.map((m) => (
-              <MaterialSlider
-                key={m.key}
-                label={m.label}
-                value={matMin[m.key]}
-                onChange={(v) => setMat(m.key, v)}
               />
             ))}
           </FilterGroup>

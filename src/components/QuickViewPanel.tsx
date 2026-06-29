@@ -88,6 +88,11 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
 
   if (!fabric) return null;
   const f = current || fabric;
+  // 자기 컬러를 맨 앞(default)에 두고 나머지 합침 → "모든 컬러"
+  const allColors: Variant[] = [
+    { id: f.id, name: f.name, color_code: f.color_code, image_url: f.image_url, price_per_yard: f.price_per_yard },
+    ...variants.filter((v) => v.id !== f.id),
+  ];
 
   return (
     <>
@@ -175,14 +180,14 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
         </div>
 
         {/* Color Variants */}
-        {variants.length > 0 && (
+        {allColors.length > 0 && (
           <div className="px-6 py-5 border-t border-gray-100">
             <div className="text-sm font-bold text-gray-600 mb-3 flex items-center justify-between">
-              <span>다른 컬러</span>
-              <span className="text-xs text-gray-400 font-normal">{variants.length}개</span>
+              <span>모든 컬러</span>
+              <span className="text-xs text-gray-400 font-normal">{allColors.length}개</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {variants.map((v) => (
+              {allColors.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => selectVariant(v)}
@@ -211,11 +216,6 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           </div>
         )}
 
-        {variants.length === 0 && !loading && (
-          <div className="px-6 py-4 border-t border-gray-100 text-center text-sm text-gray-400">
-            컬러 변형이 없습니다
-          </div>
-        )}
         </div>
         {/* /스크롤 영역 */}
 

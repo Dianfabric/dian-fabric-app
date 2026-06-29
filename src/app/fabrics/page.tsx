@@ -45,6 +45,14 @@ const SORT_OPTIONS = [
   { label: "가격 낮은순", value: "price_low" },
 ];
 
+const MOBILE_TABS = [
+  { key: "type", label: "종류" },
+  { key: "pattern", label: "패턴" },
+  { key: "color", label: "색상" },
+  { key: "usage", label: "용도" },
+  { key: "width", label: "폭" },
+];
+
 function getRestoredState() {
   try {
     const saved = typeof window !== "undefined" ? sessionStorage.getItem(FABRICS_STATE_KEY) : null;
@@ -70,6 +78,7 @@ export default function FabricsPage() {
   const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
   const [sortBy, setSortBy] = useState<string>(restored.current?.sortBy || "newest");
   const [goToPage, setGoToPage] = useState("");
+  const [openFilter, setOpenFilter] = useState<string | null>(null); // 모바일 가로 필터 아코디언
   const [searchQuery, setSearchQuery] = useState(restored.current?.searchQuery || "");
   const [searchInput, setSearchInput] = useState(restored.current?.searchQuery || "");
   const [lightbox, setLightbox] = useState<{
@@ -367,10 +376,102 @@ export default function FabricsPage() {
         </select>
       </div>
 
+      {/* 모바일 가로 필터 아코디언 (lg 미만에서만) */}
+      <div className="lg:hidden max-w-[1320px] mx-auto px-4 pt-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+          {MOBILE_TABS.map(tab => {
+            const counts: Record<string, number> = {
+              type: selectedType ? 1 : 0,
+              pattern: selectedPatterns.length,
+              color: selectedColors.length,
+              usage: selectedUsage ? 1 : 0,
+              width: wideOnly ? 1 : 0,
+            };
+            const cnt = counts[tab.key];
+            const open = openFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setOpenFilter(open ? null : tab.key)}
+                className="shrink-0 flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[13px] transition-colors"
+                style={{
+                  border: `1px solid ${open || cnt ? "var(--navy)" : "var(--line)"}`,
+                  background: open ? "var(--navy)" : "#fff",
+                  color: open ? "#fff" : "var(--navy2)",
+                  fontWeight: cnt || open ? 600 : 400,
+                }}
+              >
+                {tab.label}
+                {cnt > 0 && (
+                  <span
+                    className="text-[10px] min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center"
+                    style={{ background: open ? "rgba(255,255,255,.25)" : "var(--navy)", color: "#fff" }}
+                  >
+                    {cnt}
+                  </span>
+                )}
+                <svg className="w-3 h-3 transition-transform" style={{ transform: open ? "rotate(180deg)" : undefined }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            );
+          })}
+        </div>
+
+        {openFilter && (
+          <div className="mt-3 p-3 rounded-[6px]" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>
+            {openFilter === "type" && (
+              <div className="grid grid-cols-4 gap-2">
+                {FABRIC_TYPES.map(t => (
+                  <Pill key={t} label={t} active={selectedType === t}
+                    onClick={() => { setSelectedType(selectedType === t ? "" : t); setPage(1); }} />
+                ))}
+              </div>
+            )}
+            {openFilter === "pattern" && (
+              <div className="grid grid-cols-4 gap-2">
+                {PATTERN_DETAILS.map(p => (
+                  <Pill key={p} label={p} active={selectedPatterns.includes(p)} onClick={() => togglePattern(p)} />
+                ))}
+              </div>
+            )}
+            {openFilter === "color" && (
+              <div className="flex flex-wrap gap-3 py-1">
+                {COLOR_SWATCHES.map(c => (
+                  <button key={c.value} title={c.label} onClick={() => toggleColor(c.value)}
+                    className="flex flex-col items-center gap-1 w-[52px]">
+                    <span className="w-8 h-8 rounded-full" style={{
+                      background: c.hex,
+                      border: selectedColors.includes(c.value) ? "2px solid var(--navy)" : "1px solid rgba(0,0,0,.07)",
+                      transform: selectedColors.includes(c.value) ? "scale(1.12)" : undefined,
+                    }} />
+                    <span className="text-[10px]" style={{ color: selectedColors.includes(c.value) ? "var(--navy)" : "var(--muted)", fontWeight: selectedColors.includes(c.value) ? 600 : 400 }}>{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {openFilter === "usage" && (
+              <div className="grid grid-cols-4 gap-2">
+                {USAGE_TYPES.map(u => (
+                  <Pill key={u} label={u} active={selectedUsage === u}
+                    onClick={() => { setSelectedUsage(selectedUsage === u ? "" : u); setPage(1); }} />
+                ))}
+              </div>
+            )}
+            {openFilter === "width" && (
+              <div className="grid grid-cols-2 gap-2">
+                <Pill label="대폭 (200cm↑)" active={wideOnly}
+                  onClick={() => { setWideOnly(!wideOnly); setPage(1); }} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Main: Sidebar + Grid */}
       <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-[30px] pb-20 grid gap-8 lg:gap-[46px] grid-cols-1 lg:grid-cols-[206px_1fr]">
-        {/* Sidebar */}
-        <aside>
+        {/* Sidebar (데스크탑 전용) */}
+        <aside className="hidden lg:block">
           {/* 종류 */}
           <FilterGroup title="종류">
             {FABRIC_TYPES.map(t => (
@@ -580,6 +681,24 @@ function FilterGroup({ title, children }: { title: string; children: React.React
       </div>
       {children}
     </div>
+  );
+}
+
+// 모바일 필터 패널용 옵션 버튼
+function Pill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-1 py-2 rounded-[5px] text-[12.5px] text-center transition-colors whitespace-nowrap overflow-hidden text-ellipsis"
+      style={{
+        border: `1px solid ${active ? "var(--navy)" : "var(--line)"}`,
+        background: active ? "var(--navy)" : "#fff",
+        color: active ? "#fff" : "var(--navy2)",
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

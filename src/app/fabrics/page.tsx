@@ -49,8 +49,15 @@ const MOBILE_TABS = [
   { key: "type", label: "종류" },
   { key: "pattern", label: "패턴" },
   { key: "color", label: "색상" },
+  { key: "material", label: "소재" },
   { key: "usage", label: "용도" },
   { key: "width", label: "폭" },
+];
+
+const MATERIALS: { key: "co" | "wo" | "li"; label: string }[] = [
+  { key: "co", label: "면" },
+  { key: "wo", label: "울" },
+  { key: "li", label: "린넨" },
 ];
 
 function getRestoredState() {
@@ -76,7 +83,15 @@ export default function FabricsPage() {
   const [selectedUsage, setSelectedUsage] = useState(restored.current?.selectedUsage || "");
   const [selectedColors, setSelectedColors] = useState<string[]>(restored.current?.selectedColors || []);
   const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
+  // 소재 최소 함량(%) — 면/울/린넨, 0이면 미적용
+  const [matMin, setMatMin] = useState<{ co: number; wo: number; li: number }>(
+    restored.current?.matMin || { co: 0, wo: 0, li: 0 }
+  );
   const [sortBy, setSortBy] = useState<string>(restored.current?.sortBy || "newest");
+  const setMat = useCallback((key: "co" | "wo" | "li", val: number) => {
+    setMatMin((m) => ({ ...m, [key]: val }));
+    setPage(1);
+  }, []);
   const [goToPage, setGoToPage] = useState("");
   const [openFilter, setOpenFilter] = useState<string | null>(null); // 모바일 가로 필터 아코디언
   const [searchQuery, setSearchQuery] = useState(restored.current?.searchQuery || "");
@@ -95,10 +110,10 @@ export default function FabricsPage() {
   useEffect(() => {
     try {
       sessionStorage.setItem(FABRICS_STATE_KEY, JSON.stringify({
-        page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy,
+        page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin,
       }));
     } catch {}
-  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy]);
+  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
 
   const openLightbox = useCallback((fabricIdx: number) => {
     const images = fabrics.map((f) => ({
@@ -133,7 +148,7 @@ export default function FabricsPage() {
 
   useEffect(() => {
     fetchFabrics();
-  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy]);
+  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
 
   const fetchFabrics = async () => {
     setLoading(true);
@@ -145,6 +160,9 @@ export default function FabricsPage() {
     if (selectedColors.length > 0) params.set("color", selectedColors.join(","));
     if (searchQuery) params.set("search", searchQuery);
     if (wideOnly) params.set("wide", "1");
+    if (matMin.co > 0) params.set("co_min", String(matMin.co));
+    if (matMin.wo > 0) params.set("wo_min", String(matMin.wo));
+    if (matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
 
     try {
@@ -212,7 +230,8 @@ export default function FabricsPage() {
     return pages;
   };
 
-  const hasActiveFilters = selectedType || selectedPatterns.length > 0 || selectedUsage || selectedColors.length > 0 || wideOnly || searchQuery;
+  const matActive = matMin.co > 0 || matMin.wo > 0 || matMin.li > 0;
+  const hasActiveFilters = selectedType || selectedPatterns.length > 0 || selectedUsage || selectedColors.length > 0 || wideOnly || matActive || searchQuery;
 
   const clearAllFilters = useCallback(() => {
     setSelectedType("");
@@ -220,6 +239,7 @@ export default function FabricsPage() {
     setSelectedUsage("");
     setSelectedColors([]);
     setWideOnly(false);
+    setMatMin({ co: 0, wo: 0, li: 0 });
     setSearchQuery("");
     setSearchInput("");
     setSortBy("newest");
@@ -384,6 +404,7 @@ export default function FabricsPage() {
               type: selectedType ? 1 : 0,
               pattern: selectedPatterns.length,
               color: selectedColors.length,
+              material: (matMin.co > 0 ? 1 : 0) + (matMin.wo > 0 ? 1 : 0) + (matMin.li > 0 ? 1 : 0),
               usage: selectedUsage ? 1 : 0,
               width: wideOnly ? 1 : 0,
             };
@@ -447,6 +468,13 @@ export default function FabricsPage() {
                     }} />
                     <span className="text-[10px]" style={{ color: selectedColors.includes(c.value) ? "var(--navy)" : "var(--muted)", fontWeight: selectedColors.includes(c.value) ? 600 : 400 }}>{c.label}</span>
                   </button>
+                ))}
+              </div>
+            )}
+            {openFilter === "material" && (
+              <div>
+                {MATERIALS.map((m) => (
+                  <MaterialSlider key={m.key} label={m.label} value={matMin[m.key]} onChange={(v) => setMat(m.key, v)} />
                 ))}
               </div>
             )}
@@ -530,6 +558,18 @@ export default function FabricsPage() {
                 label={u}
                 active={selectedUsage === u}
                 onClick={() => { setSelectedUsage(selectedUsage === u ? "" : u); setPage(1); }}
+              />
+            ))}
+          </FilterGroup>
+
+          {/* 소재 함량 */}
+          <FilterGroup title="소재 함량">
+            {MATERIALS.map((m) => (
+              <MaterialSlider
+                key={m.key}
+                label={m.label}
+                value={matMin[m.key]}
+                onChange={(v) => setMat(m.key, v)}
               />
             ))}
           </FilterGroup>
@@ -680,6 +720,32 @@ function FilterGroup({ title, children }: { title: string; children: React.React
         {title}
       </div>
       {children}
+    </div>
+  );
+}
+
+// 소재 함량 슬라이더 (슬라이더 + 숫자 입력, N% 이상)
+function MaterialSlider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  const on = value > 0;
+  return (
+    <div className="py-[7px]">
+      <div className="flex items-center justify-between mb-[6px]">
+        <span className="text-[13.5px]" style={{ color: on ? "var(--navy)" : "var(--navy2)", fontWeight: on ? 600 : 400 }}>{label}</span>
+        <div className="flex items-center gap-[5px]">
+          <input
+            type="number" min={0} max={100} value={value}
+            onChange={(e) => onChange(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+            className="w-[46px] text-right text-[12px] rounded-[4px] px-1 py-[3px] outline-none"
+            style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
+          />
+          <span className="text-[11px]" style={{ color: "var(--muted)" }}>% 이상</span>
+        </div>
+      </div>
+      <input
+        type="range" min={0} max={100} step={5} value={value}
+        onChange={(e) => onChange(parseInt(e.target.value))}
+        className="w-full cursor-pointer accent-[#2B3A55]"
+      />
     </div>
   );
 }

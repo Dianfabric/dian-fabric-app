@@ -402,6 +402,10 @@ export async function GET(request: NextRequest) {
   const wide = searchParams.get("wide") === "1"; // 대폭만 (width_mm >= 2000 = 200cm)
   const WIDE_MIN_MM = 2000;
   const sort = searchParams.get("sort") || "newest"; // newest | name | price_high | price_low
+  // 소재 최소 함량 필터 (%): 0이면 미적용
+  const coMin = parseFloat(searchParams.get("co_min") || "0") || 0; // 면
+  const liMin = parseFloat(searchParams.get("li_min") || "0") || 0; // 린넨
+  const woMin = parseFloat(searchParams.get("wo_min") || "0") || 0; // 울
 
   // 색상 필터 경로용 JS 정렬 비교자
   const sortCmp = (a: Record<string, unknown>, b: Record<string, unknown>): number => {
@@ -444,6 +448,9 @@ export async function GET(request: NextRequest) {
       p_sort: sort,
       p_limit: limit,
       p_offset: (page - 1) * limit,
+      p_co_min: coMin,
+      p_li_min: liMin,
+      p_wo_min: woMin,
     });
     if (!error) {
       const total = data && data.length ? Number(data[0].total_count) : 0;
@@ -467,6 +474,9 @@ export async function GET(request: NextRequest) {
       .not("image_url", "is", null);
 
     if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
+    if (coMin > 0) query = query.gte("co_percent", coMin);
+    if (liMin > 0) query = query.gte("li_percent", liMin);
+    if (woMin > 0) query = query.gte("wo_percent", woMin);
 
     // 모든 선택 색상을 포함하는 원단 필터 (AND 조건)
     for (const c of colors) {

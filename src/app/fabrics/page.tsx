@@ -147,6 +147,7 @@ export default function FabricsPage() {
     if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
     if (selectedType === "린넨" && matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
+    else params.set("feat", "1"); // 정렬 미선택(기본) → EK UNIQUE 우선노출
 
     try {
       const res = await fetch(`/api/search?${params}`);

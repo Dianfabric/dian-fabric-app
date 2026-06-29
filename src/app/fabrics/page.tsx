@@ -84,7 +84,7 @@ export default function FabricsPage() {
   const [matMin, setMatMin] = useState<{ co: number; wo: number; li: number }>(
     restored.current?.matMin || { co: 0, wo: 0, li: 0 }
   );
-  const [sortBy, setSortBy] = useState<string>(restored.current?.sortBy || "newest");
+  const [sortBy, setSortBy] = useState<string>(restored.current?.sortBy || ""); // ""=기본(신상품순), 라벨은 "정렬"
   const setMat = useCallback((key: "co" | "wo" | "li", val: number) => {
     setMatMin((m) => ({ ...m, [key]: val }));
     setPage(1);
@@ -339,8 +339,9 @@ export default function FabricsPage() {
           className="border-none bg-transparent text-[13px] cursor-pointer"
           style={{ fontFamily: "inherit", color: "var(--navy)" }}
         >
+          <option value="">정렬</option>
           {SORT_OPTIONS.map(s => (
-            <option key={s.value} value={s.value}>정렬 — {s.label}</option>
+            <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
       </div>

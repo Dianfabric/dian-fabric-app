@@ -18,6 +18,8 @@ type Fabric = {
   fabric_type?: string | null;
   pattern_detail?: string | null;
   usage_types?: string[] | null;
+  composition_note?: string | null;
+  width_mm?: number | null;
   price_per_yard?: number | null;
 };
 
@@ -166,17 +168,29 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           {f.usage_types && f.usage_types.length > 0 && (
             <div className="flex justify-between py-2.5 text-base border-b border-gray-100">
               <span className="text-gray-500">사용처</span>
-              <span className="font-bold">{f.usage_types.join(", ")}</span>
+              <span className="font-bold text-right">{f.usage_types.join(", ")}</span>
             </div>
           )}
-          {f.price_per_yard && (
+          {f.composition_note && (
+            <div className="flex justify-between gap-4 py-2.5 text-base border-b border-gray-100">
+              <span className="text-gray-500 shrink-0">성분</span>
+              <span className="font-bold text-right">{f.composition_note}</span>
+            </div>
+          )}
+          {f.width_mm ? (
+            <div className="flex justify-between py-2.5 text-base border-b border-gray-100">
+              <span className="text-gray-500">폭</span>
+              <span className="font-bold">{(f.width_mm / 10).toFixed(0)}cm</span>
+            </div>
+          ) : null}
+          {f.price_per_yard ? (
             <div className="flex justify-between py-2.5 text-base">
               <span className="text-gray-500">가격</span>
               <span className="font-bold text-[#1E2A3A]">
                 ₩{f.price_per_yard.toLocaleString()}/Y
               </span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Color Variants */}

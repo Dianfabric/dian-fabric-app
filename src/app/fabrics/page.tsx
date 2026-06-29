@@ -320,7 +320,7 @@ export default function FabricsPage() {
 
       {/* Toolbar */}
       <div
-        className="max-w-[1320px] mx-auto px-4 sm:px-8 py-5 flex justify-between items-baseline gap-3"
+        className="max-w-[1600px] mx-auto px-4 sm:px-8 py-5 flex justify-between items-baseline gap-3"
         style={{ borderBottom: "1px solid var(--line)" }}
       >
         <div className="flex items-center gap-3">
@@ -456,7 +456,7 @@ export default function FabricsPage() {
       </div>
 
       {/* Main: Sidebar + Grid */}
-      <div className="max-w-[1320px] mx-auto px-4 md:px-8 py-[30px] pb-20 grid gap-8 lg:gap-[46px] grid-cols-1 lg:grid-cols-[206px_1fr]">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-[30px] pb-20 grid gap-8 lg:gap-[40px] grid-cols-1 lg:grid-cols-[200px_1fr]">
         {/* Sidebar (데스크탑 전용) */}
         <aside className="hidden lg:block">
           {/* 종류 */}

@@ -397,6 +397,8 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") || "";
   const subtype = searchParams.get("subtype") || "";
   const usage = searchParams.get("usage") || "";
+  // '월커버링' 라벨 → 기존 '벽패널' 데이터로 조회 (라벨↔컬럼 분리)
+  const usageCol = usage === "월커버링" ? "벽패널" : usage;
   const color = searchParams.get("color") || "";
   const search = searchParams.get("search") || "";
   const wide = searchParams.get("wide") === "1"; // 대폭만 (width_mm >= 2000 = 200cm)
@@ -442,7 +444,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.rpc("list_design_groups", {
       p_type: type || null,
       p_subtypes: subtypeArr && subtypeArr.length ? subtypeArr : null,
-      p_usage: usage || null,
+      p_usage: usageCol || null,
       p_wide: wide,
       p_search: null,
       p_sort: sort,
@@ -505,7 +507,7 @@ export async function GET(request: NextRequest) {
       else if (type === "커튼") query = query.eq("is_curtain_eligible", true);
       else query = query.ilike("fabric_type", `%${type}%`);
     }
-    if (usage) query = query.contains("usage_types", [usage]);
+    if (usageCol) query = query.contains("usage_types", [usageCol]);
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -576,7 +578,7 @@ export async function GET(request: NextRequest) {
     else if (type === "커튼") query = query.eq("is_curtain_eligible", true);
     else query = query.eq("fabric_type", type);
   }
-  if (usage) query = query.contains("usage_types", [usage]);
+  if (usageCol) query = query.contains("usage_types", [usageCol]);
 
   const { data, count, error } = await query;
 

@@ -185,9 +185,8 @@ export default function FabricsPage() {
   }, [goToPage, totalPages]);
 
   const togglePattern = useCallback((p: string) => {
-    setSelectedPatterns(prev =>
-      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
-    );
+    // 단일선택: 같은 거 누르면 해제, 다른 거 누르면 그것만 선택
+    setSelectedPatterns(prev => (prev.includes(p) ? [] : [p]));
     setPage(1);
   }, []);
 

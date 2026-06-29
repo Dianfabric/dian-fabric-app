@@ -1,6 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { SearchResult, Fabric } from "@/lib/types";
+
+// 목록 썸네일: Supabase 이미지 변환(render)으로 리사이즈 (원본은 상세에서 사용)
+function thumbUrl(url: string | null | undefined, w = 500): string {
+  if (!url || !url.includes("/object/public/")) return url || "";
+  return url.replace("/object/public/", "/render/image/public/") + `?width=${w}&quality=75`;
+}
 
 type Props = {
   fabric: Fabric | SearchResult;
@@ -36,13 +41,14 @@ export default function FabricCard({
         }}
       >
         {fabric.image_url ? (
-          <Image
-            src={fabric.image_url}
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumbUrl(fabric.image_url)}
             alt={`${fabric.name}-${fabric.color_code}`}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ transitionTimingFunction: "cubic-bezier(.2,.7,.2,1)" }}
-            sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: "var(--muted)" }}>

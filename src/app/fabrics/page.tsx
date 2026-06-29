@@ -66,6 +66,7 @@ function getRestoredState() {
 export default function FabricsPage() {
   const restored = useRef(getRestoredState());
   const reqIdRef = useRef(0); // fetchFabrics 경쟁 상태 가드
+  const seedRef = useRef(Math.random().toString(36).slice(2, 10)); // 기본 셔플 시드
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(restored.current?.page || 1);
@@ -127,6 +128,11 @@ export default function FabricsPage() {
     } catch {}
   }, [loading, fabrics]);
 
+  // 필터 바뀔 때마다 새 셔플 시드 (페이지 변경엔 유지 → 페이지네이션 일관)
+  useEffect(() => {
+    seedRef.current = Math.random().toString(36).slice(2, 10);
+  }, [selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
+
   useEffect(() => {
     fetchFabrics();
   }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
@@ -147,7 +153,7 @@ export default function FabricsPage() {
     if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
     if (selectedType === "린넨" && matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
-    else params.set("feat", "1"); // 정렬 미선택(기본) → EK UNIQUE 우선노출
+    else { params.set("feat", "1"); params.set("seed", seedRef.current); } // 기본 → EK UNIQUE 우선 + 셔플
 
     try {
       const res = await fetch(`/api/search?${params}`);

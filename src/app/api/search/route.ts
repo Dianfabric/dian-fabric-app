@@ -416,6 +416,7 @@ export async function GET(request: NextRequest) {
   const liMin = parseFloat(searchParams.get("li_min") || "0") || 0; // 린넨
   const woMin = parseFloat(searchParams.get("wo_min") || "0") || 0; // 울
   const feat = searchParams.get("feat") === "1"; // 기본(정렬 미선택)일 때만 EK UNIQUE 우선
+  const seed = searchParams.get("seed") || ""; // 기본 모드 셔플 시드 (있으면 무작위 정렬)
 
   // 색상 필터 경로용 JS 정렬 비교자
   const sortCmp = (a: Record<string, unknown>, b: Record<string, unknown>): number => {
@@ -462,6 +463,7 @@ export async function GET(request: NextRequest) {
       p_li_min: liMin,
       p_wo_min: woMin,
       p_featured: feat,
+      p_seed: seed,
     });
     if (!error) {
       const total = data && data.length ? Number(data[0].total_count) : 0;

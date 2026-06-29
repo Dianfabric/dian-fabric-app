@@ -56,7 +56,12 @@ for(const f of all){
   if(p.wo===0&&has(f.fabric_type,"울")){rmW++;mistag.push(["울",f.name,f.color_code,f.composition_note]);}
   const nt=addMaterialTags(f.fabric_type,p);
   if(nt!==(f.fabric_type||"")) typeChanged++;
-  updates.push({id:f.id,fabric_type:nt,co_percent:p.co,li_percent:p.li,wo_percent:p.wo});
+  // 변경된 행만 업데이트 (fabric_type 또는 co/li/wo 수치 변동)
+  const changed = nt!==(f.fabric_type||"")
+    || Math.abs((f.co_percent||0)-p.co)>0.01
+    || Math.abs((f.li_percent||0)-p.li)>0.01
+    || p.wo>0; // wo_percent 는 신규 컬럼(기존 0) → 0보다 크면 채움
+  if(changed) updates.push({id:f.id,fabric_type:nt,co_percent:p.co,li_percent:p.li,wo_percent:p.wo});
 }
 // 오분류(성분엔 없는데 태그됨) 검토 리스트 — 제거는 안 하고 CSV만
 const csv="tag,name,color_code,composition\n"+mistag.map(r=>`"${r[0]}","${r[1]||""}","${r[2]||""}","${(r[3]||"").replace(/"/g,"'")}"`).join("\n");
@@ -66,6 +71,7 @@ console.log(`\n성분 검출  면(co>0):${coN}  울(wo>0):${woN}  린넨(li>0):$
 console.log(`태그 추가  면+${addCo}  울+${addW}  린넨+${addLi}`);
 console.log(`태그 제거  면-${rmCo}  울-${rmW}  린넨-${rmLi}  (성분에 없는데 태그됨)`);
 console.log(`fabric_type 바뀌는 행: ${typeChanged}`);
+console.log(`실제 업데이트 대상 행: ${updates.length}`);
 
 if(!APPLY){ console.log("\n드라이런 종료. 적용하려면 --apply (사전 wo_percent 컬럼 필요)"); process.exit(0); }
 

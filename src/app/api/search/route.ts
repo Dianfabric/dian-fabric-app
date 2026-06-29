@@ -454,12 +454,13 @@ export async function GET(request: NextRequest) {
     });
     if (!error) {
       const total = data && data.length ? Number(data[0].total_count) : 0;
-      const fabrics = (data || []).map(({ total_count, color_count, ...rest }: Record<string, unknown>) => ({
+      const totalFabrics = data && data.length ? Number(data[0].total_fabric_count) : 0;
+      const fabrics = (data || []).map(({ total_count, total_fabric_count, color_count, ...rest }: Record<string, unknown>) => ({
         ...rest,
         color_count: Number(color_count),
       }));
       return NextResponse.json({
-        fabrics, total, page, totalPages: Math.ceil(total / limit), mode: "design",
+        fabrics, total, totalFabrics, page, totalPages: Math.ceil(total / limit), mode: "design",
       });
     }
     // RPC 미생성/오류 시 → 개별모드로 폴백 (아래 로직 실행, 사이트 안 깨짐)

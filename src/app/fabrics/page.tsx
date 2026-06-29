@@ -71,6 +71,7 @@ export default function FabricsPage() {
   const [page, setPage] = useState(restored.current?.page || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [totalFabrics, setTotalFabrics] = useState(0); // 대표모드: 컬러웨이(원단) 총수
   const [selectedType, setSelectedType] = useState(restored.current?.selectedType || "");
   const [selectedPatterns, setSelectedPatterns] = useState<string[]>(
     restored.current?.selectedPatterns ??
@@ -154,6 +155,7 @@ export default function FabricsPage() {
       setFabrics(data.fabrics || []);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
+      setTotalFabrics(data.totalFabrics ?? data.total ?? 0);
       setMode(data.mode === "individual" ? "individual" : "design");
     } catch (err) {
       console.error(err);
@@ -317,7 +319,9 @@ export default function FabricsPage() {
       >
         <div className="flex items-center gap-3">
           <span className="text-[13px] tracking-[.03em]" style={{ color: "var(--muted)" }}>
-            전체 {total.toLocaleString()}{mode === "design" ? "개 디자인" : "개 컬러웨이"}
+            {mode === "design"
+              ? `전체 ${total.toLocaleString()}개 디자인 · ${totalFabrics.toLocaleString()}개 원단`
+              : `전체 ${total.toLocaleString()}개 원단`}
           </span>
           {hasActiveFilters && (
             <button

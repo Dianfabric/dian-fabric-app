@@ -30,9 +30,11 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
   const [current, setCurrent] = useState<Fabric | null>(fabric);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hovered, setHovered] = useState<Variant | null>(null); // 컬러 hover 시 상단 이미지 미리보기
 
   // 초기/변경 시 데이터 로드
   useEffect(() => {
+    setHovered(null);
     if (!fabric) {
       setCurrent(null);
       setVariants([]);
@@ -96,9 +98,9 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
       />
 
       {/* Slide-in Panel */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white z-50 shadow-[-8px_0_30px_rgba(0,0,0,0.15)] overflow-y-auto animate-slide-in-right">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
+      <div className="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white z-50 shadow-[-8px_0_30px_rgba(0,0,0,0.15)] flex flex-col animate-slide-in-right">
+        {/* Header (고정) */}
+        <div className="flex-none bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
           <span className="text-xs font-bold text-[#1E2A3A] tracking-wider">미리 보기</span>
           <button
             onClick={onClose}
@@ -112,12 +114,12 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           </button>
         </div>
 
-        {/* Hero Image */}
-        <div className="aspect-square bg-gray-50 relative">
-          {f.image_url ? (
+        {/* Hero Image (고정) — 컬러 hover 시 해당 컬러 이미지 미리보기 */}
+        <div className="flex-none aspect-square bg-gray-50 relative">
+          {(hovered?.image_url || f.image_url) ? (
             <img
-              src={f.image_url}
-              alt={`${f.name}-${f.color_code}`}
+              src={hovered?.image_url || f.image_url || ""}
+              alt={`${f.name}-${hovered?.color_code || f.color_code}`}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -125,6 +127,10 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
               No Image
             </div>
           )}
+          {/* 현재 보고 있는 컬러 라벨 */}
+          <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs font-bold px-2.5 py-1 rounded-md backdrop-blur-sm">
+            {hovered?.color_code || f.color_code}
+          </div>
           {loading && (
             <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-gray-200 border-t-[#1E2A3A] rounded-full animate-spin"></div>
@@ -132,6 +138,8 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
           )}
         </div>
 
+        {/* 스크롤 영역 (정보 + 컬러) */}
+        <div className="flex-1 overflow-y-auto">
         {/* Info */}
         <div className="px-6 py-5">
           <div className="text-2xl font-extrabold mb-1">{f.name}</div>
@@ -178,8 +186,10 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
                 <button
                   key={v.id}
                   onClick={() => selectVariant(v)}
+                  onMouseEnter={() => setHovered(v)}
+                  onMouseLeave={() => setHovered(null)}
                   className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-square ${
-                    v.id === f.id
+                    (hovered?.id || f.id) === v.id
                       ? "border-[#1E2A3A] scale-105 shadow-md"
                       : "border-transparent hover:border-[#1E2A3A]"
                   }`}
@@ -206,9 +216,11 @@ export default function QuickViewPanel({ fabric, onClose }: Props) {
             컬러 변형이 없습니다
           </div>
         )}
+        </div>
+        {/* /스크롤 영역 */}
 
-        {/* Footer Action */}
-        <div className="px-6 py-5 border-t border-gray-100 sticky bottom-0 bg-white">
+        {/* Footer Action (고정) */}
+        <div className="flex-none px-6 py-5 border-t border-gray-100 bg-white">
           <Link
             href={`/fabric/${f.id}`}
             className="block w-full text-center bg-gradient-to-r from-[#1E2A3A] to-[#1E2A3A] text-white py-3 rounded-xl font-bold hover:shadow-lg transition-shadow"

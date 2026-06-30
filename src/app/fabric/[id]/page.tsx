@@ -26,6 +26,7 @@ export default function FabricDetailPage() {
   const [showLightbox, setShowLightbox] = useState(false);
   const [hoverImage, setHoverImage] = useState<string | null>(null);
   const [hoverColor, setHoverColor] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(null); // 현재 선택된 컬러 (페이지 이동 없이 교체)
 
   useEffect(() => {
     if (!id) return;
@@ -69,8 +70,17 @@ export default function FabricDetailPage() {
   const compositionStr =
     fabric.composition_note || compositions.join(" ") || "-";
 
-  const pricePerMeter = fabric.price_per_yard
-    ? Math.round(fabric.price_per_yard * 1.094)
+  // 같은 디자인의 전체 컬러 (자기 + 변형). 컬러 클릭 시 페이지 이동 없이 이걸로 교체.
+  const allColors = [
+    { id: fabric.id, color_code: fabric.color_code, image_url: fabric.image_url, price_per_yard: fabric.price_per_yard },
+    ...colorVariants.map((v) => ({ id: v.id, color_code: v.color_code, image_url: v.image_url, price_per_yard: v.price_per_yard })),
+  ];
+  const current = allColors.find((c) => c.id === selId) || allColors[0];
+  // 표시 이미지/색번호: hover(임시 미리보기) 우선, 없으면 선택된 컬러
+  const dispImage = hoverImage || current.image_url;
+  const dispColor = hoverColor || current.color_code;
+  const pricePerMeter = current.price_per_yard
+    ? Math.round(current.price_per_yard * 1.094)
     : null;
 
   return (
@@ -85,15 +95,15 @@ export default function FabricDetailPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* 라이트박스 */}
-        {showLightbox && fabric.image_url && (
+        {showLightbox && current.image_url && (
           <ImageLightbox
             images={[{
-              src: fabric.image_url,
+              src: current.image_url,
               name: fabric.name,
-              colorCode: fabric.color_code,
+              colorCode: current.color_code,
               patternDetail: fabric.pattern_detail || undefined,
               fabricType: fabric.fabric_type || undefined,
-              price: fabric.price_per_yard || undefined,
+              price: current.price_per_yard || undefined,
             }]}
             currentIndex={0}
             onClose={() => setShowLightbox(false)}
@@ -106,10 +116,10 @@ export default function FabricDetailPage() {
             className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => setShowLightbox(true)}
           >
-            {(hoverImage || fabric.image_url) ? (
+            {dispImage ? (
               <Image
-                src={hoverImage || fabric.image_url!}
-                alt={`${fabric.name}-${hoverColor || fabric.color_code}`}
+                src={dispImage}
+                alt={`${fabric.name}-${dispColor}`}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -120,9 +130,9 @@ export default function FabricDetailPage() {
                 No Image
               </div>
             )}
-            {hoverColor && (
+            {dispColor && (
               <span className="absolute top-3 left-3 bg-black/70 text-white text-xs font-semibold px-3 py-1 rounded-lg">
-                {hoverColor}
+                {dispColor}
               </span>
             )}
           </div>
@@ -134,47 +144,26 @@ export default function FabricDetailPage() {
                 다른 컬러 ({colorVariants.length + 1}개)
               </p>
               <div className="flex gap-2 flex-wrap">
-                {/* 현재 컬러 (선택 상태) */}
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden ring-2 ring-[#1E2A3A] cursor-default">
-                  {fabric.image_url ? (
-                    <Image
-                      src={fabric.image_url}
-                      alt={fabric.color_code}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-200" />
-                  )}
-                  <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
-                    {fabric.color_code}
-                  </span>
-                </div>
-                {/* 다른 컬러들 */}
-                {colorVariants.map((v) => (
-                  <Link
-                    key={v.id}
-                    href={`/fabric/${v.id}`}
-                    className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#1E2A3A] transition-all"
-                    onMouseEnter={() => { setHoverImage(v.image_url); setHoverColor(v.color_code); }}
+                {/* 같은 디자인 컬러 — 클릭 시 페이지 이동 없이 이미지/번호/단가 교체 */}
+                {allColors.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelId(c.id)}
+                    onMouseEnter={() => { setHoverImage(c.image_url); setHoverColor(c.color_code); }}
                     onMouseLeave={() => { setHoverImage(null); setHoverColor(null); }}
+                    className={`relative w-16 h-16 rounded-lg overflow-hidden transition-all ${
+                      current.id === c.id ? "ring-2 ring-[#1E2A3A]" : "border border-gray-200 hover:ring-2 hover:ring-[#1E2A3A]"
+                    }`}
                   >
-                    {v.image_url ? (
-                      <Image
-                        src={v.image_url}
-                        alt={v.color_code}
-                        fill
-                        className="object-cover"
-                        sizes="64px"
-                      />
+                    {c.image_url ? (
+                      <Image src={c.image_url} alt={c.color_code} fill className="object-cover" sizes="64px" />
                     ) : (
                       <div className="w-full h-full bg-gray-200" />
                     )}
                     <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
-                      {v.color_code}
+                      {c.color_code}
                     </span>
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
@@ -187,8 +176,8 @@ export default function FabricDetailPage() {
           <div>
             <h1 className="text-2xl font-extrabold mb-1">
               {fabric.name}
-              {fabric.color_code && (
-                <span className="text-gray-400 font-bold ml-2">#{fabric.color_code}</span>
+              {current.color_code && (
+                <span className="text-gray-400 font-bold ml-2">#{current.color_code}</span>
               )}
             </h1>
             <p className="text-sm text-gray-500">
@@ -264,7 +253,7 @@ export default function FabricDetailPage() {
               <div className="flex justify-between items-end">
                 <span className="text-sm text-gray-500">야드 단가</span>
                 <span className="text-xl font-extrabold text-gradient">
-                  &#8361;{fabric.price_per_yard!.toLocaleString()}/Y
+                  &#8361;{current.price_per_yard!.toLocaleString()}/Y
                 </span>
               </div>
             </div>

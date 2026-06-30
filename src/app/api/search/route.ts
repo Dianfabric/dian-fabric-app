@@ -431,14 +431,17 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 검색어에서 원단명-컬러번호 분리 (MONCLER-24, MONCLER#24, MONCLER 24 등)
-  let searchName = "";
-  let searchColor = "";
+  // 검색어 → PostgREST or-필터. 이름에 공백/하이픈 있는 원단(SUEDE PU, BARON 01-04)도 잡히게:
+  //   ① 전체를 이름으로 (디자인명 검색·하이픈 이름)  OR  ② 마지막 구분자로 쪼갠 이름+색번호
+  let searchOr: string | null = null;
   if (search) {
-    const sep = search.match(/^(.+?)[\s\-#]+(.+)$/);
-    if (sep) {
-      searchName = sep[1].trim();
-      searchColor = sep[2].trim();
+    const s = search.trim().replace(/[(),]/g, " ").replace(/\s+/g, " ").trim();
+    const m = s.match(/^(.+)[\s\-#]+(.+)$/); // 그리디 → 마지막 구분자 기준
+    if (m) {
+      const nm = m[1].trim(), cc = m[2].trim();
+      searchOr = `name.ilike.%${s}%,and(name.ilike.%${nm}%,color_code.ilike.%${cc}%)`;
+    } else {
+      searchOr = `name.ilike.%${s}%,color_code.ilike.%${s}%`;
     }
   }
 
@@ -497,13 +500,7 @@ export async function GET(request: NextRequest) {
       query = query.ilike("notes", `%${c}%`);
     }
 
-    if (search) {
-      if (searchName && searchColor) {
-        query = query.ilike("name", `%${searchName}%`).ilike("color_code", `%${searchColor}%`);
-      } else {
-        query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
-      }
-    }
+    if (searchOr) query = query.or(searchOr);
     if (subtype) {
       const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
       if (subtypes.length === 1) {
@@ -568,13 +565,7 @@ export async function GET(request: NextRequest) {
 
   if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
 
-  if (search) {
-    if (searchName && searchColor) {
-      query = query.ilike("name", `%${searchName}%`).ilike("color_code", `%${searchColor}%`);
-    } else {
-      query = query.or(`name.ilike.%${search}%,color_code.ilike.%${search}%`);
-    }
-  }
+  if (searchOr) query = query.or(searchOr);
   if (subtype) {
     const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
     if (subtypes.length === 1) {

@@ -137,37 +137,6 @@ export default function FabricDetailPage() {
             )}
           </div>
 
-          {/* 다른 컬러웨이 */}
-          {colorVariants.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs font-bold text-gray-500 mb-2">
-                다른 컬러 ({colorVariants.length + 1}개)
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                {/* 같은 디자인 컬러 — 클릭 시 페이지 이동 없이 이미지/번호/단가 교체 */}
-                {allColors.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelId(c.id)}
-                    onMouseEnter={() => { setHoverImage(c.image_url); setHoverColor(c.color_code); }}
-                    onMouseLeave={() => { setHoverImage(null); setHoverColor(null); }}
-                    className={`relative w-16 h-16 rounded-lg overflow-hidden transition-all ${
-                      current.id === c.id ? "ring-2 ring-[#1E2A3A]" : "border border-gray-200 hover:ring-2 hover:ring-[#1E2A3A]"
-                    }`}
-                  >
-                    {c.image_url ? (
-                      <Image src={c.image_url} alt={c.color_code} fill className="object-cover" sizes="64px" />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200" />
-                    )}
-                    <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
-                      {c.color_code}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 오른쪽: 정보 */}
@@ -206,9 +175,37 @@ export default function FabricDetailPage() {
             </div>
           </div>
 
-          <p className="text-sm text-gray-600">
-            {fabric.name} - {compositionStr}
-          </p>
+          {/* 다른 컬러웨이 — 제목 바로 아래 */}
+          {colorVariants.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">
+                다른 컬러 ({colorVariants.length + 1}개)
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {/* 같은 디자인 컬러 — 클릭 시 페이지 이동 없이 이미지/번호/단가 교체 */}
+                {allColors.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelId(c.id)}
+                    onMouseEnter={() => { setHoverImage(c.image_url); setHoverColor(c.color_code); }}
+                    onMouseLeave={() => { setHoverImage(null); setHoverColor(null); }}
+                    className={`relative w-14 h-14 rounded-lg overflow-hidden transition-all ${
+                      current.id === c.id ? "ring-2 ring-[#1E2A3A]" : "border border-gray-200 hover:ring-2 hover:ring-[#1E2A3A]"
+                    }`}
+                  >
+                    {c.image_url ? (
+                      <Image src={c.image_url} alt={c.color_code} fill className="object-cover" sizes="56px" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200" />
+                    )}
+                    <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 leading-tight">
+                      {c.color_code}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 상세 정보 */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">

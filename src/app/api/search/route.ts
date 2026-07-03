@@ -448,7 +448,8 @@ export async function GET(request: NextRequest) {
   const colors = color ? color.split(",").filter(Boolean) : [];
 
   // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드, 아니면 대표(디자인)모드 ───
-  const individualMode = colors.length > 0 || !!search;
+  // 개별모드는 색상 필터일 때만. 검색은 대표(디자인)모드 유지 — RPC p_search 사용.
+  const individualMode = colors.length > 0;
 
   if (!individualMode) {
     // 대표모드: 디자인(name) 단위 그룹핑 RPC
@@ -458,15 +459,15 @@ export async function GET(request: NextRequest) {
       p_subtypes: subtypeArr && subtypeArr.length ? subtypeArr : null,
       p_usage: usageCol || null,
       p_wide: wide,
-      p_search: null,
+      p_search: search || null,
       p_sort: sort,
       p_limit: limit,
       p_offset: (page - 1) * limit,
       p_co_min: coMin,
       p_li_min: liMin,
       p_wo_min: woMin,
-      p_featured: feat,
-      p_seed: seed,
+      p_featured: feat && !search, // 검색 중엔 EK UNIQUE 우선 해제
+      p_seed: search ? "" : seed,  // 검색 중엔 셔플 해제 (관련도/정렬 그대로)
     });
     if (!error) {
       const total = data && data.length ? Number(data[0].total_count) : 0;

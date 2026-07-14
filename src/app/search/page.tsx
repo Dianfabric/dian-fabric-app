@@ -4,7 +4,7 @@ import ImageLightbox from "@/components/ImageLightbox";
 import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSelector";
 import SearchComparisonView, { type GeminiInfo } from "@/components/SearchComparisonView";
 import QuickViewPanel from "@/components/QuickViewPanel";
-import type { SearchResult } from "@/lib/types";
+import type { Fabric, SearchResult } from "@/lib/types";
 
 const FETCH_COUNT = 50;   // 텍스트 검색용
 const IMAGE_FETCH_COUNT = 100; // 이미지 검색: 후보 100개 → Gemini 랭킹
@@ -519,6 +519,31 @@ export default function SearchPage() {
     setTextQuery("");
 
     try {
+      // 1) 원단명/색번호 직접 검색 — CLIP 로딩 없이 즉시 결과 (SUNDEW 등)
+      setStatusMessage("원단명 검색 중...");
+      const directRes = await fetch(
+        `/api/search?search=${encodeURIComponent(query)}&limit=${FETCH_COUNT}`
+      );
+      if (directRes.ok) {
+        const directData = await directRes.json();
+        const directResults: SearchResult[] = (directData.fabrics || []).map(
+          (f: Fabric) => ({ ...f, similarity: 1 })
+        );
+        if (directResults.length > 0) {
+          setSearchGroups((prev) =>
+            prev.map((g) =>
+              g.id === groupId
+                ? { ...g, results: directResults, activeIndex: 0, loading: false }
+                : g
+            )
+          );
+          setStatusMessage("");
+          setIsTextSearching(false);
+          return;
+        }
+      }
+
+      // 2) 직접 검색 결과 없음 → CLIP 임베딩 검색 (기존 경로)
       setStatusMessage("텍스트 AI 모델 준비 중...");
       const { getClipTextEmbedding } = await import("@/lib/clip-client");
       const embedding = await getClipTextEmbedding(newGroup.label, (status) => {

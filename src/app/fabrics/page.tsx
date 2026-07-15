@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import FabricCard from "@/components/FabricCard";
 import QuickViewPanel from "@/components/QuickViewPanel";
 import type { Fabric } from "@/lib/types";
@@ -260,8 +259,15 @@ export default function FabricsPage() {
           인테리어 디자이너를 위한 프리미엄 원단 컬렉션
         </p>
 
-        {/* Search + AI button */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mt-7">
+        {/* Search */}
+        <form
+          className="flex flex-col sm:flex-row gap-3 justify-center items-stretch mt-7"
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearch();
+          }}
+        >
           <div
             className="flex items-center gap-[10px] h-12 px-4 w-full sm:w-[400px] rounded-[3px]"
             style={{ background: "var(--bg)", border: "1px solid var(--line)" }}
@@ -272,34 +278,32 @@ export default function FabricsPage() {
               </svg>
             </span>
             <input
-              type="text"
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="디자인명 또는 컬러번호 검색 (예: HALO, 헤르메스 601)"
-              className="flex-1 border-none outline-none bg-transparent text-[14px]"
+              placeholder="디자인명 또는 컬러번호 검색 (예: HALO601)"
+              className="flex-1 border-none outline-none bg-transparent text-[16px] sm:text-[14px]"
               style={{ fontFamily: "inherit", color: "var(--ink)" }}
             />
             {searchInput && (
-              <button onClick={handleClearSearch} className="p-1" style={{ color: "var(--muted)" }}>
+              <button type="button" onClick={handleClearSearch} className="p-1" style={{ color: "var(--muted)" }} aria-label="검색어 지우기">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             )}
           </div>
-          <Link
-            href="/search"
-            className="flex items-center justify-center gap-2 h-12 px-[22px] rounded-[3px] text-[14px] tracking-[.03em] text-white transition-opacity hover:opacity-[.88] shrink-0"
+          <button
+            type="submit"
+            className="h-12 px-[22px] rounded-[3px] text-[14px] tracking-[.03em] text-white transition-opacity hover:opacity-[.88] shrink-0"
             style={{ background: "var(--navy)" }}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18M9 3v18" />
-            </svg>
-            AI 대체 원단찾기
-          </Link>
-        </div>
+            {loading && searchQuery ? "검색 중..." : "검색"}
+          </button>
+        </form>
 
         {/* Search result indicator */}
         {searchQuery && (

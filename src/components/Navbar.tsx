@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const pathname = usePathname();
   const isFabrics = pathname === "/" || pathname === "/fabrics" || pathname.startsWith("/fabric/");
-  const isSearch = pathname === "/search";
 
   return (
     <header
@@ -57,20 +56,6 @@ export default function Navbar() {
           >
             원단 컬렉션
             {isFabrics && (
-              <span
-                className="absolute left-0 right-0 -bottom-px h-[2px]"
-                style={{ background: "var(--navy)" }}
-              />
-            )}
-          </Link>
-          <Link
-            href="/search"
-            className={`py-2 relative hover:text-[var(--navy)] transition-colors ${
-              isSearch ? "font-semibold text-[var(--navy)]" : ""
-            }`}
-          >
-            AI 대체 원단찾기
-            {isSearch && (
               <span
                 className="absolute left-0 right-0 -bottom-px h-[2px]"
                 style={{ background: "var(--navy)" }}

@@ -431,25 +431,48 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 검색어 → PostgREST or-필터. 이름에 공백/하이픈 있는 원단(SUEDE PU, BARON 01-04)도 잡히게:
-  //   ① 전체를 이름으로 (디자인명 검색·하이픈 이름)  OR  ② 마지막 구분자로 쪼갠 이름+색번호
+  // 검색어 → PostgREST or-필터.
+  // 지원 형태:
+  //   - 디자인명: HALO
+  //   - 색번호: 601
+  //   - 디자인명 + 색번호: HALO-601, HALO 601, HALO#601
+  //   - 붙여 쓴 디자인명 + 색번호: HALO601
   let searchOr: string | null = null;
   if (search) {
     const s = search.trim().replace(/[(),]/g, " ").replace(/\s+/g, " ").trim();
-    const m = s.match(/^(.+)[\s\-#]+(.+)$/); // 그리디 → 마지막 구분자 기준
-    if (m) {
-      const nm = m[1].trim(), cc = m[2].trim();
-      searchOr = `name.ilike.%${s}%,and(name.ilike.%${nm}%,color_code.ilike.%${cc}%)`;
+    const clauses = new Set<string>();
+    const addBasic = (term: string) => {
+      if (!term) return;
+      clauses.add(`name.ilike.%${term}%`);
+      clauses.add(`color_code.ilike.%${term}%`);
+    };
+    const addNameColor = (name: string, colorCode: string) => {
+      const nm = name.trim();
+      const cc = colorCode.trim();
+      if (!nm || !cc) return;
+      clauses.add(`and(name.ilike.%${nm}%,color_code.ilike.%${cc}%)`);
+    };
+
+    addBasic(s);
+
+    const separated = s.match(/^(.+)[\s\-#]+(.+)$/); // 그리디 → 마지막 구분자 기준
+    if (separated) {
+      addNameColor(separated[1], separated[2]);
     } else {
-      searchOr = `name.ilike.%${s}%,color_code.ilike.%${s}%`;
+      // LD1906P30, A19191301처럼 원단명 자체에 숫자가 있어도 마지막 1~4자리를 색번호 후보로 시도한다.
+      for (let tailLen = 1; tailLen <= Math.min(4, s.length - 1); tailLen += 1) {
+        addNameColor(s.slice(0, -tailLen), s.slice(-tailLen));
+      }
     }
+
+    searchOr = Array.from(clauses).join(",");
   }
 
   const colors = color ? color.split(",").filter(Boolean) : [];
 
-  // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드, 아니면 대표(디자인)모드 ───
-  // 개별모드는 색상 필터일 때만. 검색은 대표(디자인)모드 유지 — RPC p_search 사용.
-  const individualMode = colors.length > 0;
+  // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드 ───
+  // 검색은 name/color_code 직접 쿼리로 처리해야 HALO601 같은 모바일 입력도 안정적으로 잡힌다.
+  const individualMode = colors.length > 0 || !!search;
 
   if (!individualMode) {
     // 대표모드: 디자인(name) 단위 그룹핑 RPC

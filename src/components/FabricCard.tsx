@@ -120,7 +120,7 @@ export default function FabricCard({
 
   // 카드 전체 = 상세페이지 링크 (모바일 탭/데스크탑 클릭 동일). 퀵뷰 버튼만 별도.
   return (
-    <Link href={`/fabric/${fabric.id}`} onClick={() => onOpenDetail?.()} className="block group cursor-pointer">
+    <Link href={`/fabric/${fabric.id}`} prefetch={false} onClick={() => onOpenDetail?.()} className="block group cursor-pointer">
       {inner}
     </Link>
   );

@@ -18,6 +18,7 @@ export default function Navbar() {
       <div className="max-w-[1320px] mx-auto h-[64px] sm:h-[70px] px-4 sm:px-8 flex items-center justify-between gap-3">
         <Link
           href="/"
+          prefetch={false}
           aria-label="dian"
           className="flex items-end gap-[7px] shrink-0"
           onClick={(e) => {
@@ -50,6 +51,7 @@ export default function Navbar() {
         <nav className="flex gap-[18px] sm:gap-[30px] text-[13px] sm:text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>
           <Link
             href="/fabrics"
+            prefetch={false}
             className={`py-2 relative hover:text-[var(--navy)] transition-colors ${
               isFabrics ? "font-semibold text-[var(--navy)]" : ""
             }`}

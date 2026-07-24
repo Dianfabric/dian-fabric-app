@@ -429,6 +429,30 @@ export async function GET(request: NextRequest) {
     }
   };
 
+  const normalizeSearchText = (value: unknown) =>
+    String(value || "").trim().toUpperCase().replace(/\s+/g, " ");
+
+  const searchRelevanceCmp = (term: string) => {
+    const q = normalizeSearchText(term);
+    const separated = q.match(/^(.+)[\s\-#]+(.+)$/);
+    return (a: Record<string, unknown>, b: Record<string, unknown>): number => {
+      const score = (fabric: Record<string, unknown>) => {
+        const name = normalizeSearchText(fabric.name);
+        const colorCode = normalizeSearchText(fabric.color_code);
+        const haystack = `${name} ${colorCode}`;
+        if (name === q) return 0;
+        if (separated && name === separated[1] && colorCode === separated[2]) return 1;
+        if (`${name} ${colorCode}` === q || `${name}-${colorCode}` === q || `${name}#${colorCode}` === q) return 1;
+        if (colorCode === q) return 2;
+        if (name.startsWith(q)) return 3;
+        if (name.includes(q)) return 4;
+        if (haystack.includes(q)) return 5;
+        return 9;
+      };
+      return score(a) - score(b) || sortCmp(a, b);
+    };
+  };
+
   const supabase = createServiceClient();
 
   // 검색어 → PostgREST or-필터.
@@ -572,6 +596,56 @@ export async function GET(request: NextRequest) {
   // 검색(색상 없음) → 개별 원단
   const from = (page - 1) * limit;
   const to = from + limit - 1;
+
+  // 검색어가 있으면 완전일치/관련도 정렬을 먼저 적용한 뒤 페이지네이션한다.
+  // 예: `68504` 검색 시 `68505` 같은 최신순 결과보다 `name === 68504`가 1페이지 맨 앞으로 와야 한다.
+  if (searchOr) {
+    let searchQuery = supabase
+      .from("fabrics")
+      .select(LIST_COLS)
+      .eq("is_active", true)
+      .not("image_url", "is", null)
+      .or(searchOr);
+
+    if (wide) searchQuery = searchQuery.gte("width_mm", WIDE_MIN_MM);
+    if (coMin > 0) searchQuery = searchQuery.gte("co_percent", coMin);
+    if (liMin > 0) searchQuery = searchQuery.gte("li_percent", liMin);
+    if (woMin > 0) searchQuery = searchQuery.gte("wo_percent", woMin);
+    if (subtype) {
+      const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
+      if (subtypes.length === 1) {
+        searchQuery = searchQuery.ilike("pattern_detail", `%${subtypes[0]}%`);
+      } else if (subtypes.length > 1) {
+        searchQuery = searchQuery.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
+      }
+      if (type === "커튼") searchQuery = searchQuery.eq("is_curtain_eligible", true);
+      else if (type && type !== "패턴") searchQuery = searchQuery.ilike("fabric_type", `%${type}%`);
+    } else if (type) {
+      if (type === "패턴") searchQuery = searchQuery.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
+      else if (type === "커튼") searchQuery = searchQuery.eq("is_curtain_eligible", true);
+      else searchQuery = searchQuery.ilike("fabric_type", `%${type}%`);
+    }
+    if (usageCol) searchQuery = searchQuery.contains("usage_types", [usageCol]);
+
+    const { data, error } = await searchQuery;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const sorted = ((data || []) as unknown as Record<string, unknown>[])
+      .sort(searchRelevanceCmp(search));
+    const total = sorted.length;
+    const paged = sorted.slice(from, from + limit);
+    const fabrics = paged.map(({ embedding, ...rest }) => rest);
+
+    return NextResponse.json({
+      fabrics,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      mode: "individual",
+    }, { headers: LIST_CACHE });
+  }
 
   let query = supabase
     .from("fabrics")

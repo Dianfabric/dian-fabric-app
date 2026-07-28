@@ -71,7 +71,7 @@ export function buildCatalogCustomerPayload(input: CatalogProfileInput, user: Au
   const metadata = user.user_metadata || {};
   const provider = providerFromUser(user);
   const providerEmail = cleanText(user.email) || cleanText(metadata.email);
-  const email = cleanText(input.email) || providerEmail;
+  const email = provider === "kakao" ? cleanText(input.email) : cleanText(input.email) || providerEmail;
   const name = cleanText(input.name) || cleanText(metadata.name) || cleanText(metadata.full_name) || cleanText(metadata.nickname) || cleanText(metadata.user_name);
   const phone = cleanText(input.phone) || cleanText(metadata.phone);
   const companyName = cleanText(input.company_name);

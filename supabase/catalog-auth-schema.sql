@@ -4,7 +4,7 @@
 create table if not exists public.catalog_customers (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique,
-  email text not null,
+  email text,
   kakao_email text,
   name text,
   phone text,
@@ -65,4 +65,6 @@ create policy "catalog customers can update own row"
   with check (auth.uid() = auth_user_id);
 
 comment on table public.catalog_customers is 'Customer profiles for catalog.diantex.kr only. Do not use for swatch.diantex.kr orders.';
+comment on column public.catalog_customers.email is 'User-entered contact email. Kakao users must type this during profile completion; do not auto-fill from OAuth.';
+comment on column public.catalog_customers.kakao_email is 'Original Kakao account email captured from OAuth. Contact email remains editable in email.';
 comment on column public.catalog_customers.favorite_fabrics is 'Free-text fabrics or categories the customer often uses.';

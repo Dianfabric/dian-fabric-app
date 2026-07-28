@@ -49,10 +49,11 @@ const incomplete = mod.buildCatalogCustomerPayload(
   { name: '카카오사용자' },
   { id: 'auth-2', email: 'kakao@example.com', app_metadata: { providers: ['kakao'] }, user_metadata: { name: '카카오' } },
 );
+assert.equal(incomplete.email, null);
 assert.equal(incomplete.provider, 'kakao');
 assert.equal(incomplete.kakao_email, 'kakao@example.com');
 assert.equal(incomplete.profile_completed, false);
-assert.deepEqual(mod.missingRequiredCatalogProfileFields(incomplete), ['phone', 'company_name']);
+assert.deepEqual(mod.missingRequiredCatalogProfileFields(incomplete), ['email', 'phone', 'company_name']);
 
 const kakaoEditableEmail = mod.buildCatalogCustomerPayload(
   { email: 'contact@example.com', name: '카카오사용자', phone: '010', company_name: 'DIAN' },

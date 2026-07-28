@@ -145,7 +145,7 @@ export default function ProfileCompletePage() {
       const customer = json.customer;
       const favorite = splitFavoriteFabrics(customer?.favorite_fabrics);
       setForm({
-        email: customer?.email || user.email || "",
+        email: customer?.email || "",
         name: customer?.name || (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || (user.user_metadata?.nickname as string) || "",
         phone: customer?.phone || (user.user_metadata?.phone as string) || "",
         company_name: customer?.company_name || "",

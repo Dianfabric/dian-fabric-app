@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { buildCatalogCustomerPayload, mergeCatalogCustomerPayload, missingRequiredCatalogProfileFields } from "@/lib/catalog-profile";
+import { buildCatalogCustomerPayload, cleanText, mergeCatalogCustomerPayload, missingRequiredCatalogProfileFields } from "@/lib/catalog-profile";
 import { createCatalogServiceClient } from "@/lib/supabase";
 
 type CatalogProfileBody = {
@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
       .eq("auth_user_id", userData.user.id)
       .maybeSingle();
     if (existingError) throw existingError;
+    if (existingCustomer?.email && !cleanText(body.email)) {
+      incomingPayload.email = null;
+    }
 
     const payload = mergeCatalogCustomerPayload(incomingPayload, existingCustomer);
     const missing = missingRequiredCatalogProfileFields(payload);

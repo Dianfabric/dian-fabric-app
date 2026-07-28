@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -149,16 +149,12 @@ export default function FabricDetailPage() {
                 <span className="text-gray-400 font-bold ml-2">#{current.color_code}</span>
               )}
             </h1>
-            <p className="text-sm text-gray-500">
-              {fabric.fabric_type || "원단"} · {compositionStr}
-            </p>
+            <div className="mt-2 space-y-1 text-sm text-gray-600">
+              <p><span className="font-semibold text-[#1E2A3A]">성분</span> {compositionStr}</p>
+              <p><span className="font-semibold text-[#1E2A3A]">폭</span> {fabric.width_mm ? `${(fabric.width_mm / 10).toFixed(0)}cm` : "-"}</p>
+            </div>
             {/* 태그 */}
             <div className="flex gap-2 flex-wrap mt-3">
-              {fabric.fabric_type && (
-                <span className="text-xs font-semibold text-[#1E2A3A] bg-[rgba(30,42,58,0.06)] px-3 py-1 rounded-lg">
-                  {fabric.fabric_type}
-                </span>
-              )}
               {fabric.pattern_detail && (
                 <span className="text-xs font-semibold text-white bg-[#1E2A3A] px-3 py-1 rounded-lg">
                   {fabric.pattern_detail}
@@ -206,43 +202,6 @@ export default function FabricDetailPage() {
               </div>
             </div>
           )}
-
-          {/* 상세 정보 */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-bold text-[15px] text-[#1E2A3A] mb-4">
-              상세 정보
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">폭</span>
-                <span className="font-medium">
-                  {fabric.width_mm ? `${(fabric.width_mm / 10).toFixed(0)}cm` : "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">조성</span>
-                <span className="font-medium">{compositionStr}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">용도</span>
-                <span className="font-medium">
-                  {fabric.usage_types?.join(", ") || "-"}
-                </span>
-              </div>
-              {fabric.is_curtain_eligible && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">커튼 가능</span>
-                  <span className="font-medium text-green-600">Yes</span>
-                </div>
-              )}
-              {fabric.is_flame_retardant && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">방염</span>
-                  <span className="font-medium text-green-600">방염 인증</span>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* 가격 정보 */}
           {pricePerMeter && (

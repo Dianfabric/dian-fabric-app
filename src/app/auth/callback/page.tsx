@@ -14,6 +14,16 @@ function AuthCallbackContent() {
   useEffect(() => {
     let cancelled = false;
 
+    async function waitForSession(supabase: ReturnType<typeof createCatalogBrowserClient>) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (data.session?.access_token) return data.session;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      return null;
+    }
+
     async function finishAuth() {
       const supabase = createCatalogBrowserClient();
       const next = params.get("next") || "/profile/complete";
@@ -22,21 +32,32 @@ function AuthCallbackContent() {
 
       try {
         if (urlError) throw new Error(urlError);
-        if (code) {
+
+        const hashParams = typeof window !== "undefined" ? new URLSearchParams(window.location.hash.replace(/^#/, "")) : null;
+        const accessToken = hashParams?.get("access_token");
+        const refreshToken = hashParams?.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error: setSessionError } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (setSessionError) throw setSessionError;
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        } else if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
         }
 
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        const token = data.session?.access_token;
+        const session = await waitForSession(supabase);
+        const token = session?.access_token;
         if (!token) throw new Error("로그인 세션을 만들지 못했습니다. 다시 로그인해주세요.");
 
-        await fetch("/api/catalog/customers/upsert", {
+        const res = await fetch("/api/catalog/customers/upsert", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({}),
         });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || "고객 정보 생성 실패");
+        }
 
         if (!cancelled) {
           setMessage("로그인 완료. 추가 정보 입력으로 이동합니다…");

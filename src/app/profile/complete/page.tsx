@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createCatalogBrowserClient } from "@/lib/supabase-browser";
 
 type ProfileForm = {
@@ -10,8 +10,11 @@ type ProfileForm = {
   phone: string;
   company_name: string;
   position: string;
-  favorite_fabrics: string;
+  favorite_fabrics: string[];
+  favorite_fabrics_other: string;
 };
+
+const FAVORITE_FABRIC_OPTIONS = ["소파", "침대헤드", "벽판넬", "커튼", "쿠션", "스툴"];
 
 const emptyForm: ProfileForm = {
   email: "",
@@ -19,8 +22,23 @@ const emptyForm: ProfileForm = {
   phone: "",
   company_name: "",
   position: "",
-  favorite_fabrics: "",
+  favorite_fabrics: [],
+  favorite_fabrics_other: "",
 };
+
+function splitFavoriteFabrics(value: string | null | undefined) {
+  const items = (value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const selected = items.filter((item) => FAVORITE_FABRIC_OPTIONS.includes(item));
+  const other = items.filter((item) => !FAVORITE_FABRIC_OPTIONS.includes(item)).join(", ");
+  return { selected, other };
+}
+
+function joinFavoriteFabrics(selected: string[], other: string) {
+  return [...selected, other.trim()].filter(Boolean).join(", ");
+}
 
 export default function ProfileCompletePage() {
   const router = useRouter();
@@ -31,18 +49,32 @@ export default function ProfileCompletePage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const favoriteFabricsValue = useMemo(
+    () => joinFavoriteFabrics(form.favorite_fabrics, form.favorite_fabrics_other),
+    [form.favorite_fabrics, form.favorite_fabrics_other],
+  );
+
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleFavoriteFabric(option: string) {
+    setForm((prev) => ({
+      ...prev,
+      favorite_fabrics: prev.favorite_fabrics.includes(option)
+        ? prev.favorite_fabrics.filter((item) => item !== option)
+        : [...prev.favorite_fabrics, option],
+    }));
   }
 
   async function saveProfile(redirectWhenComplete = false) {
     setSaving(true);
     setError(null);
     setMessage(null);
-    const { data } = await supabase.auth.getSession();
+    const { data, error: sessionError } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) {
-      setError("로그인 후 정보를 입력할 수 있습니다.");
+    if (sessionError || !token) {
+      setError("로그인 후 정보를 입력할 수 있습니다. 다시 로그인해주세요.");
       setSaving(false);
       return null;
     }
@@ -50,7 +82,14 @@ export default function ProfileCompletePage() {
     const res = await fetch("/api/catalog/customers/upsert", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        email: form.email,
+        name: form.name,
+        phone: form.phone,
+        company_name: form.company_name,
+        position: form.position,
+        favorite_fabrics: favoriteFabricsValue,
+      }),
     });
     const json = await res.json().catch(() => ({}));
     setSaving(false);
@@ -61,9 +100,13 @@ export default function ProfileCompletePage() {
     }
 
     setMessage("정보를 저장했습니다.");
-    if (redirectWhenComplete && json.customer?.profile_completed) {
-      router.push("/fabrics");
-      router.refresh();
+    if (redirectWhenComplete) {
+      if (json.customer?.profile_completed) {
+        router.push("/fabrics");
+        router.refresh();
+      } else {
+        setError("필수 항목을 모두 입력해주세요: 이메일, 성함, 전화번호, 회사명");
+      }
     }
     return json;
   }
@@ -74,12 +117,16 @@ export default function ProfileCompletePage() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+    let mounted = true;
+    async function loadProfile() {
+      const { data, error: sessionError } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       const user = data.session?.user;
-      if (!token || !user) {
-        setError("로그인 후 추가 정보를 입력할 수 있습니다.");
-        setLoading(false);
+      if (sessionError || !token || !user) {
+        if (mounted) {
+          setError("로그인 후 추가 정보를 입력할 수 있습니다.");
+          setLoading(false);
+        }
         return;
       }
 
@@ -89,20 +136,32 @@ export default function ProfileCompletePage() {
         body: JSON.stringify({}),
       });
       const json = await res.json().catch(() => ({}));
+      if (!mounted) return;
+      if (!res.ok) {
+        setError(json.error || "내 정보를 불러오지 못했습니다.");
+        setLoading(false);
+        return;
+      }
       const customer = json.customer;
+      const favorite = splitFavoriteFabrics(customer?.favorite_fabrics);
       setForm({
         email: customer?.email || user.email || "",
-        name: customer?.name || (user.user_metadata?.name as string) || "",
+        name: customer?.name || (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || (user.user_metadata?.nickname as string) || "",
         phone: customer?.phone || (user.user_metadata?.phone as string) || "",
         company_name: customer?.company_name || "",
         position: customer?.position || "",
-        favorite_fabrics: customer?.favorite_fabrics || "",
+        favorite_fabrics: favorite.selected,
+        favorite_fabrics_other: favorite.other,
       });
       if (customer?.profile_completed) {
         setMessage("필수 정보가 입력되어 있습니다. 수정 후 저장하거나 원단 컬렉션으로 이동하세요.");
       }
       setLoading(false);
-    });
+    }
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
   }, [supabase.auth]);
 
   return (
@@ -135,9 +194,30 @@ export default function ProfileCompletePage() {
                 <input value={form.position} onChange={(e) => update("position", e.target.value)} className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
               </label>
             </div>
-            <label className="block font-bold text-[var(--navy)]">자주 쓰는 원단 <span className="font-medium text-[var(--muted)]">선택</span>
-              <textarea value={form.favorite_fabrics} onChange={(e) => update("favorite_fabrics", e.target.value)} rows={4} className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
-            </label>
+            <div className="block font-bold text-[var(--navy)]">
+              자주 쓰는 원단 <span className="font-medium text-[var(--muted)]">다중선택</span>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {FAVORITE_FABRIC_OPTIONS.map((option) => {
+                  const checked = form.favorite_fabrics.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggleFavoriteFabric(option)}
+                      className={`rounded-2xl border px-4 py-3 text-sm font-extrabold transition ${checked ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white text-[var(--navy)]"}`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                value={form.favorite_fabrics_other}
+                onChange={(e) => update("favorite_fabrics_other", e.target.value)}
+                placeholder="기타 입력"
+                className="mt-3 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]"
+              />
+            </div>
           </div>
         )}
 

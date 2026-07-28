@@ -1,12 +1,32 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createCatalogBrowserClient } from "@/lib/supabase-browser";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createCatalogBrowserClient();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isFabrics = pathname === "/" || pathname === "/fabrics" || pathname.startsWith("/fabric/");
   const isAccount = pathname === "/account" || pathname === "/login" || pathname === "/signup" || pathname.startsWith("/profile/");
   const isAdmin = pathname.startsWith("/admin");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setIsLoggedIn(!!data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [supabase.auth]);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header
@@ -24,7 +44,6 @@ export default function Navbar() {
           aria-label="dian"
           className="flex items-end gap-[7px] shrink-0"
           onClick={(e) => {
-            // 로고 = 홈: 저장된 필터/스크롤 전부 해제하고 깨끗한 원단목록으로
             e.preventDefault();
             try {
               sessionStorage.removeItem("dian-fabrics-state");
@@ -50,7 +69,7 @@ export default function Navbar() {
           </svg>
         </Link>
 
-        <nav className="flex gap-[18px] sm:gap-[30px] text-[13px] sm:text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>
+        <nav className="flex gap-[14px] sm:gap-[26px] text-[13px] sm:text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>
           <Link
             href="/fabrics"
             prefetch={false}
@@ -82,13 +101,13 @@ export default function Navbar() {
             )}
           </Link>
           <Link
-            href="/login"
+            href={isLoggedIn ? "/account" : "/login"}
             prefetch={false}
             className={`py-2 relative hover:text-[var(--navy)] transition-colors ${
               isAccount ? "font-semibold text-[var(--navy)]" : ""
             }`}
           >
-            로그인
+            {isLoggedIn ? "내 정보" : "로그인"}
             {isAccount && (
               <span
                 className="absolute left-0 right-0 -bottom-px h-[2px]"
@@ -96,6 +115,11 @@ export default function Navbar() {
               />
             )}
           </Link>
+          {isLoggedIn ? (
+            <button type="button" onClick={signOut} className="py-2 hover:text-[var(--navy)] transition-colors">
+              로그아웃
+            </button>
+          ) : null}
         </nav>
 
         <div className="hidden sm:flex gap-5 items-center text-[13px]" style={{ color: "var(--navy2)" }}>

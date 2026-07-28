@@ -51,17 +51,17 @@ function AuthCallbackContent() {
 
         const res = await fetch("/api/catalog/customers/upsert", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
           body: JSON.stringify({}),
         });
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error || "고객 정보 생성 실패");
-        }
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "고객 정보 생성 실패");
 
+        const completed = Boolean(json.customer?.profile_completed);
+        const destination = completed ? "/account" : next;
         if (!cancelled) {
-          setMessage("로그인 완료. 추가 정보 입력으로 이동합니다…");
-          router.replace(next);
+          setMessage(completed ? "로그인 완료. 내 정보로 이동합니다…" : "로그인 완료. 추가 정보 입력으로 이동합니다…");
+          router.replace(destination);
           router.refresh();
         }
       } catch (err) {

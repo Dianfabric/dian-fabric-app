@@ -81,7 +81,7 @@ export default function ProfileCompletePage() {
 
     const res = await fetch("/api/catalog/customers/upsert", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
       body: JSON.stringify({
         email: form.email,
         name: form.name,
@@ -132,7 +132,7 @@ export default function ProfileCompletePage() {
 
       const res = await fetch("/api/catalog/customers/upsert", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({}),
       });
       const json = await res.json().catch(() => ({}));
@@ -143,6 +143,11 @@ export default function ProfileCompletePage() {
         return;
       }
       const customer = json.customer;
+      if (customer?.profile_completed) {
+        router.replace("/account");
+        router.refresh();
+        return;
+      }
       const favorite = splitFavoriteFabrics(customer?.favorite_fabrics);
       setForm({
         email: customer?.email || "",
@@ -162,23 +167,19 @@ export default function ProfileCompletePage() {
     return () => {
       mounted = false;
     };
-  }, [supabase.auth]);
+  }, [router, supabase.auth]);
 
   return (
     <div className="px-4 py-16">
       <form onSubmit={submit} className="mx-auto max-w-2xl rounded-3xl border border-[var(--line)] bg-white p-6 shadow-sm sm:p-8">
         <p className="text-xs font-bold tracking-[.22em] text-[var(--muted)]">PROFILE</p>
         <h1 className="mt-2 text-3xl font-extrabold text-[var(--navy)]">추가 정보 입력</h1>
-        <p className="mt-2 text-sm text-[var(--navy2)]">카탈로그 상담과 원단 추천을 위해 필요한 정보를 입력해주세요.</p>
+        <p className="mt-2 text-sm text-[var(--navy2)]">카탈로그 상담과 원단 추천을 위해 필요한 정보를 입력해주세요. <span className="font-semibold">(수정 가능)</span></p>
 
         {loading ? (
           <p className="mt-8 text-sm text-[var(--navy2)]">불러오는 중…</p>
         ) : (
           <div className="mt-7 space-y-4 text-sm">
-            <label className="block font-bold text-[var(--navy)]">연락 이메일 <span className="font-medium text-[var(--muted)]">수정 가능</span>
-              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} required className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
-              <span className="mt-1 block text-xs font-medium text-[var(--muted)]">카카오 계정 이메일과 달라도 됩니다. 관리자/내정보에는 이 이메일을 우선 표시합니다.</span>
-            </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block font-bold text-[var(--navy)]">성함
                 <input value={form.name} onChange={(e) => update("name", e.target.value)} required className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
@@ -195,6 +196,10 @@ export default function ProfileCompletePage() {
                 <input value={form.position} onChange={(e) => update("position", e.target.value)} className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
               </label>
             </div>
+            <label className="block font-bold text-[var(--navy)]">이메일
+              <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} required className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
+              <span className="mt-1 block text-xs font-medium text-[var(--muted)]">카카오 이메일과 별도로 실제 연락 가능한 이메일을 입력해주세요.</span>
+            </label>
             <div className="block font-bold text-[var(--navy)]">
               자주 쓰는 원단 <span className="font-medium text-[var(--muted)]">다중선택</span>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

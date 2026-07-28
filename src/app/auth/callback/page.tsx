@@ -58,9 +58,9 @@ function AuthCallbackContent() {
         if (!res.ok) throw new Error(json.error || "고객 정보 생성 실패");
 
         const completed = Boolean(json.customer?.profile_completed);
-        const destination = completed ? "/account" : next;
+        const destination = completed ? "/fabrics" : next;
         if (!cancelled) {
-          setMessage(completed ? "로그인 완료. 내 정보로 이동합니다…" : "로그인 완료. 추가 정보 입력으로 이동합니다…");
+          setMessage(completed ? "로그인 완료. 원단 컬렉션으로 이동합니다…" : "로그인 완료. 추가 정보 입력으로 이동합니다…");
           router.replace(destination);
           router.refresh();
         }

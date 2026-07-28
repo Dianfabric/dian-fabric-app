@@ -144,7 +144,7 @@ export default function ProfileCompletePage() {
       }
       const customer = json.customer;
       if (customer?.profile_completed) {
-        router.replace("/account");
+        router.replace("/fabrics");
         router.refresh();
         return;
       }

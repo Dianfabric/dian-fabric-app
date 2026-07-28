@@ -7,6 +7,7 @@ import { createCatalogBrowserClient } from "@/lib/supabase-browser";
 type CatalogAdminCustomer = {
   id: string;
   email: string | null;
+  kakao_email: string | null;
   name: string | null;
   phone: string | null;
   company_name: string | null;
@@ -143,22 +144,23 @@ export default function CatalogAdminCustomersPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-[var(--soft)] text-xs uppercase tracking-[.12em] text-[var(--muted)]">
                 <tr>
-                  {['가입일', '이메일', '성함', '전화번호', '회사/직책', '자주 쓰는 원단', '방식', '상태'].map((heading) => (
+                  {['가입일', '작성 이메일', '카카오 이메일', '성함', '전화번호', '회사/직책', '자주 쓰는 원단', '방식', '상태'].map((heading) => (
                     <th key={heading} className="px-4 py-3 whitespace-nowrap">{heading}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
                 {loading ? (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--navy2)]">불러오는 중…</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-[var(--navy2)]">불러오는 중…</td></tr>
                 ) : null}
                 {!loading && customers.length === 0 && !error ? (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--navy2)]">회원이 없습니다.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-[var(--navy2)]">회원이 없습니다.</td></tr>
                 ) : null}
                 {customers.map((customer) => (
                   <tr key={customer.id} className="align-top">
                     <td className="whitespace-nowrap px-4 py-4 text-[var(--navy2)]">{new Date(customer.created_at).toLocaleDateString('ko-KR')}</td>
                     <td className="whitespace-nowrap px-4 py-4 font-semibold text-[var(--navy)]">{customer.email || '-'}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-[var(--navy2)]">{customer.kakao_email || '-'}</td>
                     <td className="whitespace-nowrap px-4 py-4">{customer.name || '-'}</td>
                     <td className="whitespace-nowrap px-4 py-4">{customer.phone || '-'}</td>
                     <td className="whitespace-nowrap px-4 py-4">{customer.company_name || '-'}{customer.position ? ` / ${customer.position}` : ''}</td>

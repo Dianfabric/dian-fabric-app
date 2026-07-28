@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
 
   let select = auth.supabase
     .from("catalog_customers")
-    .select("id,auth_user_id,email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed,created_at,updated_at", {
+    .select("id,auth_user_id,email,kakao_email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed,created_at,updated_at", {
       count: "exact",
     })
     .order("created_at", { ascending: false });
 
   if (query) {
     const escaped = query.replace(/[%,]/g, "");
-    select = select.or(`email.ilike.%${escaped}%,name.ilike.%${escaped}%,phone.ilike.%${escaped}%,company_name.ilike.%${escaped}%`);
+    select = select.or(`email.ilike.%${escaped}%,kakao_email.ilike.%${escaped}%,name.ilike.%${escaped}%,phone.ilike.%${escaped}%,company_name.ilike.%${escaped}%`);
   }
   if (provider === "email" || provider === "kakao") {
     select = select.eq("provider", provider);

@@ -5,6 +5,7 @@ create table if not exists public.catalog_customers (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique,
   email text not null,
+  kakao_email text,
   name text,
   phone text,
   company_name text,
@@ -19,6 +20,9 @@ create table if not exists public.catalog_customers (
 
 create index if not exists catalog_customers_email_idx
   on public.catalog_customers (lower(email));
+
+create index if not exists catalog_customers_kakao_email_idx
+  on public.catalog_customers (lower(kakao_email));
 
 create index if not exists catalog_customers_created_at_idx
   on public.catalog_customers (created_at desc);

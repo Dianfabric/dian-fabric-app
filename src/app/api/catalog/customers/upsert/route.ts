@@ -4,6 +4,7 @@ import { createCatalogServiceClient } from "@/lib/supabase";
 
 type CatalogProfileBody = {
   email?: string;
+  kakao_email?: string;
   name?: string;
   phone?: string;
   company_name?: string;
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingCustomer, error: existingError } = await supabase
       .from("catalog_customers")
-      .select("email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed")
+      .select("email,kakao_email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed")
       .eq("auth_user_id", userData.user.id)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("catalog_customers")
       .upsert(payload, { onConflict: "auth_user_id" })
-      .select("id,auth_user_id,email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed,created_at,updated_at")
+      .select("id,auth_user_id,email,kakao_email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed,created_at,updated_at")
       .single();
 
     if (error) throw error;

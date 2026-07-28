@@ -175,8 +175,9 @@ export default function ProfileCompletePage() {
           <p className="mt-8 text-sm text-[var(--navy2)]">불러오는 중…</p>
         ) : (
           <div className="mt-7 space-y-4 text-sm">
-            <label className="block font-bold text-[var(--navy)]">이메일
+            <label className="block font-bold text-[var(--navy)]">연락 이메일 <span className="font-medium text-[var(--muted)]">수정 가능</span>
               <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} required className="mt-1 w-full rounded-2xl border border-[var(--line)] px-4 py-3 font-medium outline-none focus:border-[var(--navy)]" />
+              <span className="mt-1 block text-xs font-medium text-[var(--muted)]">카카오 계정 이메일과 달라도 됩니다. 관리자/내정보에는 이 이메일을 우선 표시합니다.</span>
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block font-bold text-[var(--navy)]">성함

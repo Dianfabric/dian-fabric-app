@@ -35,6 +35,7 @@ const complete = mod.buildCatalogCustomerPayload(
 assert.deepEqual(complete, {
   auth_user_id: 'auth-1',
   email: 'user@example.com',
+  kakao_email: null,
   name: '홍길동',
   phone: '010-1111-2222',
   company_name: '디안',
@@ -49,8 +50,16 @@ const incomplete = mod.buildCatalogCustomerPayload(
   { id: 'auth-2', email: 'kakao@example.com', app_metadata: { providers: ['kakao'] }, user_metadata: { name: '카카오' } },
 );
 assert.equal(incomplete.provider, 'kakao');
+assert.equal(incomplete.kakao_email, 'kakao@example.com');
 assert.equal(incomplete.profile_completed, false);
 assert.deepEqual(mod.missingRequiredCatalogProfileFields(incomplete), ['phone', 'company_name']);
+
+const kakaoEditableEmail = mod.buildCatalogCustomerPayload(
+  { email: 'contact@example.com', name: '카카오사용자', phone: '010', company_name: 'DIAN' },
+  { id: 'auth-22', email: 'kakao-login@example.com', app_metadata: { providers: ['kakao'] }, user_metadata: {} },
+);
+assert.equal(kakaoEditableEmail.email, 'contact@example.com');
+assert.equal(kakaoEditableEmail.kakao_email, 'kakao-login@example.com');
 
 const preserved = mod.mergeCatalogCustomerPayload(
   mod.buildCatalogCustomerPayload({}, { id: 'auth-3', email: 'keep@example.com', app_metadata: { provider: 'email' }, user_metadata: {} }),

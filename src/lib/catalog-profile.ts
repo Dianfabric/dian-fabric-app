@@ -7,6 +7,7 @@ export type CatalogProfileInput = {
   company_name?: unknown;
   position?: unknown;
   favorite_fabrics?: unknown;
+  kakao_email?: unknown;
 };
 
 type AuthUserLike = {
@@ -19,6 +20,7 @@ type AuthUserLike = {
 export type CatalogCustomerPayload = {
   auth_user_id: string;
   email: string | null;
+  kakao_email: string | null;
   name: string | null;
   phone: string | null;
   company_name: string | null;
@@ -53,6 +55,7 @@ export function mergeCatalogCustomerPayload(
   const merged: CatalogCustomerPayload = {
     ...incoming,
     email: incoming.email || cleanText(existing?.email) || null,
+    kakao_email: incoming.kakao_email || cleanText(existing?.kakao_email) || null,
     name: incoming.name || cleanText(existing?.name) || null,
     phone: incoming.phone || cleanText(existing?.phone) || null,
     company_name: incoming.company_name || cleanText(existing?.company_name) || null,
@@ -66,7 +69,9 @@ export function mergeCatalogCustomerPayload(
 
 export function buildCatalogCustomerPayload(input: CatalogProfileInput, user: AuthUserLike): CatalogCustomerPayload {
   const metadata = user.user_metadata || {};
-  const email = cleanText(input.email) || cleanText(user.email) || cleanText(metadata.email);
+  const provider = providerFromUser(user);
+  const providerEmail = cleanText(user.email) || cleanText(metadata.email);
+  const email = cleanText(input.email) || providerEmail;
   const name = cleanText(input.name) || cleanText(metadata.name) || cleanText(metadata.full_name) || cleanText(metadata.nickname) || cleanText(metadata.user_name);
   const phone = cleanText(input.phone) || cleanText(metadata.phone);
   const companyName = cleanText(input.company_name);
@@ -76,12 +81,13 @@ export function buildCatalogCustomerPayload(input: CatalogProfileInput, user: Au
   const payload: CatalogCustomerPayload = {
     auth_user_id: user.id,
     email,
+    kakao_email: provider === "kakao" ? cleanText(input.kakao_email) || providerEmail : null,
     name,
     phone,
     company_name: companyName,
     position,
     favorite_fabrics: favoriteFabrics,
-    provider: providerFromUser(user),
+    provider,
     profile_completed: false,
   };
   payload.profile_completed = missingRequiredCatalogProfileFields(payload).length === 0;

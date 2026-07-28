@@ -6,6 +6,7 @@ import { createCatalogBrowserClient } from "@/lib/supabase-browser";
 
 type AccountCustomer = {
   email: string | null;
+  kakao_email: string | null;
   name: string | null;
   phone: string | null;
   company_name: string | null;
@@ -51,7 +52,8 @@ export default function AccountPage() {
         {customer ? (
           <div className="mt-7 space-y-3 text-sm">
             {[
-              ["이메일", customer.email || "-"],
+              ["작성 이메일", customer.email || "-"],
+              ["카카오 이메일", customer.kakao_email || "-"],
               ["성함", customer.name || "-"],
               ["전화번호", customer.phone || "-"],
               ["회사명", customer.company_name || "-"],

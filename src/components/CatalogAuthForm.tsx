@@ -107,6 +107,24 @@ export default function CatalogAuthForm({ mode }: { mode: AuthMode }) {
     }
   }
 
+  async function signInWithKakao() {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=/profile/complete`;
+      const { error: kakaoError } = await supabase.auth.signInWithOAuth({
+        provider: "kakao",
+        options: { redirectTo },
+      });
+      if (kakaoError) throw kakaoError;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "카카오 로그인 시작 실패");
+      setLoading(false);
+    }
+  }
+
   return (
     <form onSubmit={submit} className="mx-auto max-w-xl rounded-3xl border border-[var(--line)] bg-white p-6 shadow-sm sm:p-8">
       <div className="mb-6">
@@ -115,6 +133,21 @@ export default function CatalogAuthForm({ mode }: { mode: AuthMode }) {
         <p className="mt-2 text-sm text-[var(--navy2)]">
           {mode === "login" ? "DIAN 원단 카탈로그 계정으로 로그인합니다." : "카탈로그 이용과 상담을 위한 기본 정보를 입력해주세요."}
         </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={signInWithKakao}
+        disabled={loading}
+        className="mb-5 flex w-full items-center justify-center rounded-2xl bg-[#FEE500] px-5 py-4 text-sm font-extrabold text-[#191600] transition hover:brightness-95 disabled:opacity-50"
+      >
+        카카오로 계속하기
+      </button>
+
+      <div className="mb-5 flex items-center gap-3 text-xs font-bold tracking-[.16em] text-[var(--muted)]">
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span>{mode === "login" ? "EMAIL LOGIN" : "EMAIL SIGNUP"}</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
       </div>
 
       <div className="space-y-4 text-sm">

@@ -52,4 +52,22 @@ assert.equal(incomplete.provider, 'kakao');
 assert.equal(incomplete.profile_completed, false);
 assert.deepEqual(mod.missingRequiredCatalogProfileFields(incomplete), ['phone', 'company_name']);
 
+const preserved = mod.mergeCatalogCustomerPayload(
+  mod.buildCatalogCustomerPayload({}, { id: 'auth-3', email: 'keep@example.com', app_metadata: { provider: 'email' }, user_metadata: {} }),
+  {
+    email: 'keep@example.com',
+    name: '기존이름',
+    phone: '010-3333-4444',
+    company_name: '기존회사',
+    position: '팀장',
+    favorite_fabrics: '소파, 커튼',
+    provider: 'email',
+  },
+);
+assert.equal(preserved.name, '기존이름');
+assert.equal(preserved.phone, '010-3333-4444');
+assert.equal(preserved.company_name, '기존회사');
+assert.equal(preserved.favorite_fabrics, '소파, 커튼');
+assert.equal(preserved.profile_completed, true);
+
 console.log('catalog-profile tests passed');

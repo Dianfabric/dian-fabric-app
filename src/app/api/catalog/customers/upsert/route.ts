@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { buildCatalogCustomerPayload, missingRequiredCatalogProfileFields } from "@/lib/catalog-profile";
+import { buildCatalogCustomerPayload, mergeCatalogCustomerPayload, missingRequiredCatalogProfileFields } from "@/lib/catalog-profile";
 import { createCatalogServiceClient } from "@/lib/supabase";
 
 type CatalogProfileBody = {
@@ -21,7 +21,16 @@ export async function POST(request: NextRequest) {
     if (userError || !userData.user) return Response.json({ error: "사용자 확인 실패" }, { status: 401 });
 
     const body = (await request.json().catch(() => ({}))) as CatalogProfileBody;
-    const payload = buildCatalogCustomerPayload(body, userData.user);
+    const incomingPayload = buildCatalogCustomerPayload(body, userData.user);
+
+    const { data: existingCustomer, error: existingError } = await supabase
+      .from("catalog_customers")
+      .select("email,name,phone,company_name,position,favorite_fabrics,provider,profile_completed")
+      .eq("auth_user_id", userData.user.id)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const payload = mergeCatalogCustomerPayload(incomingPayload, existingCustomer);
     const missing = missingRequiredCatalogProfileFields(payload);
 
     const { data, error } = await supabase

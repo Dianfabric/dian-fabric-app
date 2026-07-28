@@ -46,6 +46,24 @@ export function missingRequiredCatalogProfileFields(payload: Partial<CatalogCust
   return REQUIRED_CATALOG_PROFILE_FIELDS.filter((field) => !cleanText(payload[field]));
 }
 
+export function mergeCatalogCustomerPayload(
+  incoming: CatalogCustomerPayload,
+  existing?: Partial<CatalogCustomerPayload> | null,
+): CatalogCustomerPayload {
+  const merged: CatalogCustomerPayload = {
+    ...incoming,
+    email: incoming.email || cleanText(existing?.email) || null,
+    name: incoming.name || cleanText(existing?.name) || null,
+    phone: incoming.phone || cleanText(existing?.phone) || null,
+    company_name: incoming.company_name || cleanText(existing?.company_name) || null,
+    position: incoming.position || cleanText(existing?.position) || null,
+    favorite_fabrics: incoming.favorite_fabrics || cleanText(existing?.favorite_fabrics) || null,
+    provider: incoming.provider || existing?.provider || "email",
+  };
+  merged.profile_completed = missingRequiredCatalogProfileFields(merged).length === 0;
+  return merged;
+}
+
 export function buildCatalogCustomerPayload(input: CatalogProfileInput, user: AuthUserLike): CatalogCustomerPayload {
   const metadata = user.user_metadata || {};
   const email = cleanText(input.email) || cleanText(user.email) || cleanText(metadata.email);

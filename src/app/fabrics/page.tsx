@@ -736,14 +736,48 @@ function PriceRangeSlider({
 }) {
   const minPercent = ((priceMin - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
   const maxPercent = ((priceMax - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
-  const updateMin = (value: number) => setPriceMin(Math.min(value, priceMax - PRICE_STEP));
-  const updateMax = (value: number) => setPriceMax(Math.max(value, priceMin + PRICE_STEP));
+  const updateMin = (value: number) => setPriceMin(Math.max(PRICE_MIN_LIMIT, Math.min(value, priceMax - 1)));
+  const updateMax = (value: number) => setPriceMax(Math.min(PRICE_MAX_LIMIT, Math.max(value, priceMin + 1)));
 
   return (
     <div className="py-[7px]">
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <label className="text-[11px] font-semibold" style={{ color: "var(--navy2)" }}>
+          최소 금액
+          <input
+            type="number"
+            min={PRICE_MIN_LIMIT}
+            max={priceMax - PRICE_STEP}
+            step={PRICE_STEP}
+            value={priceMin}
+            onChange={(e) => updateMin(parseInt(e.target.value) || PRICE_MIN_LIMIT)}
+            onBlur={onChangeDone}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onChangeDone(); } }}
+            className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
+            style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
+            aria-label="최소 금액 입력"
+          />
+        </label>
+        <label className="text-[11px] font-semibold" style={{ color: "var(--navy2)" }}>
+          최대 금액
+          <input
+            type="number"
+            min={priceMin + PRICE_STEP}
+            max={PRICE_MAX_LIMIT}
+            step={PRICE_STEP}
+            value={priceMax}
+            onChange={(e) => updateMax(parseInt(e.target.value) || PRICE_MAX_LIMIT)}
+            onBlur={onChangeDone}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onChangeDone(); } }}
+            className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
+            style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
+            aria-label="최대 금액 입력"
+          />
+        </label>
+      </div>
       <div className="flex items-center justify-between mb-3 text-[12px]" style={{ color: "var(--navy2)" }}>
-        <span>최소 {formatPrice(priceMin)}</span>
-        <span>최대 {priceMax >= PRICE_MAX_LIMIT ? "전체" : formatPrice(priceMax)}</span>
+        <span>{formatPrice(priceMin)}</span>
+        <span>{priceMax >= PRICE_MAX_LIMIT ? "전체" : formatPrice(priceMax)}</span>
       </div>
       <div className="relative h-8">
         <div className="absolute left-0 right-0 top-[13px] h-[3px] rounded-full" style={{ background: "var(--line)" }} />

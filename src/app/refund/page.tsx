@@ -26,6 +26,7 @@ export default function RefundPage() {
           <h2 className="text-xl font-bold">교환 및 반품이 어려운 경우</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-gray-700">
             <li>고객 요청에 따라 재단 또는 발주가 진행된 원단</li>
+            <li>해외 발주 특성 상 재고를 보관하지 않아 발주 후 환불이 불가능합니다.</li>
             <li>고객의 사용 또는 보관 부주의로 상품 가치가 훼손된 경우</li>
             <li>상품 수령 후 7일이 지난 경우</li>
             <li>모니터 환경에 따른 색상 차이, 원단 로트 차이 등 상품 특성에 해당하는 경우</li>

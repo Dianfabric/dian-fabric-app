@@ -91,6 +91,8 @@ export default function FabricsPage() {
   const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
   const [priceMin, setPriceMin] = useState<number>(restored.current?.priceMin ?? PRICE_MIN_LIMIT);
   const [priceMax, setPriceMax] = useState<number>(restored.current?.priceMax ?? PRICE_MAX_LIMIT);
+  const [draftPriceMin, setDraftPriceMin] = useState<number>(restored.current?.priceMin ?? PRICE_MIN_LIMIT);
+  const [draftPriceMax, setDraftPriceMax] = useState<number>(restored.current?.priceMax ?? PRICE_MAX_LIMIT);
   const hasPriceFilter = priceMin > PRICE_MIN_LIMIT || priceMax < PRICE_MAX_LIMIT;
   // 소재 최소 함량(%) — 면/울/린넨, 0이면 미적용
   const [matMin, setMatMin] = useState<{ co: number; wo: number; li: number }>(
@@ -192,6 +194,12 @@ export default function FabricsPage() {
     setPage(1);
   }, []);
 
+  const applyPriceFilter = useCallback(() => {
+    setPriceMin(draftPriceMin);
+    setPriceMax(draftPriceMax);
+    setPage(1);
+  }, [draftPriceMax, draftPriceMin]);
+
   const handleGoToPage = useCallback(() => {
     const num = parseInt(goToPage);
     if (num >= 1 && num <= totalPages) {
@@ -242,6 +250,8 @@ export default function FabricsPage() {
     setWideOnly(false);
     setPriceMin(PRICE_MIN_LIMIT);
     setPriceMax(PRICE_MAX_LIMIT);
+    setDraftPriceMin(PRICE_MIN_LIMIT);
+    setDraftPriceMax(PRICE_MAX_LIMIT);
     setMatMin({ co: 0, wo: 0, li: 0 });
     setSearchQuery("");
     setSearchInput("");
@@ -471,11 +481,11 @@ export default function FabricsPage() {
             )}
             {openFilter === "price" && (
               <PriceRangeSlider
-                priceMin={priceMin}
-                priceMax={priceMax}
-                setPriceMin={setPriceMin}
-                setPriceMax={setPriceMax}
-                onChangeDone={() => setPage(1)}
+                priceMin={draftPriceMin}
+                priceMax={draftPriceMax}
+                setPriceMin={setDraftPriceMin}
+                setPriceMax={setDraftPriceMax}
+                onApply={applyPriceFilter}
               />
             )}
           </div>
@@ -570,11 +580,11 @@ export default function FabricsPage() {
           {/* 가격 */}
           <FilterGroup title="가격대">
             <PriceRangeSlider
-              priceMin={priceMin}
-              priceMax={priceMax}
-              setPriceMin={setPriceMin}
-              setPriceMax={setPriceMax}
-              onChangeDone={() => setPage(1)}
+              priceMin={draftPriceMin}
+              priceMax={draftPriceMax}
+              setPriceMin={setDraftPriceMin}
+              setPriceMax={setDraftPriceMax}
+              onApply={applyPriceFilter}
             />
           </FilterGroup>
         </aside>
@@ -726,13 +736,13 @@ function PriceRangeSlider({
   priceMax,
   setPriceMin,
   setPriceMax,
-  onChangeDone,
+  onApply,
 }: {
   priceMin: number;
   priceMax: number;
   setPriceMin: (value: number) => void;
   setPriceMax: (value: number) => void;
-  onChangeDone: () => void;
+  onApply: () => void;
 }) {
   const minPercent = ((priceMin - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
   const maxPercent = ((priceMax - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
@@ -747,12 +757,11 @@ function PriceRangeSlider({
           <input
             type="number"
             min={PRICE_MIN_LIMIT}
-            max={priceMax - PRICE_STEP}
-            step={PRICE_STEP}
+            max={priceMax - 1}
+            step={1}
             value={priceMin}
             onChange={(e) => updateMin(parseInt(e.target.value) || PRICE_MIN_LIMIT)}
-            onBlur={onChangeDone}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onChangeDone(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onApply(); } }}
             className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
             style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
             aria-label="최소 금액 입력"
@@ -762,13 +771,12 @@ function PriceRangeSlider({
           최대 금액
           <input
             type="number"
-            min={priceMin + PRICE_STEP}
+            min={priceMin + 1}
             max={PRICE_MAX_LIMIT}
-            step={PRICE_STEP}
+            step={1}
             value={priceMax}
             onChange={(e) => updateMax(parseInt(e.target.value) || PRICE_MAX_LIMIT)}
-            onBlur={onChangeDone}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onChangeDone(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onApply(); } }}
             className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
             style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
             aria-label="최대 금액 입력"
@@ -792,8 +800,6 @@ function PriceRangeSlider({
           step={PRICE_STEP}
           value={priceMin}
           onChange={(e) => updateMin(parseInt(e.target.value))}
-          onMouseUp={onChangeDone}
-          onTouchEnd={onChangeDone}
           className="pointer-events-none absolute inset-x-0 top-0 h-8 w-full appearance-none bg-transparent accent-[#1E2A3A] [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1E2A3A]"
           aria-label="최소 가격"
         />
@@ -804,17 +810,17 @@ function PriceRangeSlider({
           step={PRICE_STEP}
           value={priceMax}
           onChange={(e) => updateMax(parseInt(e.target.value))}
-          onMouseUp={onChangeDone}
-          onTouchEnd={onChangeDone}
           className="pointer-events-none absolute inset-x-0 top-0 h-8 w-full appearance-none bg-transparent accent-[#1E2A3A] [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#1E2A3A]"
           aria-label="최대 가격"
         />
       </div>
-      <div className="flex justify-between text-[11px]" style={{ color: "var(--muted)" }}>
-        <span>{formatPrice(PRICE_MIN_LIMIT)}</span>
-        <span>5만원</span>
-        <span>{formatPrice(PRICE_MAX_LIMIT)}+</span>
-      </div>
+      <button
+        type="button"
+        onClick={onApply}
+        className="mt-3 w-full rounded-[4px] bg-[#1E2A3A] px-3 py-2 text-[12px] font-bold text-white transition-opacity hover:opacity-90"
+      >
+        적용
+      </button>
     </div>
   );
 }

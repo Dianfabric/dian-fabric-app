@@ -143,7 +143,8 @@ export default function ProfileCompletePage() {
         return;
       }
       const customer = json.customer;
-      if (customer?.profile_completed) {
+      const isEditMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("edit") === "1";
+      if (customer?.profile_completed && !isEditMode) {
         router.replace("/fabrics");
         router.refresh();
         return;

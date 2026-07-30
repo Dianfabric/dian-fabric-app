@@ -67,7 +67,7 @@ export default function AccountPage() {
                 <strong className="text-right text-[var(--navy)]">{value}</strong>
               </div>
             ))}
-            <Link href="/profile/complete" className="mt-5 inline-flex rounded-2xl bg-[var(--navy)] px-5 py-3 text-sm font-extrabold text-white">
+            <Link href="/profile/complete?edit=1" className="mt-5 inline-flex rounded-2xl bg-[var(--navy)] px-5 py-3 text-sm font-extrabold text-white">
               정보 수정
             </Link>
           </div>

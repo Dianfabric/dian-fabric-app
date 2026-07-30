@@ -45,11 +45,17 @@ const SORT_OPTIONS = [
 
 const PRICE_MIN_LIMIT = 0;
 const PRICE_MAX_LIMIT = 100000;
-const PRICE_STEP = 5000;
+const PRICE_STEP = 1;
 
 function formatPrice(value: number) {
-  if (value >= 10000) return `${Math.round(value / 10000)}만원`;
-  return `${value.toLocaleString()}원`;
+  if (value === PRICE_MIN_LIMIT) return "0원";
+  if (value >= PRICE_MAX_LIMIT) return "전체";
+  return `${Math.round(value).toLocaleString()}원`;
+}
+
+function clampPrice(value: number) {
+  if (!Number.isFinite(value)) return PRICE_MIN_LIMIT;
+  return Math.max(PRICE_MIN_LIMIT, Math.min(PRICE_MAX_LIMIT, Math.round(value)));
 }
 
 const MOBILE_TABS = [
@@ -195,8 +201,14 @@ export default function FabricsPage() {
   }, []);
 
   const applyPriceFilter = useCallback(() => {
-    setPriceMin(draftPriceMin);
-    setPriceMax(draftPriceMax);
+    const nextMin = clampPrice(draftPriceMin);
+    const nextMax = clampPrice(draftPriceMax);
+    const appliedMin = Math.min(nextMin, nextMax);
+    const appliedMax = Math.max(nextMin, nextMax);
+    setDraftPriceMin(appliedMin);
+    setDraftPriceMax(appliedMax);
+    setPriceMin(appliedMin);
+    setPriceMax(appliedMax);
     setPage(1);
   }, [draftPriceMax, draftPriceMin]);
 
@@ -744,10 +756,10 @@ function PriceRangeSlider({
   setPriceMax: (value: number) => void;
   onApply: () => void;
 }) {
-  const minPercent = ((priceMin - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
-  const maxPercent = ((priceMax - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
-  const updateMin = (value: number) => setPriceMin(Math.max(PRICE_MIN_LIMIT, Math.min(value, priceMax - 1)));
-  const updateMax = (value: number) => setPriceMax(Math.min(PRICE_MAX_LIMIT, Math.max(value, priceMin + 1)));
+  const minPercent = ((clampPrice(priceMin) - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
+  const maxPercent = ((clampPrice(priceMax) - PRICE_MIN_LIMIT) / (PRICE_MAX_LIMIT - PRICE_MIN_LIMIT)) * 100;
+  const updateMin = (value: number) => setPriceMin(clampPrice(value));
+  const updateMax = (value: number) => setPriceMax(clampPrice(value));
 
   return (
     <div className="py-[7px]">
@@ -757,11 +769,10 @@ function PriceRangeSlider({
           <input
             type="number"
             min={PRICE_MIN_LIMIT}
-            max={priceMax - 1}
+            max={PRICE_MAX_LIMIT}
             step={1}
             value={priceMin}
-            onChange={(e) => updateMin(parseInt(e.target.value) || PRICE_MIN_LIMIT)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onApply(); } }}
+            onChange={(e) => setPriceMin(e.target.value === "" ? PRICE_MIN_LIMIT : Number(e.target.value))}
             className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
             style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
             aria-label="최소 금액 입력"
@@ -771,12 +782,11 @@ function PriceRangeSlider({
           최대 금액
           <input
             type="number"
-            min={priceMin + 1}
+            min={PRICE_MIN_LIMIT}
             max={PRICE_MAX_LIMIT}
             step={1}
             value={priceMax}
-            onChange={(e) => updateMax(parseInt(e.target.value) || PRICE_MAX_LIMIT)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onApply(); } }}
+            onChange={(e) => setPriceMax(e.target.value === "" ? PRICE_MAX_LIMIT : Number(e.target.value))}
             className="mt-1 w-full rounded-[4px] px-2 py-[6px] text-right text-[12px] outline-none"
             style={{ border: "1px solid var(--line)", color: "var(--navy)" }}
             aria-label="최대 금액 입력"

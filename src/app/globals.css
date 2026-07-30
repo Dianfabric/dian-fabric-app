@@ -22,10 +22,20 @@
   --font-sans: 'Pretendard', sans-serif;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+}
+
+* {
+  min-width: 0;
 }
 
 /* legacy gradient utilities — search page still uses them */

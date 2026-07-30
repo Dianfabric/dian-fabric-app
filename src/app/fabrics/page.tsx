@@ -272,7 +272,7 @@ export default function FabricsPage() {
   }, []);
 
   return (
-    <div>
+    <div className="overflow-x-clip">
       {/* 우측 퀵뷰 패널 (데스크탑 hover→Quick View) */}
       <QuickViewPanel fabric={quickView} onClose={() => setQuickView(null)} />
 
@@ -320,7 +320,7 @@ export default function FabricsPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="디자인명 또는 컬러번호 검색 (예: HALO601)"
-              className="flex-1 border-none outline-none bg-transparent text-[16px] sm:text-[14px]"
+              className="min-w-0 flex-1 border-none outline-none bg-transparent text-[16px] sm:text-[14px]"
               style={{ fontFamily: "inherit", color: "var(--ink)" }}
             />
             {searchInput && (
@@ -359,11 +359,11 @@ export default function FabricsPage() {
 
       {/* Toolbar */}
       <div
-        className="max-w-[1600px] mx-auto px-4 sm:px-8 py-5 flex justify-between items-baseline gap-3"
+        className="max-w-[1600px] mx-auto px-4 sm:px-8 py-5 flex justify-between items-baseline gap-3 overflow-hidden"
         style={{ borderBottom: "1px solid var(--line)" }}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-[13px] tracking-[.03em]" style={{ color: "var(--muted)" }}>
+        <div className="min-w-0 flex items-center gap-3">
+          <span className="min-w-0 truncate text-[13px] tracking-[.03em]" style={{ color: "var(--muted)" }}>
             {mode === "design"
               ? `전체 ${total.toLocaleString()}개 디자인 · ${totalFabrics.toLocaleString()}개 원단`
               : `전체 ${total.toLocaleString()}개 원단`}
@@ -381,7 +381,7 @@ export default function FabricsPage() {
         <select
           value={sortBy}
           onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-          className="border-none bg-transparent text-[13px] cursor-pointer"
+          className="shrink-0 border-none bg-transparent text-[13px] cursor-pointer"
           style={{ fontFamily: "inherit", color: "var(--navy)" }}
         >
           <option value="">정렬</option>
@@ -392,8 +392,8 @@ export default function FabricsPage() {
       </div>
 
       {/* 모바일 가로 필터 아코디언 (lg 미만에서만) */}
-      <div className="lg:hidden max-w-[1320px] mx-auto px-4 pt-4">
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="lg:hidden max-w-[1320px] mx-auto overflow-x-clip px-4 pt-4">
+        <div className="flex max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
           {MOBILE_TABS.map(tab => {
             const counts: Record<string, number> = {
               type: selectedType ? 1 : 0,

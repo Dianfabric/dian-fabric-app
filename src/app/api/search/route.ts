@@ -415,6 +415,10 @@ export async function GET(request: NextRequest) {
   const coMin = parseFloat(searchParams.get("co_min") || "0") || 0; // 면
   const liMin = parseFloat(searchParams.get("li_min") || "0") || 0; // 린넨
   const woMin = parseFloat(searchParams.get("wo_min") || "0") || 0; // 울
+  const priceMin = parseFloat(searchParams.get("price_min") || "0") || 0;
+  const priceMaxRaw = searchParams.get("price_max");
+  const priceMax = priceMaxRaw ? parseFloat(priceMaxRaw) || 0 : 0;
+  const hasPriceFilter = priceMin > 0 || priceMax > 0;
   const feat = searchParams.get("feat") === "1"; // 기본(정렬 미선택)일 때만 EK UNIQUE 우선
   const seed = searchParams.get("seed") || ""; // 기본 모드 셔플 시드 (있으면 무작위 정렬)
 
@@ -496,7 +500,7 @@ export async function GET(request: NextRequest) {
 
   // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드 ───
   // 검색은 name/color_code 직접 쿼리로 처리해야 HALO601 같은 모바일 입력도 안정적으로 잡힌다.
-  const individualMode = colors.length > 0 || !!search;
+  const individualMode = colors.length > 0 || !!search || hasPriceFilter;
 
   if (!individualMode) {
     // 대표모드: 디자인(name) 단위 그룹핑 RPC
@@ -542,6 +546,8 @@ export async function GET(request: NextRequest) {
     if (coMin > 0) query = query.gte("co_percent", coMin);
     if (liMin > 0) query = query.gte("li_percent", liMin);
     if (woMin > 0) query = query.gte("wo_percent", woMin);
+    if (priceMin > 0) query = query.gte("price_per_yard", priceMin);
+    if (priceMax > 0) query = query.lte("price_per_yard", priceMax);
 
     // 모든 선택 색상을 포함하는 원단 필터 (AND 조건)
     for (const c of colors) {
@@ -611,6 +617,8 @@ export async function GET(request: NextRequest) {
     if (coMin > 0) searchQuery = searchQuery.gte("co_percent", coMin);
     if (liMin > 0) searchQuery = searchQuery.gte("li_percent", liMin);
     if (woMin > 0) searchQuery = searchQuery.gte("wo_percent", woMin);
+    if (priceMin > 0) searchQuery = searchQuery.gte("price_per_yard", priceMin);
+    if (priceMax > 0) searchQuery = searchQuery.lte("price_per_yard", priceMax);
     if (subtype) {
       const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
       if (subtypes.length === 1) {
@@ -662,6 +670,8 @@ export async function GET(request: NextRequest) {
   query = query.range(from, to);
 
   if (wide) query = query.gte("width_mm", WIDE_MIN_MM);
+  if (priceMin > 0) query = query.gte("price_per_yard", priceMin);
+  if (priceMax > 0) query = query.lte("price_per_yard", priceMax);
 
   if (searchOr) query = query.or(searchOr);
   if (subtype) {

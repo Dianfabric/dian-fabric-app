@@ -43,12 +43,20 @@ const SORT_OPTIONS = [
   { label: "가격 낮은순", value: "price_low" },
 ];
 
+const PRICE_RANGES = [
+  { label: "2만원 이하", min: 0, max: 20000 },
+  { label: "2만~3만원", min: 20000, max: 30000 },
+  { label: "3만~5만원", min: 30000, max: 50000 },
+  { label: "5만원 이상", min: 50000, max: null },
+];
+
 const MOBILE_TABS = [
   { key: "pattern", label: "패턴" },
   { key: "type", label: "종류" },
   { key: "color", label: "색상" },
   { key: "usage", label: "용도" },
   { key: "width", label: "폭" },
+  { key: "price", label: "가격" },
 ];
 
 // 종류 → 소재% 슬라이더 키 (이 종류를 선택했을 때만 해당 슬라이더 노출)
@@ -79,6 +87,8 @@ export default function FabricsPage() {
   const [selectedUsage, setSelectedUsage] = useState(restored.current?.selectedUsage || "");
   const [selectedColors, setSelectedColors] = useState<string[]>(restored.current?.selectedColors || []);
   const [wideOnly, setWideOnly] = useState<boolean>(restored.current?.wideOnly || false);
+  const [selectedPriceRange, setSelectedPriceRange] = useState<number | null>(restored.current?.selectedPriceRange ?? null);
+  const selectedPrice = selectedPriceRange == null ? null : PRICE_RANGES[selectedPriceRange];
   // 소재 최소 함량(%) — 면/울/린넨, 0이면 미적용
   const [matMin, setMatMin] = useState<{ co: number; wo: number; li: number }>(
     restored.current?.matMin || { co: 0, wo: 0, li: 0 }
@@ -104,10 +114,10 @@ export default function FabricsPage() {
   useEffect(() => {
     try {
       sessionStorage.setItem(FABRICS_STATE_KEY, JSON.stringify({
-        page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin,
+        page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, selectedPriceRange, sortBy, matMin,
       }));
     } catch {}
-  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, sortBy, matMin]);
+  }, [page, selectedType, selectedPatterns, selectedUsage, selectedColors, searchQuery, wideOnly, selectedPriceRange, sortBy, matMin]);
 
   // 상세 이동 직전 현재 스크롤 위치 저장 (뒤로가기 복원용)
   const saveScroll = useCallback(() => {
@@ -137,6 +147,10 @@ export default function FabricsPage() {
     if (selectedColors.length > 0) params.set("color", selectedColors.join(","));
     if (searchQuery) params.set("search", searchQuery);
     if (wideOnly) params.set("wide", "1");
+    if (selectedPrice) {
+      params.set("price_min", String(selectedPrice.min));
+      if (selectedPrice.max != null) params.set("price_max", String(selectedPrice.max));
+    }
     // 소재% 는 해당 종류를 선택했을 때만 전송 (면→co, 울→wo, 린넨→li)
     if (selectedType === "면" && matMin.co > 0) params.set("co_min", String(matMin.co));
     if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
@@ -158,7 +172,7 @@ export default function FabricsPage() {
     } finally {
       if (myReq === reqIdRef.current) setLoading(false);
     }
-  }, [matMin, page, searchQuery, selectedColors, selectedPatterns, selectedType, selectedUsage, sortBy, wideOnly]);
+  }, [matMin, page, searchQuery, selectedColors, selectedPatterns, selectedPrice, selectedType, selectedUsage, sortBy, wideOnly]);
 
   useEffect(() => {
     fetchFabrics();
@@ -215,7 +229,7 @@ export default function FabricsPage() {
   };
 
   const matActive = matMin.co > 0 || matMin.wo > 0 || matMin.li > 0;
-  const hasActiveFilters = selectedType || selectedPatterns.length > 0 || selectedUsage || selectedColors.length > 0 || wideOnly || matActive || searchQuery;
+  const hasActiveFilters = selectedType || selectedPatterns.length > 0 || selectedUsage || selectedColors.length > 0 || wideOnly || selectedPriceRange != null || matActive || searchQuery;
 
   const clearAllFilters = useCallback(() => {
     setSelectedType("");
@@ -223,6 +237,7 @@ export default function FabricsPage() {
     setSelectedUsage("");
     setSelectedColors([]);
     setWideOnly(false);
+    setSelectedPriceRange(null);
     setMatMin({ co: 0, wo: 0, li: 0 });
     setSearchQuery("");
     setSearchInput("");
@@ -360,6 +375,7 @@ export default function FabricsPage() {
               color: selectedColors.length,
               usage: selectedUsage ? 1 : 0,
               width: wideOnly ? 1 : 0,
+              price: selectedPriceRange != null ? 1 : 0,
             };
             const cnt = counts[tab.key];
             const open = openFilter === tab.key;
@@ -449,6 +465,18 @@ export default function FabricsPage() {
                   onClick={() => { setWideOnly(!wideOnly); setPage(1); }} />
               </div>
             )}
+            {openFilter === "price" && (
+              <div className="grid grid-cols-2 gap-2">
+                {PRICE_RANGES.map((range, index) => (
+                  <Pill
+                    key={range.label}
+                    label={range.label}
+                    active={selectedPriceRange === index}
+                    onClick={() => { setSelectedPriceRange(selectedPriceRange === index ? null : index); setPage(1); }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -536,6 +564,18 @@ export default function FabricsPage() {
               active={wideOnly}
               onClick={() => { setWideOnly(!wideOnly); setPage(1); }}
             />
+          </FilterGroup>
+
+          {/* 가격 */}
+          <FilterGroup title="가격대">
+            {PRICE_RANGES.map((range, index) => (
+              <FilterRow
+                key={range.label}
+                label={range.label}
+                active={selectedPriceRange === index}
+                onClick={() => { setSelectedPriceRange(selectedPriceRange === index ? null : index); setPage(1); }}
+              />
+            ))}
           </FilterGroup>
         </aside>
 

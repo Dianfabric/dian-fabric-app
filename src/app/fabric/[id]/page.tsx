@@ -79,9 +79,7 @@ export default function FabricDetailPage() {
   // 표시 이미지/색번호: hover(임시 미리보기) 우선, 없으면 선택된 컬러
   const dispImage = hoverImage || current.image_url;
   const dispColor = hoverColor || current.color_code;
-  const pricePerMeter = current.price_per_yard
-    ? Math.round(current.price_per_yard * 1.094)
-    : null;
+  const unitPriceKrw = current.price_per_yard || 0;
 
   return (
     <div className="pt-14 pb-16 max-w-5xl mx-auto px-4">
@@ -143,12 +141,19 @@ export default function FabricDetailPage() {
         <div className="flex flex-col gap-5">
           {/* 제목 */}
           <div>
-            <h1 className="text-2xl font-extrabold mb-1">
-              {fabric.name}
-              {current.color_code && (
-                <span className="text-gray-400 font-bold ml-2">#{current.color_code}</span>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-extrabold mb-1">
+                {fabric.name}
+                {current.color_code && (
+                  <span className="text-gray-400 font-bold ml-2">#{current.color_code}</span>
+                )}
+              </h1>
+              {unitPriceKrw > 0 && (
+                <span className="shrink-0 text-xl font-extrabold text-[#1E2A3A] tabular-nums">
+                  &#8361;{unitPriceKrw.toLocaleString()}/Y
+                </span>
               )}
-            </h1>
+            </div>
             <div className="mt-2 space-y-1 text-sm text-gray-600">
               <p><span className="font-semibold text-[#1E2A3A]">성분</span> {compositionStr}</p>
               <p><span className="font-semibold text-[#1E2A3A]">폭</span> {fabric.width_mm ? `${(fabric.width_mm / 10).toFixed(0)}cm` : "-"}</p>
@@ -199,18 +204,6 @@ export default function FabricDetailPage() {
                     </span>
                   </button>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* 가격 정보 */}
-          {pricePerMeter && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <div className="flex justify-between items-end">
-                <span className="text-sm text-gray-500">야드 단가</span>
-                <span className="text-xl font-extrabold text-gradient">
-                  &#8361;{current.price_per_yard!.toLocaleString()}/Y
-                </span>
               </div>
             </div>
           )}

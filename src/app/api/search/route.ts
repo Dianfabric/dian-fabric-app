@@ -500,7 +500,68 @@ export async function GET(request: NextRequest) {
 
   // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드 ───
   // 검색은 name/color_code 직접 쿼리로 처리해야 HALO601 같은 모바일 입력도 안정적으로 잡힌다.
-  const individualMode = colors.length > 0 || !!search || hasPriceFilter;
+  const individualMode = colors.length > 0 || !!search;
+
+  if (hasPriceFilter && !colors.length && !search) {
+    let baseQuery = supabase
+      .from("fabrics")
+      .select(LIST_COLS)
+      .eq("is_active", true)
+      .not("image_url", "is", null);
+
+    if (wide) baseQuery = baseQuery.gte("width_mm", WIDE_MIN_MM);
+    if (coMin > 0) baseQuery = baseQuery.gte("co_percent", coMin);
+    if (liMin > 0) baseQuery = baseQuery.gte("li_percent", liMin);
+    if (woMin > 0) baseQuery = baseQuery.gte("wo_percent", woMin);
+    if (priceMin > 0) baseQuery = baseQuery.gte("price_per_yard", priceMin);
+    if (priceMax > 0) baseQuery = baseQuery.lte("price_per_yard", priceMax);
+    if (subtype) {
+      const subtypes = subtype.split(",").map(s => s.trim()).filter(Boolean);
+      if (subtypes.length === 1) {
+        baseQuery = baseQuery.ilike("pattern_detail", `%${subtypes[0]}%`);
+      } else if (subtypes.length > 1) {
+        baseQuery = baseQuery.or(subtypes.map(s => `pattern_detail.ilike.%${s}%`).join(","));
+      }
+      if (type === "커튼") baseQuery = baseQuery.eq("is_curtain_eligible", true);
+      else if (type && type !== "패턴") baseQuery = baseQuery.ilike("fabric_type", `%${type}%`);
+    } else if (type) {
+      if (type === "패턴") baseQuery = baseQuery.not("pattern_detail", "is", null).neq("pattern_detail", "무지");
+      else if (type === "커튼") baseQuery = baseQuery.eq("is_curtain_eligible", true);
+      else baseQuery = baseQuery.ilike("fabric_type", `%${type}%`);
+    }
+    if (usageCol) baseQuery = baseQuery.contains("usage_types", [usageCol]);
+
+    const allRows: Record<string, unknown>[] = [];
+    const chunkSize = 1000;
+    for (let offset = 0; offset < 20000; offset += chunkSize) {
+      const { data, error } = await baseQuery.range(offset, offset + chunkSize - 1);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      allRows.push(...((data || []) as unknown as Record<string, unknown>[]));
+      if (!data || data.length < chunkSize) break;
+    }
+
+    const grouped = new Map<string, Record<string, unknown> & { color_count: number }>();
+    for (const row of allRows) {
+      const name = String(row.name || "");
+      const prev = grouped.get(name);
+      if (!prev) {
+        grouped.set(name, { ...row, color_count: 1 });
+      } else {
+        prev.color_count += 1;
+        if (sortCmp(row, prev) < 0) grouped.set(name, { ...row, color_count: prev.color_count });
+      }
+    }
+
+    const designs = Array.from(grouped.values()).sort(sortCmp);
+    const total = designs.length;
+    const totalFabrics = allRows.length;
+    const from = (page - 1) * limit;
+    const fabrics = designs.slice(from, from + limit).map(({ embedding, ...rest }) => rest);
+
+    return NextResponse.json({
+      fabrics, total, totalFabrics, page, totalPages: Math.ceil(total / limit), mode: "design",
+    }, { headers: LIST_CACHE });
+  }
 
   if (!individualMode) {
     // 대표모드: 디자인(name) 단위 그룹핑 RPC

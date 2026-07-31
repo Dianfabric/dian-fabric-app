@@ -167,7 +167,7 @@ export default function FabricsPage() {
     if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
     if (selectedType === "린넨" && matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
-    else { params.set("feat", "1"); params.set("seed", "dian-fabrics-default-v1"); } // 기본 → EK UNIQUE 우선 + 캐시 가능한 고정 셔플
+    else { params.set("sort", "newest"); } // 기본 → CATALOG 전체 원단 신상품순
 
     try {
       const res = await fetch(`/api/search?${params}`);

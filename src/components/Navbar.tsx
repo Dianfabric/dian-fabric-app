@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -42,7 +43,7 @@ export default function Navbar() {
           href="/"
           prefetch={false}
           aria-label="dian"
-          className="flex items-end gap-[7px] shrink-0"
+          className="flex items-center shrink-0"
           onClick={(e) => {
             e.preventDefault();
             try {
@@ -52,21 +53,14 @@ export default function Navbar() {
             window.location.href = "/fabrics";
           }}
         >
-          <span
-            className="leading-none text-[26px] sm:text-[30px] lowercase"
-            style={{ fontFamily: "'Jost', sans-serif", fontWeight: 700, letterSpacing: "-.01em", color: "#16181d" }}
-          >
-            dian
-          </span>
-          <svg
-            viewBox="0 0 46 40"
-            className="h-[19px] sm:h-[22px] w-auto mb-[3px]"
-            aria-hidden="true"
-            fill="#16181d"
-          >
-            <rect x="2" y="29" width="42" height="7" rx="3.5" />
-            <circle cx="38" cy="12" r="5.4" />
-          </svg>
+          <Image
+            src="/dian-logo.png"
+            alt="DIAN"
+            width={140}
+            height={43}
+            priority
+            className="h-[31px] sm:h-[35px] w-auto object-contain"
+          />
         </Link>
 
         <nav className="flex gap-[14px] sm:gap-[26px] text-[13px] sm:text-[14px] tracking-[.02em]" style={{ color: "var(--navy2)" }}>

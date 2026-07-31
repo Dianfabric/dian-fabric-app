@@ -233,22 +233,13 @@ export default function FabricsPage() {
     setPage(1);
   }, []);
 
-  const getPageNumbers = (): (number | "...")[] => {
-    const pages: (number | "...")[] = [];
-    if (totalPages <= 10) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      let start = Math.max(2, page - 3);
-      let end = Math.min(totalPages - 1, page + 3);
-      if (page <= 4) end = Math.min(totalPages - 1, 8);
-      if (page >= totalPages - 3) start = Math.max(2, totalPages - 7);
-      if (start > 2) pages.push("...");
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (end < totalPages - 1) pages.push("...");
-      pages.push(totalPages);
+  const getPageNumbers = (): number[] => {
+    if (totalPages <= 3) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    return pages;
+    if (page <= 2) return [1, 2, 3];
+    if (page >= totalPages - 1) return [totalPages - 2, totalPages - 1, totalPages];
+    return [page - 1, page, page + 1];
   };
 
   const matActive = matMin.co > 0 || matMin.wo > 0 || matMin.li > 0;
@@ -602,7 +593,7 @@ export default function FabricsPage() {
         </aside>
 
         {/* Grid + Pagination */}
-        <main>
+        <main className="min-w-0">
           {loading ? (
             <div className="grid gap-[28px_22px] grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 20 }).map((_, i) => (
@@ -645,54 +636,44 @@ export default function FabricsPage() {
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="min-w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ color: "var(--navy2)", border: "1px solid var(--line)" }}
                 >
                   ←
                 </button>
 
-                {getPageNumbers().map((p, i) =>
-                  p === "..." ? (
-                    <span
-                      key={`dot-${i}`}
-                      className="min-w-[34px] h-[34px] flex items-center justify-center text-[13px]"
-                      style={{ color: "var(--navy2)" }}
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className="min-w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all"
-                      style={
-                        page === p
-                          ? { background: "var(--navy)", color: "#fff", border: "1px solid var(--navy)" }
-                          : { color: "var(--navy2)", border: "1px solid var(--line)" }
+                {getPageNumbers().map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all"
+                    style={
+                      page === p
+                        ? { background: "var(--navy)", color: "#fff", border: "1px solid var(--navy)" }
+                        : { color: "var(--navy2)", border: "1px solid var(--line)" }
+                    }
+                    onMouseEnter={(e) => {
+                      if (page !== p) {
+                        e.currentTarget.style.borderColor = "var(--navy)";
+                        e.currentTarget.style.color = "var(--navy)";
                       }
-                      onMouseEnter={(e) => {
-                        if (page !== p) {
-                          e.currentTarget.style.borderColor = "var(--navy)";
-                          e.currentTarget.style.color = "var(--navy)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (page !== p) {
-                          e.currentTarget.style.borderColor = "var(--line)";
-                          e.currentTarget.style.color = "var(--navy2)";
-                        }
-                      }}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
+                    }}
+                    onMouseLeave={(e) => {
+                      if (page !== p) {
+                        e.currentTarget.style.borderColor = "var(--line)";
+                        e.currentTarget.style.color = "var(--navy2)";
+                      }
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
 
                 {/* Next */}
                 <button
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="min-w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ color: "var(--navy2)", border: "1px solid var(--line)" }}
                 >
                   →

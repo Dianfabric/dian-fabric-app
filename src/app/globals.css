@@ -34,10 +34,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-* {
-  min-width: 0;
-}
-
 /* legacy gradient utilities — search page still uses them */
 .text-gradient {
   background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-light) 50%, var(--gold-dark) 100%);

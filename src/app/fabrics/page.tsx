@@ -167,7 +167,7 @@ export default function FabricsPage() {
     if (selectedType === "울" && matMin.wo > 0) params.set("wo_min", String(matMin.wo));
     if (selectedType === "린넨" && matMin.li > 0) params.set("li_min", String(matMin.li));
     if (sortBy) params.set("sort", sortBy);
-    else { params.set("sort", "newest"); } // 기본 → CATALOG 전체 원단 신상품순
+    else { params.set("feat", "1"); params.set("seed", "dian-fabrics-default-v1"); } // 기본 → EK UNIQUE 우선 + 캐시 가능한 고정 셔플
 
     try {
       const res = await fetch(`/api/search?${params}`);
@@ -233,13 +233,11 @@ export default function FabricsPage() {
     setPage(1);
   }, []);
 
-  const getPageNumbers = (): number[] => {
-    if (totalPages <= 3) {
+  const getPageNumbers = (): (number | "...")[] => {
+    if (totalPages <= 6) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    if (page <= 2) return [1, 2, 3];
-    if (page >= totalPages - 1) return [totalPages - 2, totalPages - 1, totalPages];
-    return [page - 1, page, page + 1];
+    return [1, 2, 3, 4, 5, "...", totalPages];
   };
 
   const matActive = matMin.co > 0 || matMin.wo > 0 || matMin.li > 0;
@@ -642,31 +640,41 @@ export default function FabricsPage() {
                   ←
                 </button>
 
-                {getPageNumbers().map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all"
-                    style={
-                      page === p
-                        ? { background: "var(--navy)", color: "#fff", border: "1px solid var(--navy)" }
-                        : { color: "var(--navy2)", border: "1px solid var(--line)" }
-                    }
-                    onMouseEnter={(e) => {
-                      if (page !== p) {
-                        e.currentTarget.style.borderColor = "var(--navy)";
-                        e.currentTarget.style.color = "var(--navy)";
+                {getPageNumbers().map((p, i) => (
+                  p === "..." ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px]"
+                      style={{ color: "var(--navy2)" }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className="w-[34px] h-[34px] shrink-0 flex items-center justify-center text-[13px] rounded-[3px] cursor-pointer transition-all"
+                      style={
+                        page === p
+                          ? { background: "var(--navy)", color: "#fff", border: "1px solid var(--navy)" }
+                          : { color: "var(--navy2)", border: "1px solid var(--line)" }
                       }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (page !== p) {
-                        e.currentTarget.style.borderColor = "var(--line)";
-                        e.currentTarget.style.color = "var(--navy2)";
-                      }
-                    }}
-                  >
-                    {p}
-                  </button>
+                      onMouseEnter={(e) => {
+                        if (page !== p) {
+                          e.currentTarget.style.borderColor = "var(--navy)";
+                          e.currentTarget.style.color = "var(--navy)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (page !== p) {
+                          e.currentTarget.style.borderColor = "var(--line)";
+                          e.currentTarget.style.color = "var(--navy2)";
+                        }
+                      }}
+                    >
+                      {p}
+                    </button>
+                  )
                 ))}
 
                 {/* Next */}

@@ -93,8 +93,22 @@ export default function CatalogAuthForm({ mode }: { mode: AuthMode }) {
       if (result.data.session) {
         if (mode === "signup") {
           await upsertProfile(result.data.session.access_token);
+          router.push("/fabrics");
+        } else {
+          const requestedNext = typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("next") || ""
+            : "";
+          const safeNext = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "";
+          const profile = await fetch("/api/catalog/customers/upsert", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${result.data.session.access_token}`,
+            },
+            body: JSON.stringify({}),
+          }).then((res) => res.ok ? res.json() : null).catch(() => null);
+          router.push(profile?.customer?.profile_completed && safeNext ? safeNext : "/profile/complete");
         }
-        router.push(mode === "signup" ? "/fabrics" : "/profile/complete");
         router.refresh();
         return;
       }

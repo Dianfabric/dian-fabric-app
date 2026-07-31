@@ -5,9 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ImageLightbox from "@/components/ImageLightbox";
+import {
+  addInquiryCartItem,
+  formatKrw,
+  type CatalogInquiryItemType,
+} from "@/lib/catalog-inquiry-cart";
+import { createCatalogBrowserClient } from "@/lib/supabase-browser";
 import type { Fabric } from "@/lib/types";
-
-const KAKAO_URL = "https://pf.kakao.com/_xbSuYK"; // 디안 카카오톡 채널
 
 interface ColorVariant {
   id: string;
@@ -18,6 +22,7 @@ interface ColorVariant {
 }
 
 export default function FabricDetailPage() {
+  const supabase = createCatalogBrowserClient();
   const { id } = useParams();
   const router = useRouter();
   const [fabric, setFabric] = useState<Fabric | null>(null);
@@ -27,6 +32,9 @@ export default function FabricDetailPage() {
   const [hoverImage, setHoverImage] = useState<string | null>(null);
   const [hoverColor, setHoverColor] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null); // 현재 선택된 컬러 (페이지 이동 없이 교체)
+  const [orderMode, setOrderMode] = useState<CatalogInquiryItemType>("fabric_yard");
+  const [quantityInput, setQuantityInput] = useState("1");
+  const [cartMessage, setCartMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +70,7 @@ export default function FabricDetailPage() {
   }
 
   // 조성 문자열 만들기
+  const activeFabric = fabric as Fabric;
   const compositions: string[] = [];
   if (fabric.pl_percent > 0) compositions.push(`${fabric.pl_percent}%polyester`);
   if (fabric.co_percent > 0) compositions.push(`${fabric.co_percent}%cotton`);
@@ -80,6 +89,29 @@ export default function FabricDetailPage() {
   const dispImage = hoverImage || current.image_url;
   const dispColor = hoverColor || current.color_code;
   const unitPriceKrw = current.price_per_yard || 0;
+  const parsedQuantity = Math.max(1, Number(quantityInput) || 1);
+  const activeUnit = orderMode === "fabric_yard" ? "Y" : "개";
+  const activeTotal = unitPriceKrw * parsedQuantity;
+
+  async function addToInquiryCart() {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      const next = typeof window !== "undefined" ? window.location.pathname : "/fabrics";
+      router.push(`/login?next=${encodeURIComponent(next)}`);
+      return;
+    }
+    addInquiryCartItem({
+      fabricId: current.id,
+      itemType: orderMode,
+      fabricName: activeFabric.name,
+      colorCode: current.color_code,
+      imageUrl: current.image_url,
+      quantity: parsedQuantity,
+      unitPriceKrw,
+      detailUrl: typeof window !== "undefined" ? `${window.location.origin}/fabric/${current.id}` : `/fabric/${current.id}`,
+    });
+    setCartMessage(`${activeFabric.name} #${current.color_code} ${parsedQuantity}${activeUnit} 문의바구니에 담았습니다.`);
+  }
 
   return (
     <div className="pt-14 pb-16 max-w-5xl mx-auto px-4">
@@ -208,19 +240,65 @@ export default function FabricDetailPage() {
             </div>
           )}
 
-          {/* 카카오톡 문의하기 */}
-          <a
-            href={KAKAO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full rounded-2xl py-4 font-bold transition-opacity hover:opacity-90"
-            style={{ background: "#FEE500", color: "#3C1E1E" }}
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#3C1E1E" aria-hidden="true">
-              <path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7-.2.7-.7 2.6-.8 3-.1.5.2.5.4.4.2-.1 2.6-1.8 3.7-2.5.6.1 1.3.1 2 .1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/>
-            </svg>
-            카카오톡으로 문의하기
-          </a>
+          {/* 문의바구니 담기 */}
+          <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-bold tracking-[.18em] text-gray-400">INQUIRY CART</p>
+            <h2 className="mt-1 text-lg font-extrabold text-[#1E2A3A]">재고 체크 · 구매 문의</h2>
+            <p className="mt-1 text-sm text-gray-500">로그인 후 원단/스와치를 담아 챗봇 상담으로 연결합니다.</p>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+              {[
+                ["fabric_yard", "원단"],
+                ["swatch", "스와치"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setOrderMode(value as CatalogInquiryItemType)}
+                  className={`rounded-xl px-4 py-3 text-sm font-extrabold transition ${
+                    orderMode === value ? "bg-[#1E2A3A] text-white shadow-sm" : "text-[#1E2A3A]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-4 block text-sm font-bold text-[#1E2A3A]">
+              수량
+              <div className="mt-1 flex overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                <input
+                  value={quantityInput}
+                  onChange={(event) => setQuantityInput(event.target.value.replace(/[^0-9.]/g, ""))}
+                  onBlur={() => setQuantityInput(String(parsedQuantity))}
+                  onFocus={(event) => event.currentTarget.select()}
+                  inputMode="decimal"
+                  className="min-w-0 flex-1 px-4 py-3 text-base font-bold outline-none"
+                />
+                <span className="flex items-center px-4 text-sm font-extrabold text-gray-500">{activeUnit}</span>
+              </div>
+            </label>
+
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-[rgba(30,42,58,0.04)] px-4 py-3 text-sm">
+              <span className="font-bold text-gray-500">예상 금액</span>
+              <strong className="text-lg text-[#1E2A3A]">{formatKrw(activeTotal)}</strong>
+            </div>
+
+            <button
+              type="button"
+              onClick={addToInquiryCart}
+              className="mt-4 w-full rounded-2xl bg-[#1E2A3A] px-5 py-4 text-sm font-extrabold text-white transition hover:opacity-90"
+            >
+              문의바구니 담기
+            </button>
+            <Link
+              href="/inquiry-cart"
+              className="mt-3 flex w-full items-center justify-center rounded-2xl border border-gray-200 px-5 py-3 text-sm font-extrabold text-[#1E2A3A]"
+            >
+              문의바구니 보기
+            </Link>
+            {cartMessage && <p className="mt-3 rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-700">{cartMessage}</p>}
+          </div>
 
           {/* 가격 계산기/주문 영역은 추후 정식 오픈 시 추가 예정 */}
         </div>

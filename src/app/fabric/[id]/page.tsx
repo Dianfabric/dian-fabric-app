@@ -293,7 +293,7 @@ export default function FabricDetailPage() {
               장바구니 담기
             </button>
             <Link
-              href="/inquiry-cart"
+              href="/cart"
               className="mt-3 flex w-full items-center justify-center rounded-2xl border border-gray-200 px-5 py-3 text-sm font-extrabold text-[#1E2A3A]"
             >
               장바구니 보기

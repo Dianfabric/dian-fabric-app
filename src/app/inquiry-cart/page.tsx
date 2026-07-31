@@ -70,7 +70,7 @@ export default function InquiryCartPage() {
     supabase.auth.getSession().then(async ({ data }) => {
       const token = data.session?.access_token;
       if (!token) {
-        router.replace("/login?next=/inquiry-cart");
+        router.replace("/login?next=/cart");
         return;
       }
       const res = await fetch("/api/catalog/customers/upsert", {

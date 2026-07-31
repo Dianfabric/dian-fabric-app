@@ -10,7 +10,7 @@ export default function Navbar() {
   const supabase = createCatalogBrowserClient();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isFabrics = pathname === "/" || pathname === "/fabrics" || pathname.startsWith("/fabric/");
-  const isInquiryCart = pathname === "/inquiry-cart";
+  const isInquiryCart = pathname === "/cart" || pathname === "/inquiry-cart";
   const isAccount = pathname === "/account" || pathname === "/login" || pathname === "/signup" || pathname.startsWith("/profile/");
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function Navbar() {
           </Link>
           {isLoggedIn ? (
             <Link
-              href="/inquiry-cart"
+              href="/cart"
               prefetch={false}
               className={`py-2 relative hover:text-[var(--navy)] transition-colors ${
                 isInquiryCart ? "font-semibold text-[var(--navy)]" : ""

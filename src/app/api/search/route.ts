@@ -498,9 +498,9 @@ export async function GET(request: NextRequest) {
 
   const colors = color ? color.split(",").filter(Boolean) : [];
 
-  // ─── 모드 결정: 색상 필터 또는 검색이 있으면 개별모드 ───
-  // 검색은 name/color_code 직접 쿼리로 처리해야 HALO601 같은 모바일 입력도 안정적으로 잡힌다.
-  const individualMode = colors.length > 0 || !!search;
+  // 색상 필터를 골랐을 때만 개별 컬러웨이를 보여준다.
+  // 원단명 검색은 대표모드로 유지해 AD-91002 같은 QBH 컬러가 한 디자인 카드로 묶인다.
+  const individualMode = colors.length > 0;
 
   if (hasPriceFilter && !colors.length && !search) {
     let baseQuery = supabase

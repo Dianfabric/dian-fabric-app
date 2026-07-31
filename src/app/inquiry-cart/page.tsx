@@ -39,14 +39,15 @@ function buildChatbotMessage(items: CatalogInquiryItem[], customer: CatalogCusto
 
   const itemLines = items.map((item, index) => [
     `${index + 1}. ${item.fabricName} #${item.colorCode}`,
+    item.supplier ? `- 브랜드: ${item.supplier}` : null,
     `- 구분: ${item.itemType === "fabric_yard" ? "원단" : "스와치"}`,
     `- 수량: ${itemLabel(item)}`,
     `- 단가: ${formatKrw(item.unitPriceKrw)}${item.itemType === "fabric_yard" ? "/Y" : "/개"}`,
     `- 상세: ${item.detailUrl}`,
-  ].join("\n")).join("\n\n");
+  ].filter(Boolean).join("\n")).join("\n\n");
 
   return [
-    "[CATALOG 문의바구니]",
+    "[CATALOG 장바구니]",
     "아래 상품 재고 체크 및 구매 상담 요청드립니다.",
     customerLines.length ? `\n고객 정보\n${customerLines.join("\n")}` : null,
     `\n상품 목록\n${itemLines}`,
@@ -82,8 +83,8 @@ export default function InquiryCartPage() {
       setAuthChecked(true);
       refresh();
     });
-    window.addEventListener("dian-catalog-inquiry-cart-updated", refresh);
-    return () => window.removeEventListener("dian-catalog-inquiry-cart-updated", refresh);
+    window.addEventListener("dian-catalog-cart-updated", refresh);
+    return () => window.removeEventListener("dian-catalog-cart-updated", refresh);
   }, [router, supabase.auth]);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + lineTotalKrw(item), 0), [items]);
@@ -111,8 +112,8 @@ export default function InquiryCartPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-bold tracking-[.22em] text-[var(--muted)]">CATALOG INQUIRY</p>
-            <h1 className="mt-2 text-3xl font-extrabold text-[var(--navy)]">문의바구니</h1>
+            <p className="text-xs font-bold tracking-[.22em] text-[var(--muted)]">CATALOG CART</p>
+            <h1 className="mt-2 text-3xl font-extrabold text-[var(--navy)]">장바구니</h1>
             <p className="mt-2 text-sm text-[var(--navy2)]">담은 원단을 챗봇으로 보내 재고 체크와 구매 상담을 시작합니다.</p>
           </div>
           {items.length > 0 && (
@@ -157,7 +158,7 @@ export default function InquiryCartPage() {
             </div>
 
             <aside className="h-fit rounded-3xl border border-[var(--line)] bg-white p-5 lg:sticky lg:top-24">
-              <h3 className="mb-4 font-extrabold text-[var(--navy)]">문의 요약</h3>
+              <h3 className="mb-4 font-extrabold text-[var(--navy)]">장바구니 요약</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--navy2)]">상품</span><span>{items.length}건</span></div>
                 <div className="flex justify-between"><span className="text-[var(--navy2)]">예상 상품금액</span><strong>{formatKrw(subtotal)}</strong></div>
@@ -166,7 +167,7 @@ export default function InquiryCartPage() {
                 재고 체크 / 구매 문의하기
               </button>
               <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-                챗봇으로 상품 목록을 전달하고, DIAN이 Slack 알림을 통해 재고 확인을 이어갑니다.
+                챗봇으로 상품 목록을 전달하고, 가능한 브랜드는 즉시 재고 조회 후 Slack 알림을 보냅니다.
               </p>
             </aside>
           </div>

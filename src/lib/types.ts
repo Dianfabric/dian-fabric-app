@@ -2,6 +2,7 @@ export interface Fabric {
   id: string
   name: string
   color_code: string
+  supplier?: string | null
   price_per_yard: number | null
   width_mm: number | null
   pl_percent: number

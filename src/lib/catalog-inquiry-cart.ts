@@ -8,13 +8,14 @@ export type CatalogInquiryItem = {
   itemType: CatalogInquiryItemType;
   fabricName: string;
   colorCode: string;
+  supplier?: string | null;
   imageUrl?: string | null;
   quantity: number;
   unitPriceKrw: number;
   detailUrl: string;
 };
 
-const CART_KEY = "dian-catalog-inquiry-cart";
+const CART_KEY = "dian-catalog-cart";
 
 export function makeInquiryItemId(item: Pick<CatalogInquiryItem, "fabricId" | "itemType" | "colorCode">) {
   return `${item.fabricId}:${item.itemType}:${item.colorCode}`;
@@ -32,7 +33,7 @@ export function readInquiryCart(): CatalogInquiryItem[] {
 
 export function writeInquiryCart(items: CatalogInquiryItem[]) {
   window.localStorage.setItem(CART_KEY, JSON.stringify(items));
-  window.dispatchEvent(new Event("dian-catalog-inquiry-cart-updated"));
+  window.dispatchEvent(new Event("dian-catalog-cart-updated"));
 }
 
 export function addInquiryCartItem(item: Omit<CatalogInquiryItem, "id">) {

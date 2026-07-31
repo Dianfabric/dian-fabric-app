@@ -105,12 +105,13 @@ export default function FabricDetailPage() {
       itemType: orderMode,
       fabricName: activeFabric.name,
       colorCode: current.color_code,
+      supplier: activeFabric.supplier || null,
       imageUrl: current.image_url,
       quantity: parsedQuantity,
       unitPriceKrw,
       detailUrl: typeof window !== "undefined" ? `${window.location.origin}/fabric/${current.id}` : `/fabric/${current.id}`,
     });
-    setCartMessage(`${activeFabric.name} #${current.color_code} ${parsedQuantity}${activeUnit} 문의바구니에 담았습니다.`);
+    setCartMessage(`${activeFabric.name} #${current.color_code} ${parsedQuantity}${activeUnit} 장바구니에 담았습니다.`);
   }
 
   return (
@@ -240,9 +241,9 @@ export default function FabricDetailPage() {
             </div>
           )}
 
-          {/* 문의바구니 담기 */}
+          {/* 장바구니 담기 */}
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold tracking-[.18em] text-gray-400">INQUIRY CART</p>
+            <p className="text-xs font-bold tracking-[.18em] text-gray-400">CART</p>
             <h2 className="mt-1 text-lg font-extrabold text-[#1E2A3A]">재고 체크 · 구매 문의</h2>
             <p className="mt-1 text-sm text-gray-500">로그인 후 원단/스와치를 담아 챗봇 상담으로 연결합니다.</p>
 
@@ -289,13 +290,13 @@ export default function FabricDetailPage() {
               onClick={addToInquiryCart}
               className="mt-4 w-full rounded-2xl bg-[#1E2A3A] px-5 py-4 text-sm font-extrabold text-white transition hover:opacity-90"
             >
-              문의바구니 담기
+              장바구니 담기
             </button>
             <Link
               href="/inquiry-cart"
               className="mt-3 flex w-full items-center justify-center rounded-2xl border border-gray-200 px-5 py-3 text-sm font-extrabold text-[#1E2A3A]"
             >
-              문의바구니 보기
+              장바구니 보기
             </Link>
             {cartMessage && <p className="mt-3 rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-700">{cartMessage}</p>}
           </div>

@@ -87,7 +87,7 @@ export default function Navbar() {
                 isInquiryCart ? "font-semibold text-[var(--navy)]" : ""
               }`}
             >
-              문의바구니
+              장바구니
               {isInquiryCart && (
                 <span
                   className="absolute left-0 right-0 -bottom-px h-[2px]"

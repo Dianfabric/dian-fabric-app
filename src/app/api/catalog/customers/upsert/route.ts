@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { buildCatalogCustomerPayload, cleanText, mergeCatalogCustomerPayload, missingRequiredCatalogProfileFields } from "@/lib/catalog-profile";
-import { createCatalogServiceClient } from "@/lib/supabase";
 
 type CatalogProfileBody = {
   email?: string;
@@ -17,8 +17,19 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     if (!token) return Response.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
-    const supabase = createCatalogServiceClient();
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    const supabaseUrl = process.env.NEXT_PUBLIC_CATALOG_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_CATALOG_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return Response.json({ error: "Supabase 설정 누락" }, { status: 500 });
+    }
+
+    // Use the logged-in user's token for catalog profile reads/writes.
+    // This keeps customer profile persistence working even when the server service key is rotated/broken.
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) return Response.json({ error: "사용자 확인 실패" }, { status: 401 });
 
     const body = (await request.json().catch(() => ({}))) as CatalogProfileBody;

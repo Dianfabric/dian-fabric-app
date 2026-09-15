@@ -340,21 +340,24 @@ export default function SearchPage() {
     try {
       setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
-      const [embedding, geminiFabrics, imageColors, queryBase64, v4Features] = await Promise.all([
+      // v4: 서버 임베딩과 Gemini 분석을 병렬로. 서버 임베딩이 실패하면(콜드스타트 타임아웃 등) 기존 브라우저 경로로 자동 폴백.
+      const [v4Features, geminiFabrics, queryBase64] = await Promise.all([
         USE_V4
-          ? Promise.resolve<number[]>([])
-          : import("@/lib/dino-client").then(({ getDinoEmbedding }) =>
+          ? embedOnServer(file).catch((e: unknown) => { console.warn("v4 embed failed, falling back to browser model", e); return null; })
+          : Promise.resolve<V4Features | null>(null),
+        analyzeWithGemini(file),
+        fileToBase64(file),
+      ]);
+      const [embedding, imageColors] = v4Features
+        ? [[] as number[], undefined]
+        : await Promise.all([
+            import("@/lib/dino-client").then(({ getDinoEmbedding }) =>
               getDinoEmbedding(file, (status) => {
                 if (status.status === "loading") setStatusMessage(status.message);
               })
             ),
-        analyzeWithGemini(file),
-        USE_V4
-          ? Promise.resolve(undefined)
-          : import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
-        fileToBase64(file),
-        USE_V4 ? embedOnServer(file) : Promise.resolve<V4Features | null>(null),
-      ]);
+            import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
+          ]);
 
       // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
       // Gemini 실패 시 RGB 색상만으로도 검색 (fallback)
@@ -390,7 +393,7 @@ export default function SearchPage() {
           : undefined;
 
         let finalResults: SearchResult[];
-        if (USE_V4 && v4Features) {
+        if (v4Features) {
           // v4: 하드필터 없음 — Gemini 패턴/색상명은 보너스 점수로만 전달
           const { results: v4Results } = await searchV4(
             v4Features,

@@ -84,3 +84,31 @@
 - Supabase: `qkkobestkhkxlrjeuakt.supabase.co` (Pro)
 - 원단 수: 14,625개 (고유 원단명 1,503개)
 - 스택: Next.js 16 + Supabase + CLIP + Gemini + GPT-4o + Sharp
+
+---
+
+## 2026-09-15 세션 — 사진 유사검색 재검토 (데스크탑, 맥미니 세션으로 이어감)
+
+### 조사 결론
+- 검색 3세대 공존: `/search`(DINOv2 CLS + RGB + Gemini 하드필터 + GPT-4o 100px 그리드 랭킹, 메뉴 연결), `/search-clip`(v1), `/search-v3`(SQL soft scoring, 메뉴 미연결)
+- **골든셋 기준 점수(null 정답 제거 후 75쿼리/정답 177, DB 이미지→DB 이미지)**: 현재 60/40 → Recall@15 50.2%, P@5 13.6%, MRR 0.335. DINOv2 단독 Recall@15 38.8%, 80/20이 52.8%로 최고. RGB 비중을 어떻게 바꿔도 50.2% 상한(후보 200개를 DINO RPC로 먼저 뽑기 때문). (null 포함 옛 계산은 35.7%/26.2%)
+- 원인: ① DB 임베딩(Colab fp32) vs 쿼리(브라우저 q8) 파이프라인 불일치, DB 안에서도 혼재 ② 실제 폰사진으로 측정한 적 없음(도메인 격차 미측정) ③ Gemini 색상명/패턴이 하드 `ilike` 필터라 오분류 시 정답 탈락 ④ 색상 추출이 사진 전체 k-means(랜덤 초기값) ⑤ GPT-4o 재랭킹이 100px 썸네일 ⑥ CLS 토큰만 사용(질감은 패치 토큰)
+- 데이터 오류 예: notes "그레이:70,아이보리:30|rgb:81,22,28" (색상명과 RGB 불일치) → 색상 데이터 점검 필요
+- DB 현황: 전체 16,608 / embedding_dino 16,062 / dino_crop 15,877 / lab_clusters 14,541 / notes rgb 13,355
+
+### 개선 계획 (우선순위)
+1. 서버측 임베딩 통일 + DB 재생성, 하드필터 제거(보너스만), 중앙영역+화벨보정 LAB 색상, 합성 폰사진 테스트셋(원근/조명/블러 증강)
+2. 질감/색 분리(흑백 질감 임베딩으로 디자인 매칭 → 컬러웨이는 색으로), CLS+패치평균, DB 타일 다중벡터, 재랭킹은 상위 20개 개별 이미지 1회 호출
+3. 증강 기반 프로젝션 헤드 학습 (폰사진 ↔ 카탈로그 도메인 격차)
+
+### 오프라인 실험 스크립트 (DB 안 건드림, anon 키로 가능)
+- `scripts/exp/prep.mjs` → 골든셋+무작위 2,400개 이미지 로컬 다운로드 (scripts/exp/data, gitignore)
+- `scripts/exp/embed.mjs <q8|fp32|gray|crop>` → 변형별 CLS/패치평균 임베딩 생성
+- `scripts/exp/eval.mjs` → 변형/조합별 Recall@15, P@5, MRR 비교
+- 순서: prep → embed q8 → embed gray → embed crop → (fp32) → eval. 결과 좋은 방식으로 DB 재생성 진행
+
+### 환경 메모
+- 데스크탑 `.env.local`은 `vercel env pull`로 갱신했으나 SUPABASE_SERVICE_KEY가 Vercel "Sensitive"라 빈 값. 맥미니 `.env.local`에 실제 키 있음
+- Vercel pull 파일은 값이 따옴표로 감싸짐 → 기존 scripts/*.mjs의 naive env 파서가 깨짐(따옴표 제거 필요)
+- `scripts/dinov2_embeddings.ipynb`, `dinov2_crop_embeddings.ipynb`(gitignore 대상, 로컬 전용)에 있던 옛 Supabase secret 키 평문은 제거함(SUPABASE_KEY 변수 → placeholder)
+- 골든셋 데이터 오류: similar_ids에 null 항목 53개(12개 쿼리는 정답이 전부 null). 기존 evaluate-golden-set.mjs는 null을 정답 수에 포함해 Recall이 과소 측정됨 → scripts/exp/*.mjs는 null 제거 후 계산

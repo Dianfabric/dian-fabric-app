@@ -1,70 +1,26 @@
 /**
- * DINOv2 global 임베딩 로컬 생성 (Colab 대체)
- * Xenova/dinov2-base (q8) + CLS 토큰 + L2 정규화 → dino-client.ts(브라우저)와 동일 방식
- * embedding_dino IS NULL 인 행만 처리
+ * ⚠️ 구 버전 폐기 (2026-09-15)
  *
- * 실행: node scripts/generate-dino-local.mjs
+ * 이 스크립트는 예전에 Xenova/dinov2-base **q8** 로 embedding_dino 를 생성했다.
+ * q8 ONNX 벡터는 fp32 벡터와 코사인 0.36 밖에 안 되어 (Node·브라우저 모두), 이 스크립트로 만든
+ * 1,521행이 검색에서 사실상 보이지 않는 원인이 됐다. scripts/exp/results-golden.md 참고.
+ *
+ * 신규 원단 임베딩은 v4 파이프라인(서버와 동일 코드)으로 생성한다:
+ *
+ *   DINO_DTYPE=fp32 DINO_CACHE_DIR=scripts/exp/hf-cache \
+ *   node --experimental-strip-types scripts/regen-embeddings-v4.ts --only-missing
+ *
+ * (fp32 = fp16 과 벡터가 동일하고 CPU에서 더 빠르다. emb_v4, emb_v4_crop, color_sig, emb_v4_meta 를 채운다.)
+ * 이 파일을 직접 실행하면 위 명령을 대신 실행한다.
  */
-import { createClient } from "@supabase/supabase-js";
-import { AutoModel, AutoProcessor, RawImage } from "@huggingface/transformers";
-import { readFileSync } from "fs";
+import { spawnSync } from "node:child_process";
 
-const env = {};
-readFileSync(".env.local", "utf-8").split("\n").forEach((l) => { const [k, ...v] = l.split("="); if (k && v.length) env[k.trim()] = v.join("=").trim(); });
-const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
-
-const CONC = 4; // 이미지 다운로드 동시성
-
-function l2(vec) { const n = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)); return n > 0 ? vec.map((v) => v / n) : vec; }
-
-async function main() {
-  console.log("=== DINOv2 global 임베딩 (로컬) ===");
-  console.log("[1/3] 모델 로딩 (Xenova/dinov2-base q8)...");
-  const [processor, model] = await Promise.all([
-    AutoProcessor.from_pretrained("Xenova/dinov2-base"),
-    AutoModel.from_pretrained("Xenova/dinov2-base", { dtype: "q8" }),
-  ]);
-  console.log("  ✓ 모델 로드 완료\n");
-
-  console.log("[2/3] 대상 조회 (embedding_dino IS NULL)...");
-  let all = [], from = 0;
-  while (true) {
-    const { data, error } = await sb.from("fabrics").select("id, image_url").is("embedding_dino", "null").not("image_url", "is", "null").range(from, from + 999);
-    if (error) { console.error(error.message); break; }
-    if (!data || !data.length) break;
-    all = all.concat(data);
-    if (data.length < 1000) break; from += 1000;
-  }
-  console.log(`  ✓ ${all.length}개 대상\n`);
-  if (!all.length) { console.log("처리할 행이 없습니다."); return; }
-
-  console.log("[3/3] 임베딩 생성...");
-  let ok = 0, fail = 0;
-  const start = Date.now();
-
-  async function one(f) {
-    try {
-      const image = await RawImage.fromURL(f.image_url);
-      const inputs = await processor(image);
-      const output = await model(inputs);
-      const dims = output.last_hidden_state.dims;
-      const hidden = dims[dims.length - 1];
-      const cls = l2(Array.from(output.last_hidden_state.data.slice(0, hidden)));
-      const { error } = await sb.from("fabrics").update({ embedding_dino: `[${cls.join(",")}]` }).eq("id", f.id);
-      if (error) throw new Error(error.message);
-      ok++;
-    } catch (e) { fail++; if (fail <= 10) console.log(`  ✗ ${f.id}: ${e.message}`); }
-  }
-
-  for (let i = 0; i < all.length; i += CONC) {
-    await Promise.all(all.slice(i, i + CONC).map(one));
-    const done = ok + fail;
-    if (done % 40 < CONC) {
-      const el = (Date.now() - start) / 1000;
-      const eta = Math.ceil((el / done) * (all.length - done) / 60);
-      process.stdout.write(`\r  [${done}/${all.length}] ✓${ok} ✗${fail} | ETA ~${eta}분   `);
-    }
-  }
-  console.log(`\n\n=== 완료: ✓${ok} ✗${fail} (${((Date.now() - start) / 60000).toFixed(1)}분) ===`);
-}
-main().catch((e) => { console.error(e); process.exit(1); });
+const args = process.argv.slice(2);
+if (!args.includes("--only-missing") && !args.includes("--all")) args.push("--only-missing");
+const finalArgs = args.filter((a) => a !== "--all");
+console.log("→ v4 파이프라인으로 위임: node --experimental-strip-types scripts/regen-embeddings-v4.ts", finalArgs.join(" "));
+const r = spawnSync(process.execPath, ["--experimental-strip-types", "scripts/regen-embeddings-v4.ts", ...finalArgs], {
+  stdio: "inherit",
+  env: { DINO_DTYPE: "fp32", DINO_CACHE_DIR: "scripts/exp/hf-cache", ...process.env },
+});
+process.exit(r.status ?? 1);

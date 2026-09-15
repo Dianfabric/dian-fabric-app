@@ -112,3 +112,17 @@
 - Vercel pull 파일은 값이 따옴표로 감싸짐 → 기존 scripts/*.mjs의 naive env 파서가 깨짐(따옴표 제거 필요)
 - `scripts/dinov2_embeddings.ipynb`, `dinov2_crop_embeddings.ipynb`(gitignore 대상, 로컬 전용)에 있던 옛 Supabase secret 키 평문은 제거함(SUPABASE_KEY 변수 → placeholder)
 - 골든셋 데이터 오류: similar_ids에 null 항목 53개(12개 쿼리는 정답이 전부 null). 기존 evaluate-golden-set.mjs는 null을 정답 수에 포함해 Recall이 과소 측정됨 → scripts/exp/*.mjs는 null 제거 후 계산
+
+### 2026-09-15 맥미니 세션 — 오프라인 실험 결과 및 v4 파이프라인 구현 (DB 쓰기 전)
+- 실험 산출물: `scripts/exp/results-golden.md`, `scripts/exp/results-synth.md` (풀 2,398장, 골든셋 75쿼리, 합성 폰사진 300장)
+- **핵심 발견**
+  - Xenova/dinov2-base **q8/uint8 ONNX는 fp32와 코사인 0.36**(Node·브라우저 WASM 모두 확인). fp16 = 1.000, q4f16 = 0.95. 운영은 "브라우저 q8 쿼리 vs Colab fp32 DB"라 골든셋 기준 Recall@15 **1.8%**.
+  - DB 자체 혼재: `generate-dino-local.mjs`(q8)로 만든 1,521행(image_width=0 전부)은 fp32 행과 0.3 유사도, DINO 없는 행 546. → 전체 재생성 필요.
+  - `embedding_dino_crop` = 중앙 50% 크롭 fp32(재현 0.985). `embedding_dino` ≈ 전체 fp32(0.91, 일부 q8 혼재).
+  - 골든셋 정답은 기존 DB 검색 후보에서 골라 DB 벡터에 편향(DB CLS 78.7% vs 독립 fp32 71.8%).
+  - notes 색상: RGB 없음 2,750행, 색상명·RGB 명백 불일치 1~3%.
+- **골든셋(카탈로그→카탈로그, R@15)**: fp32 전체 CLS 71.8 / +RGB40 74.8 / 흑백 65.7 / 타일 60.6 / 크롭 56.6. 패치평균·타일·크롭·흑백은 손해.
+- **합성 폰사진(→카탈로그, R@1 / R@15)**: 크롭 패치평균 81.0 / 95.3 최고, 전체 CLS 63.7 / 91.7, 타일 75.7 / 94.3. 화이트밸런스 LAB는 해가 됨(raw LAB 51%, wb 34%).
+- **채택: 전체 CLS 0.45 + 중앙크롭 패치평균 0.35 + raw LAB 0.20** → 골든 R@15 80.1% (P@5 25.6, MRR 0.637, R@1 52.0) / 합성 R@1 75.3, R@15 94.3.
+- **구현 완료(코드만, DB 미변경)**: `src/lib/dino-server.ts`(fp16, DINO_DTYPE), `src/lib/color-lab.ts`, `api/embed`, `api/search-v4`(하드필터 없음, kNN 500 ∪ 500, 보너스 점수), `api/rank-v4`(상위 20개 개별이미지 Gemini 1회), `search/page.tsx`(NEXT_PUBLIC_SEARCH_V4=1 플래그), `supabase/v4-search-schema.sql`, `scripts/regen-embeddings-v4.ts`.
+- **다음**: ① Supabase SQL 적용 ② `DINO_DTYPE=fp32 DINO_CACHE_DIR=scripts/exp/hf-cache node --experimental-strip-types scripts/regen-embeddings-v4.ts` (맥미니, 약 2시간) ③ 맥미니 .env.local에 GEMINI_API_KEY 추가 ④ 플래그 켜고 실제 폰사진 20~30장 검증. Vercel 배포 시 fp16(174MB) 콜드스타트 확인, 안 되면 q4f16(50MB)로 DB까지 통일.

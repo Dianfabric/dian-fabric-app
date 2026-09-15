@@ -9,6 +9,16 @@ import type { Fabric, SearchResult } from "@/lib/types";
 const FETCH_COUNT = 50;   // 텍스트 검색용
 const IMAGE_FETCH_COUNT = 100; // 이미지 검색: 후보 100개 → Gemini 랭킹
 const CACHE_KEY = "dian-search-cache";
+// v4 파이프라인(기본): 서버측 DINOv2(fp16) 임베딩 + LAB 색상 + 소프트 스코어링 + Gemini 개별이미지 재랭킹.
+// 브라우저 모델 다운로드 없음. 비상시 NEXT_PUBLIC_SEARCH_V4=0 으로 끄면 기존 브라우저 q8 경로로 되돌아간다.
+const USE_V4 = process.env.NEXT_PUBLIC_SEARCH_V4 !== "0";
+const V4_RERANK_TOP = 20;
+
+type V4Features = {
+  full: { cls: number[]; mean: number[] };
+  crop?: { cls: number[]; mean: number[] };
+  color?: { wb: { lab: number[]; pct: number }[]; raw: { lab: number[]; pct: number }[] };
+};
 
 interface SearchGroup {
   id: string;
@@ -185,6 +195,55 @@ export default function SearchPage() {
     return { results: data.results || [], detectedCategory: data.detectedCategory, filteredCount: data.filteredCount };
   };
 
+  // ── v4: 서버 임베딩 → 소프트 스코어 검색 → Gemini 개별 이미지 재랭킹 ──
+  const embedOnServer = async (file: File): Promise<V4Features> => {
+    setStatusMessage("서버에서 임베딩 생성 중...");
+    const form = new FormData();
+    form.append("image", file);
+    form.append("variants", "full,crop");
+    const res = await fetch("/api/embed", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "임베딩 생성 실패");
+    return { full: data.full, crop: data.crop, color: data.color };
+  };
+
+  const searchV4 = async (
+    features: V4Features,
+    hints: { patternDetail?: string; fabricType?: string; colorNames?: { name: string; pct: number }[] },
+    matchCount: number,
+  ): Promise<{ results: SearchResult[] }> => {
+    const res = await fetch("/api/search-v4", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...features, hints, matchCount }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "검색 실패");
+    return { results: data.results || [] };
+  };
+
+  const rankV4 = async (queryBase64: string, candidates: SearchResult[]): Promise<SearchResult[]> => {
+    try {
+      const top = candidates.slice(0, V4_RERANK_TOP);
+      const res = await fetch("/api/rank-v4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queryImageBase64: queryBase64, candidates: top.map((c) => ({ id: c.id, image_url: c.image_url || "" })) }),
+      });
+      if (!res.ok) return candidates;
+      const data = await res.json();
+      const ranked: { id: string; score: number }[] = data.ranked || [];
+      if (ranked.length === 0) return candidates;
+      const idMap = new Map(top.map((c) => [c.id, c]));
+      const reordered: SearchResult[] = [];
+      for (const r of ranked) { const f = idMap.get(r.id); if (f) reordered.push(f); }
+      for (const c of top) if (!reordered.includes(c)) reordered.push(c);
+      return [...reordered, ...candidates.slice(V4_RERANK_TOP)];
+    } catch {
+      return candidates;
+    }
+  };
+
   // Gemini 다중 원단 분석
   type GeminiFabric = {
     location: string;
@@ -281,15 +340,20 @@ export default function SearchPage() {
     try {
       setStatusMessage("AI 분석 + 임베딩 처리 중...");
 
-      const [embedding, geminiFabrics, imageColors, queryBase64] = await Promise.all([
-        import("@/lib/dino-client").then(({ getDinoEmbedding }) =>
-          getDinoEmbedding(file, (status) => {
-            if (status.status === "loading") setStatusMessage(status.message);
-          })
-        ),
+      const [embedding, geminiFabrics, imageColors, queryBase64, v4Features] = await Promise.all([
+        USE_V4
+          ? Promise.resolve<number[]>([])
+          : import("@/lib/dino-client").then(({ getDinoEmbedding }) =>
+              getDinoEmbedding(file, (status) => {
+                if (status.status === "loading") setStatusMessage(status.message);
+              })
+            ),
         analyzeWithGemini(file),
-        import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
+        USE_V4
+          ? Promise.resolve(undefined)
+          : import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
         fileToBase64(file),
+        USE_V4 ? embedOnServer(file) : Promise.resolve<V4Features | null>(null),
       ]);
 
       // Gemini가 여러 원단을 감지한 경우 → 각각 별도 검색 그룹 생성
@@ -325,23 +389,42 @@ export default function SearchPage() {
           ? fab.colors.map(c => ({ name: c.color, pct: c.pct }))
           : undefined;
 
-        const { results: dinoResults } = await searchWithDinoEmbedding(
-          embedding,
-          useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
-          useFilter ? fab.patternDetail || undefined : undefined,
-          undefined,                                     // 색상은 RGB가 담당
-          imageColors,                                   // RGB 클러스터로 색상 필터+정렬
-          IMAGE_FETCH_COUNT, // 100개
-          geminiColorNames,                              // Gemini 색상명 비율 매칭
-        );
-
-        // STEP 2: Gemini 최종 랭킹 (15개 초과면 GPT-4o 그리드 랭킹)
         let finalResults: SearchResult[];
-        if (dinoResults.length > 15) {
-          setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
-          finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", dinoResults);
+        if (USE_V4 && v4Features) {
+          // v4: 하드필터 없음 — Gemini 패턴/색상명은 보너스 점수로만 전달
+          const { results: v4Results } = await searchV4(
+            v4Features,
+            {
+              patternDetail: useFilter ? fab.patternDetail || undefined : undefined,
+              fabricType: useFilter ? fab.fabricType : undefined,
+              colorNames: geminiColorNames,
+            },
+            IMAGE_FETCH_COUNT,
+          );
+          if (v4Results.length > 5) {
+            setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
+            finalResults = await rankV4(queryBase64, v4Results);
+          } else {
+            finalResults = v4Results;
+          }
         } else {
-          finalResults = dinoResults;
+          const { results: dinoResults } = await searchWithDinoEmbedding(
+            embedding,
+            useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
+            useFilter ? fab.patternDetail || undefined : undefined,
+            undefined,                                     // 색상은 RGB가 담당
+            imageColors,                                   // RGB 클러스터로 색상 필터+정렬
+            IMAGE_FETCH_COUNT, // 100개
+            geminiColorNames,                              // Gemini 색상명 비율 매칭
+          );
+
+          // STEP 2: Gemini 최종 랭킹 (15개 초과면 GPT-4o 그리드 랭킹)
+          if (dinoResults.length > 15) {
+            setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
+            finalResults = await rankWithGemini(queryBase64, file.type || "image/jpeg", dinoResults);
+          } else {
+            finalResults = dinoResults;
+          }
         }
 
         newGroups.push({

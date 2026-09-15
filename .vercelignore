@@ -1,0 +1,6 @@
+# experiment artefacts (images, embeddings, model cache) — never upload with `vercel deploy`
+scripts/exp/data
+scripts/exp/hf-cache
+scripts/regen-v4-failures.log
+scripts/*.ipynb
+.env*

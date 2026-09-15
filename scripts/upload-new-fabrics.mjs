@@ -279,10 +279,9 @@ async function main() {
   console.log(`  에러: ${errors}개`);
   if (!DRY && uploaded > 0) {
     console.log(`\n💡 다음 단계:`);
-    console.log(`   1. node scripts/generate-embeddings.mjs      (CLIP 임베딩)`);
-    console.log(`   2. Colab: dinov2_embeddings.ipynb 실행        (DINOv2 임베딩)`);
-    console.log(`   3. node scripts/classify-new-fabrics.mjs      (패턴/색상 분류)`);
-    console.log(`   4. node scripts/convert-to-lab.mjs            (LAB 색상)`);
+    console.log(`   1. node scripts/generate-embeddings.mjs      (CLIP 임베딩 — 텍스트 검색용)`);
+    console.log(`   2. node scripts/generate-dino-local.mjs       (v4 사진검색 임베딩 + LAB 색상: emb_v4/emb_v4_crop/color_sig, 서버와 동일 파이프라인)`);
+    console.log(`   3. node scripts/classify-new-fabrics.mjs      (패턴/색상명 분류 — v4에서는 보너스 점수로만 사용)`);
   }
 }
 

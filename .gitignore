@@ -49,3 +49,4 @@ scripts/mockup-*.html
 next-env.d.ts
 
 .vercel
+scripts/regen-v4-failures.log

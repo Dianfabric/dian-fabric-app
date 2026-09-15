@@ -16,7 +16,12 @@ declare module "@huggingface/transformers" {
     static from_pretrained(model: string, options?: any): Promise<any>;
   }
 
+  export class AutoModel {
+    static from_pretrained(model: string, options?: any): Promise<any>;
+  }
+
   export class RawImage {
+    constructor(data: Uint8ClampedArray | Uint8Array, width: number, height: number, channels: number);
     static fromBlob(blob: Blob): Promise<RawImage>;
     static read(url: string): Promise<RawImage>;
     width: number;

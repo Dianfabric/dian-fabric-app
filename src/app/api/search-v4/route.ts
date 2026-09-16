@@ -51,10 +51,12 @@ export async function POST(request: NextRequest) {
     const colorNames: { name: string; pct: number }[] = Array.isArray(hints.colorNames) ? hints.colorNames : [];
 
     const supabase = createServiceClient();
-    const [hidden, { data, error }] = await Promise.all([
-      getHiddenFabricIds(supabase),
-      supabase.rpc("search_fabrics_v4_pair", { q_cls: toVectorString(qCls), q_crop: qCrop ? toVectorString(qCrop) : null, match_count: candidateCount }),
-    ]);
+    const rpcArgs = { q_cls: toVectorString(qCls), q_crop: qCrop ? toVectorString(qCrop) : null, match_count: candidateCount };
+    const hiddenP = getHiddenFabricIds(supabase);
+    // a cold page cache can make the first scan exceed the statement timeout; the retry runs warm
+    let { data, error } = await supabase.rpc("search_fabrics_v4_pair", rpcArgs);
+    if (error && /timeout/i.test(error.message)) ({ data, error } = await supabase.rpc("search_fabrics_v4_pair", rpcArgs));
+    const hidden = await hiddenP;
     if (error) return NextResponse.json({ error: "후보 검색 실패: " + error.message }, { status: 500 });
     const cands = ((data || []) as Candidate[]).filter((c) => !hidden.has(c.id));
 

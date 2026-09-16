@@ -392,31 +392,45 @@ export default function SearchPage() {
           ? fab.colors.map(c => ({ name: c.color, pct: c.pct }))
           : undefined;
 
-        let finalResults: SearchResult[];
+        let finalResults: SearchResult[] | null = null;
         if (v4Features) {
           // v4: 하드필터 없음 — Gemini 패턴/색상명은 보너스 점수로만 전달
-          const { results: v4Results } = await searchV4(
-            v4Features,
-            {
-              patternDetail: useFilter ? fab.patternDetail || undefined : undefined,
-              fabricType: useFilter ? fab.fabricType : undefined,
-              colorNames: geminiColorNames,
-            },
-            IMAGE_FETCH_COUNT,
-          );
-          if (v4Results.length > 5) {
-            setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
-            finalResults = await rankV4(queryBase64, v4Results);
-          } else {
-            finalResults = v4Results;
+          try {
+            const { results: v4Results } = await searchV4(
+              v4Features,
+              {
+                patternDetail: useFilter ? fab.patternDetail || undefined : undefined,
+                fabricType: useFilter ? fab.fabricType : undefined,
+                colorNames: geminiColorNames,
+              },
+              IMAGE_FETCH_COUNT,
+            );
+            if (v4Results.length > 5) {
+              setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
+              finalResults = await rankV4(queryBase64, v4Results);
+            } else {
+              finalResults = v4Results;
+            }
+          } catch (e) {
+            console.warn("v4 search failed, falling back to the legacy path", e);
           }
-        } else {
+        }
+        if (!finalResults) {
+          // legacy path (also the safety net when the v4 search API fails): browser DINOv2 + RGB
+          let legacyEmbedding = embedding, legacyColors = imageColors;
+          if (v4Features) {
+            setStatusMessage("서버 검색 실패 — 브라우저 모델로 재시도 중...");
+            [legacyEmbedding, legacyColors] = await Promise.all([
+              import("@/lib/dino-client").then(({ getDinoEmbedding }) => getDinoEmbedding(file, (status) => { if (status.status === "loading") setStatusMessage(status.message); })),
+              import("@/lib/extract-rgb").then(({ extractImageColors }) => extractImageColors(file)).catch(() => undefined),
+            ]);
+          }
           const { results: dinoResults } = await searchWithDinoEmbedding(
-            embedding,
+            legacyEmbedding,
             useFilter ? fab.fabricType : undefined,       // Gemini → 패턴만
             useFilter ? fab.patternDetail || undefined : undefined,
             undefined,                                     // 색상은 RGB가 담당
-            imageColors,                                   // RGB 클러스터로 색상 필터+정렬
+            legacyColors,                                  // RGB 클러스터로 색상 필터+정렬
             IMAGE_FETCH_COUNT, // 100개
             geminiColorNames,                              // Gemini 색상명 비율 매칭
           );

@@ -46,19 +46,24 @@
 | cls50 crop50 [hard] | 45.8% | 81.9% | 85.5% | 0.577 | 83 |
 | cls45 crop35 lab10 rgb10 [hard] | 43.4% | 83.1% | 85.5% | 0.564 | 83 |
 
-## 로컬 스모크 테스트 (개발 서버)
+## 로컬 스모크 테스트 (개발 서버, Gemini 재랭킹 수정 후)
 | target | step | wall | detail |
 |---|---|---|---|
-| local-dev | embed (cold) | 795 ms | dtype fp16, server 748 ms |
-| local-dev | search-v4 (cold) | 2029 ms | 644 candidates, server 2019 ms, source rank 1, top1 DOLLAR-20 |
-| local-dev | embed (warm) | 626 ms | dtype fp16, server 620 ms |
-| local-dev | search-v4 (warm) | 595 ms | 644 candidates, server 586 ms, source rank 1, top1 DOLLAR-20 |
-| local-dev | rank-v4 (Gemini, top 20) | 16958 ms | gemini-2.5-flash, server 16945 ms, source rank after rerank 1, top score 0 |
+| local-dev | embed (cold) | 1180 ms | dtype fp16, server 1121 ms |
+| local-dev | search-v4 (cold) | 756 ms | 644 candidates, server 727 ms, source rank 1, top1 DOLLAR-20 |
+| local-dev | embed (warm) | 707 ms | dtype fp16, server 697 ms |
+| local-dev | search-v4 (warm) | 967 ms | 644 candidates, server 958 ms, source rank 1, top1 DOLLAR-20 |
+| local-dev | rank-v4 (Gemini, top 20) | 9492 ms | gemini-2.5-flash, server 9479 ms, source rank after rerank 1, top score 95 |
+
 
 ## 오프라인 실험 요약
 - 골든셋(풀 2,398, 75쿼리) R@15: 채택 조합 80.1% (DB 자체 벡터 78.7%, 독립 fp32 CLS 71.8%, 운영 q8×fp32 조합 1.8%)
 - 합성 폰사진 300장 R@15 94.3% / R@1 75.3% (mild 97.5 / medium 97.1 / hard 90.4)
 - 상세: scripts/exp/results-golden.md, scripts/exp/results-synth.md
+
+## 배포 직전 발견·수정한 것
+- Vercel의 GEMINI_API_KEY 값 끝에 개행 문자가 들어 있었음 → Production/Preview 모두 정리된 값으로 재등록, 맥미니 .env.local도 수정
+- Gemini 2.5 Flash 기본 thinking 토큰이 출력 한도를 잠식해 재랭킹 JSON이 잘림 → thinkingBudget 0, maxOutputTokens 8192, 파싱 실패 로그 추가. 20개 후보 재랭킹 9~17초
 
 ## 남은 일
 - scripts/exp/deploy-main.sh 실행 (main 머지 → Vercel 배포 → 프로덕션 스모크 → 보고 갱신)

@@ -55,13 +55,16 @@ export async function POST(request: NextRequest) {
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.1, maxOutputTokens: 2048, responseMimeType: "application/json" } }),
+      // thinkingBudget 0: Gemini 2.5 Flash's default reasoning tokens count against maxOutputTokens and truncated the JSON
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } } }),
     });
     if (!res.ok) { const err = await res.text(); console.error("gemini rerank error", res.status, err.slice(0, 300)); return NextResponse.json({ error: `Gemini ${res.status}` }, { status: 502 }); }
     const data = await res.json();
-    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
+    const cand = data?.candidates?.[0];
+    const text: string = (cand?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("").trim() || "[]";
     let parsed: { idx: number; score: number; reason?: string }[] = [];
-    try { parsed = JSON.parse(text.replace(/```json\n?/g, "").replace(/```\n?/g, "")); } catch { parsed = []; }
+    try { const j = JSON.parse(text.replace(/```json\n?/g, "").replace(/```\n?/g, "")); parsed = Array.isArray(j) ? j : Array.isArray(j?.rankings) ? j.rankings : Array.isArray(j?.results) ? j.results : []; } catch { parsed = []; }
+    if (!parsed.length) console.warn("rank-v4: unparsable Gemini answer", { finishReason: cand?.finishReason, head: text.slice(0, 200) });
 
     const seen = new Set<string>();
     const ranked: { id: string; score: number; reason: string }[] = [];

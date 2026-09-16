@@ -50,3 +50,5 @@ next-env.d.ts
 
 .vercel
 scripts/regen-v4-failures.log
+.claude/settings.local.json
+public/__v4-test.jpg

@@ -62,7 +62,7 @@ async function processRow(r: Row) {
 }
 
 const BATCH = 20;
-const WRITE_CONCURRENCY = 4;
+const WRITE_CONCURRENCY = 2; // lowered after the 2026-09-15 DB outage during the first run
 for (let i = 0; i < todo.length; i += BATCH) {
   const slice = todo.slice(i, i + BATCH);
   const results = await Promise.allSettled(slice.map((r) => processRow(r)));

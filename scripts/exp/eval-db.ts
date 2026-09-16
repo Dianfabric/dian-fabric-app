@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { embedImage, cosine, toVectorString } from "../../src/lib/dino-server.ts";
+import { embedImage, toVectorString } from "../../src/lib/dino-server.ts";
 import { imageSignature, signatureSimilarity, type ColorSignature } from "../../src/lib/color-lab.ts";
 
 const mode = process.argv[2] || "both";
@@ -20,16 +20,16 @@ const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 const W = { cls: 0.45, crop: 0.35, color: 0.20 };
 const CAND = 500;
 
-type Row = { id: string; name: string; notes: string | null; color_sig: ColorSignature | null; emb_v4: string | number[] | null; emb_v4_crop: string | number[] | null; similarity: number };
+type Row = { id: string; name: string; notes: string | null; color_sig: ColorSignature | null; s_cls: number; s_crop: number };
 const vec = (v: string | number[] | null) => (v == null ? null : typeof v === "string" ? (JSON.parse(v) as number[]) : v);
 const parseRGB = (notes: string | null) => { const p = notes?.match(/\|rgb:([^|]*)/)?.[1]; if (!p) return null; const cs: { rgb: number[]; pct: number }[] = []; for (const seg of p.split(";")) { const m = seg.match(/(\d+),(\d+),(\d+):(\d+)/); if (m) cs.push({ rgb: [+m[1], +m[2], +m[3]], pct: +m[4] }); } if (!cs.length) { const m = p.match(/(\d+),(\d+),(\d+)/); if (m) cs.push({ rgb: [+m[1], +m[2], +m[3]], pct: 100 }); } return cs.length ? cs : null; };
 const rgbSim = (q: ReturnType<typeof parseRGB>, f: ReturnType<typeof parseRGB>) => { if (!q || !f) return 0; let t = 0; for (const qc of q) { let b = 0; for (const fc of f) { const d = Math.hypot(qc.rgb[0] - fc.rgb[0], qc.rgb[1] - fc.rgb[1], qc.rgb[2] - fc.rgb[2]) / 441.67; const m = Math.max(0, 1 - d * 2.5) * 0.7 + (1 - Math.abs(qc.pct - fc.pct) / 100) * 0.3; if (m > b) b = m; } t += b * qc.pct / 100; } return t; };
 
 async function candidates(qCls: number[], qCrop: number[] | null, excludeId?: string): Promise<Map<string, Row>> {
-  const calls = [sb.rpc("search_fabrics_v4", { query_embedding: toVectorString(qCls), which: "cls", match_count: CAND })];
-  if (qCrop) calls.push(sb.rpc("search_fabrics_v4", { query_embedding: toVectorString(qCrop), which: "crop", match_count: CAND }));
+  const { data, error } = await sb.rpc("search_fabrics_v4_pair", { q_cls: toVectorString(qCls), q_crop: qCrop ? toVectorString(qCrop) : null, match_count: CAND });
+  if (error) throw new Error(error.message);
   const out = new Map<string, Row>();
-  for (const { data, error } of await Promise.all(calls)) { if (error) throw new Error(error.message); for (const r of (data || []) as Row[]) if (r.id !== excludeId && !out.has(r.id)) out.set(r.id, r); }
+  for (const r of (data || []) as Row[]) if (r.id !== excludeId && !out.has(r.id)) out.set(r.id, r);
   return out;
 }
 type Scorer = (r: Row, sCls: number, sCrop: number, sColor: number, sRgb: number) => number;
@@ -42,7 +42,7 @@ const scorers: Record<string, Scorer> = {
 };
 const lines: string[] = [];
 function rank(cands: Map<string, Row>, qCls: number[], qCrop: number[] | null, qColor: ColorSignature | null, qRgb: ReturnType<typeof parseRGB>) {
-  const feats = [...cands.values()].map((r) => { const f = vec(r.emb_v4), c = vec(r.emb_v4_crop); return { r, sCls: f ? cosine(qCls, f) : 0, sCrop: qCrop && c ? cosine(qCrop, c) : 0, sColor: qColor?.raw && r.color_sig?.raw ? signatureSimilarity(qColor.raw, r.color_sig.raw) : 0, sRgb: rgbSim(qRgb, parseRGB(r.notes)) }; });
+  const feats = [...cands.values()].map((r) => ({ r, sCls: r.s_cls ?? 0, sCrop: qCrop ? r.s_crop ?? 0 : 0, sColor: qColor?.raw && r.color_sig?.raw ? signatureSimilarity(qColor.raw, r.color_sig.raw) : 0, sRgb: rgbSim(qRgb, parseRGB(r.notes)) }));
   const out: Record<string, string[]> = {};
   for (const [name, fn] of Object.entries(scorers)) out[name] = feats.map((x) => ({ id: x.r.id, s: fn(x.r, x.sCls, x.sCrop, x.sColor, x.sRgb) })).sort((a, b) => b.s - a.s).map((x) => x.id);
   return out;

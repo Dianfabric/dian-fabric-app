@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { getHiddenFabricIds } from "@/lib/visibility";
-import { cosine, toVectorString } from "@/lib/dino-server";
+import { toVectorString } from "@/lib/dino-server";
 import { signatureSimilarity, type ColorSignature } from "@/lib/color-lab";
 
 /**
  * POST /api/search-v4 — photo similarity search, v4 pipeline.
  *
- *   1. candidates = kNN on emb_v4 (full CLS) ∪ kNN on emb_v4_crop (centre-crop patch mean)   — no colour / pattern hard filter
+ *   1. candidates = kNN on emb_v4 (full CLS) ∪ kNN on emb_v4_crop (centre-crop patch mean), both similarities
+ *      computed in Postgres (RPC search_fabrics_v4_pair, supabase/v4-search-rpc-v2.sql) — no colour / pattern hard filter
  *   2. score      = 0.45·cos(full CLS) + 0.35·cos(crop mean) + 0.20·LAB(colour sig, raw)
  *                   + small bonuses when Gemini's pattern / colour-name hints agree (never a filter)
  *   3. mode "colorway" (default): rank individual fabrics.
@@ -30,10 +31,8 @@ type Vec = number[];
 type Candidate = {
   id: string; name: string; color_code: string | null; supplier: string | null; image_url: string; image_path: string | null;
   fabric_type: string | null; pattern_detail: string | null; notes: string | null;
-  color_sig: ColorSignature | null; emb_v4: string | Vec | null; emb_v4_crop: string | Vec | null; similarity: number;
+  color_sig: ColorSignature | null; s_cls: number; s_crop: number;
 };
-
-const parseVec = (v: string | Vec | null): Vec | null => (v == null ? null : typeof v === "string" ? (JSON.parse(v) as Vec) : v);
 
 export async function POST(request: NextRequest) {
   const t0 = Date.now();
@@ -52,31 +51,23 @@ export async function POST(request: NextRequest) {
     const colorNames: { name: string; pct: number }[] = Array.isArray(hints.colorNames) ? hints.colorNames : [];
 
     const supabase = createServiceClient();
-    const hidden = await getHiddenFabricIds(supabase);
+    const [hidden, { data, error }] = await Promise.all([
+      getHiddenFabricIds(supabase),
+      supabase.rpc("search_fabrics_v4_pair", { q_cls: toVectorString(qCls), q_crop: qCrop ? toVectorString(qCrop) : null, match_count: candidateCount }),
+    ]);
+    if (error) return NextResponse.json({ error: "후보 검색 실패: " + error.message }, { status: 500 });
+    const cands = ((data || []) as Candidate[]).filter((c) => !hidden.has(c.id));
 
-    // 1. candidate retrieval — union of the two kNN lists
-    const calls = [supabase.rpc("search_fabrics_v4", { query_embedding: toVectorString(qCls), which: "cls", match_count: candidateCount })];
-    if (qCrop) calls.push(supabase.rpc("search_fabrics_v4", { query_embedding: toVectorString(qCrop), which: "crop", match_count: candidateCount }));
-    const lists = await Promise.all(calls);
-    const cands = new Map<string, Candidate>();
-    for (const { data, error } of lists) {
-      if (error) return NextResponse.json({ error: "후보 검색 실패: " + error.message }, { status: 500 });
-      for (const r of (data || []) as Candidate[]) if (!hidden.has(r.id) && !cands.has(r.id)) cands.set(r.id, r);
-    }
-
-    // 2. soft scoring (every component recomputed from the returned vectors, so both lists score identically)
-    const scored = [...cands.values()].map((c) => {
-      const full = parseVec(c.emb_v4), crop = parseVec(c.emb_v4_crop);
-      const sCls = full ? cosine(qCls, full) : 0;
-      const sCrop = qCrop && crop ? cosine(qCrop, crop) : 0;
+    // 2. soft scoring
+    const scored = cands.map((c) => {
+      const sCls = c.s_cls ?? 0, sCrop = qCrop ? c.s_crop ?? 0 : 0;
       const sColor = qColor?.raw && c.color_sig?.raw ? signatureSimilarity(qColor.raw, c.color_sig.raw) : 0;
       let bonus = 0;
       if (patternHint && c.pattern_detail && patternHint.split(",").some((p) => c.pattern_detail!.includes(p.trim()))) bonus += BONUS.pattern;
       if (colorNames.length && c.notes && colorNames.filter((n) => n.pct >= 20).some((n) => c.notes!.includes(n.name))) bonus += BONUS.colorName;
       const embScore = qCrop ? (w.cls * sCls + w.crop * sCrop) / (w.cls + w.crop) : sCls;
       const score = w.cls * sCls + w.crop * sCrop + w.color * sColor + bonus;
-      const rest = { ...c }; delete (rest as Partial<Candidate>).emb_v4; delete (rest as Partial<Candidate>).emb_v4_crop;
-      return { ...rest, similarity: score, s_cls: sCls, s_crop: sCrop, s_color: sColor, s_emb: embScore, bonus };
+      return { ...c, similarity: score, s_cls: sCls, s_crop: sCrop, s_color: sColor, s_emb: embScore, bonus };
     });
 
     let results;

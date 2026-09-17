@@ -130,3 +130,4 @@
 
 ### 2026-09-16 v4 프로덕션 배포 (deploy-main.sh)
 - main @ 080f3b6, 프로덕션 스모크 rc=1 (scripts/exp/data/prod-smoke.md). 최종 보고 scripts/exp/final-report.md
+- **2026-09-17 09:58 v4 프로덕션 배포 성공** (main @ f4ed0b1). 첫 배포는 onnxruntime 리눅스 .so 누락으로 /api/embed 500 → `outputFileTracingIncludes`로 포함, 함수 390MB 초과 → darwin/win32/arm64 바이너리·web wasm 제외 + Vercel env `VERCEL_SUPPORT_LARGE_FUNCTIONS=1`. 프로덕션 스모크: 임베딩 콜드 21.6s/웜 1.9s, 검색 웜 1.2s, Gemini 재랭킹 10s, 합성 쿼리 원본 1위(95점). 최종 보고 `scripts/exp/final-report.md`.

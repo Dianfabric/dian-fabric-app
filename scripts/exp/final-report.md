@@ -1,7 +1,7 @@
 # v4 사진 유사검색 — 최종 보고 (2026-09-16 19:01)
 
 ## 상태
-- 배포 완료: main @ 080f3b6 → Vercel production https://dian-fabric-buttumn6q-dianfabrics-projects.vercel.app (스모크 rc=1)
+- 배포 완료: main @ f4ed0b1 (080f3b6 머지 + Vercel 번들 수정 2건) → Vercel production https://dian-fabric-buttumn6q-dianfabrics-projects.vercel.app (스모크 rc=1)
 - 서버 임베딩 dtype: fp16 (DINO_DTYPE), 모델 캐시 /tmp/hf-cache, Vercel Production/Preview env 등록 완료
 - 검색 페이지: 서버 임베딩 v4 기본, 실패 시 브라우저 경로 자동 폴백 (NEXT_PUBLIC_SEARCH_V4=0 으로 강제 구경로)
 
@@ -56,11 +56,17 @@
 | local-dev | rank-v4 (Gemini, top 20) | 9492 ms | gemini-2.5-flash, server 9479 ms, source rank after rerank 1, top score 95 |
 
 
-## 프로덕션 스모크 테스트
+## 프로덕션 스모크 테스트 (main @ f4ed0b1, 2026-09-17 09:58)
 | target | step | wall | detail |
 |---|---|---|---|
-| production | embed (cold) | 1748 ms | FAIL: http 500 임베딩 생성 실패: Failed to load external module @huggingface/transformers-31f28a0eb9b916d1: Error: libonnxruntime.so. |
+| production | embed (cold) | 21568 ms | dtype fp16, server 18761 ms |
+| production | search-v4 (cold) | 5435 ms | 643 candidates, server 3792 ms, source rank 1, top1 DOLLAR-20 |
+| production | embed (warm) | 2831 ms | dtype fp16, server 1867 ms |
+| production | search-v4 (warm) | 2175 ms | 643 candidates, server 1182 ms, source rank 1, top1 DOLLAR-20 |
+| production | rank-v4 (Gemini, top 20) | 11023 ms | gemini-2.5-flash, server 10218 ms, source rank after rerank 1, top score 95 |
 
+- 콜드스타트 21.6초 = fp16 모델(174MB) 다운로드+로드. 웜 상태 임베딩 1.9초, 검색 1.2초, Gemini 재랭킹 10초
+- 콜드스타트를 줄이려면 DINO_DTYPE=q4f16(50MB, 골든셋 약 5점 손해) 또는 Vercel 함수 워밍 필요
 
 ## 오프라인 실험 요약
 - 골든셋(풀 2,398, 75쿼리) R@15: 채택 조합 80.1% (DB 자체 벡터 78.7%, 독립 fp32 CLS 71.8%, 운영 q8×fp32 조합 1.8%)
@@ -68,6 +74,7 @@
 - 상세: scripts/exp/results-golden.md, scripts/exp/results-synth.md
 
 ## 배포 직전 발견·수정한 것
+- Vercel 함수에 onnxruntime 리눅스 네이티브 라이브러리가 누락(outputFileTracingIncludes로 포함), 함수 크기 390MB 초과(다른 OS 바이너리·wasm 제외 + VERCEL_SUPPORT_LARGE_FUNCTIONS=1)
 - Vercel의 GEMINI_API_KEY 값 끝에 개행 문자가 들어 있었음 → Production/Preview 모두 정리된 값으로 재등록, 맥미니 .env.local도 수정
 - Gemini 2.5 Flash 기본 thinking 토큰이 출력 한도를 잠식해 재랭킹 JSON이 잘림 → thinkingBudget 0, maxOutputTokens 8192, 파싱 실패 로그 추가. 20개 후보 재랭킹 9~17초
 

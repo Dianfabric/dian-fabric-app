@@ -85,13 +85,36 @@ export async function imageSignature(buf: Buffer): Promise<ColorSignature> {
   return { wb: signature(px, 4, true), raw: signature(px, 4, false) };
 }
 
-/** 0..1 similarity between two signatures; order independent (greedy best-pair matching, weighted by shared %). */
-export function signatureSimilarity(q: LabCluster[] | null | undefined, f: LabCluster[] | null | undefined, maxDeltaE = 60): number {
+/**
+ * CIE94-style colour difference (graphic-arts weights, kL = 2): lightness counts half, chroma and hue count fully.
+ * A purple (54,7,-12) vs a grey (54,1,-4) of the same lightness is ΔE94 ≈ 8.7, while a phone-lit shot of the
+ * same fabric (L +8, small a/b drift) is ≈ 5 — so hue/chroma differences separate colours while lighting does not.
+ */
+export function deltaE94(l1: number[], l2: number[]): number {
+  const [L1, a1, b1] = l1, [L2, a2, b2] = l2;
+  const C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2);
+  const dL = L1 - L2, dC = C1 - C2, da = a1 - a2, db = b1 - b2;
+  const dH2 = Math.max(0, da * da + db * db - dC * dC);
+  const sL = dL / 2, sC = dC / (1 + 0.045 * C1), sH = Math.sqrt(dH2) / (1 + 0.015 * C1);
+  return Math.sqrt(sL * sL + sC * sC + sH * sH);
+}
+
+/**
+ * 0..1 similarity between two signatures; order independent (greedy best-pair matching, weighted by shared %).
+ * Steep by design: ΔE94 20 (a clearly different colour) → 0; ΔE94 5 (same fabric, different lighting) → 0.75.
+ */
+export function signatureSimilarity(q: LabCluster[] | null | undefined, f: LabCluster[] | null | undefined, maxDeltaE = 20): number {
   if (!q?.length || !f?.length) return 0;
   const pairs: { a: LabCluster; b: LabCluster; sim: number }[] = [];
+  const chroma = (lab: number[]) => Math.hypot(lab[1], lab[2]);
   for (const a of q) for (const b of f) {
-    const dE = Math.sqrt(d2(a.lab, b.lab));
-    pairs.push({ a, b, sim: Math.max(0, 1 - dE / maxDeltaE) });
+    const dE = deltaE94(a.lab, b.lab);
+    let sim = Math.max(0, 1 - dE / maxDeltaE);
+    // a clearly coloured cluster against a neutral one (or vice versa) is a different colour family even when
+    // ΔE is modest (muted purple vs grey): halve the pair similarity
+    const ca = chroma(a.lab), cb = chroma(b.lab);
+    if ((ca > 8 && cb < 5) || (ca < 5 && cb > 8)) sim *= 0.5;
+    pairs.push({ a, b, sim });
   }
   pairs.sort((x, y) => y.sim - x.sim);
   const ua = new Set<LabCluster>(), ub = new Set<LabCluster>();

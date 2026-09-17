@@ -20,7 +20,17 @@ const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 const W = { cls: 0.45, crop: 0.35, color: 0.20 };
 const CAND = 500;
 
-type Row = { id: string; name: string; notes: string | null; color_sig: ColorSignature | null; s_cls: number; s_crop: number };
+type Row = { id: string; name: string; notes: string | null; pattern_detail: string | null; color_sig: ColorSignature | null; s_cls: number; s_crop: number };
+// pattern hint adjustment, mirroring src/app/api/search-v4/route.ts (hint = the query row's own pattern_detail, i.e. a perfect Gemini)
+function patternAdj(hint: string | null | undefined, cand: string | null | undefined): number {
+  if (!hint || !cand) return 0;
+  const parts = hint.split(",").map((p) => p.trim()).filter(Boolean);
+  const matches = parts.some((p) => cand.includes(p));
+  const querySolid = parts.length === 1 && parts[0] === "무지", candSolid = cand.trim() === "무지";
+  if (matches) return 0.05;
+  if (!querySolid && candSolid) return -0.12;
+  return -0.05;
+}
 const vec = (v: string | number[] | null) => (v == null ? null : typeof v === "string" ? (JSON.parse(v) as number[]) : v);
 const parseRGB = (notes: string | null) => { const p = notes?.match(/\|rgb:([^|]*)/)?.[1]; if (!p) return null; const cs: { rgb: number[]; pct: number }[] = []; for (const seg of p.split(";")) { const m = seg.match(/(\d+),(\d+),(\d+):(\d+)/); if (m) cs.push({ rgb: [+m[1], +m[2], +m[3]], pct: +m[4] }); } if (!cs.length) { const m = p.match(/(\d+),(\d+),(\d+)/); if (m) cs.push({ rgb: [+m[1], +m[2], +m[3]], pct: 100 }); } return cs.length ? cs : null; };
 const rgbSim = (q: ReturnType<typeof parseRGB>, f: ReturnType<typeof parseRGB>) => { if (!q || !f) return 0; let t = 0; for (const qc of q) { let b = 0; for (const fc of f) { const d = Math.hypot(qc.rgb[0] - fc.rgb[0], qc.rgb[1] - fc.rgb[1], qc.rgb[2] - fc.rgb[2]) / 441.67; const m = Math.max(0, 1 - d * 2.5) * 0.7 + (1 - Math.abs(qc.pct - fc.pct) / 100) * 0.3; if (m > b) b = m; } t += b * qc.pct / 100; } return t; };
@@ -32,7 +42,7 @@ async function candidates(qCls: number[], qCrop: number[] | null, excludeId?: st
   for (const r of (data || []) as Row[]) if (r.id !== excludeId && !out.has(r.id)) out.set(r.id, r);
   return out;
 }
-type Scorer = (r: Row, sCls: number, sCrop: number, sColor: number, sRgb: number) => number;
+type Scorer = (r: Row, sCls: number, sCrop: number, sColor: number, sRgb: number, pAdj: number) => number;
 const scorers: Record<string, Scorer> = {
   "v4 full (cls45 crop35 lab20)": (_r, c, k, l) => W.cls * c + W.crop * k + W.color * l,
   "cls only": (_r, c) => c,
@@ -44,12 +54,14 @@ const scorers: Record<string, Scorer> = {
   "v4 + gate lab<0.35 → -0.3": (_r, c, k, l) => 0.45 * c + 0.35 * k + 0.20 * l - (l < 0.35 ? 0.3 : 0),
   "v4 + gate lab<0.50 → -0.3": (_r, c, k, l) => 0.45 * c + 0.35 * k + 0.20 * l - (l < 0.50 ? 0.3 : 0),
   "colour 30 + gate lab<0.35 → -0.3": (_r, c, k, l) => 0.40 * c + 0.30 * k + 0.30 * l - (l < 0.35 ? 0.3 : 0),
+  "colour 40 + pattern hint": (_r, c, k, l, _g, p) => 0.35 * c + 0.25 * k + 0.40 * l + p,
+  "colour 40 + pattern hint + gate lab<0.35": (_r, c, k, l, _g, p) => 0.35 * c + 0.25 * k + 0.40 * l + p - (l < 0.35 ? 0.3 : 0),
 };
 const lines: string[] = [];
-function rank(cands: Map<string, Row>, qCls: number[], qCrop: number[] | null, qColor: ColorSignature | null, qRgb: ReturnType<typeof parseRGB>) {
-  const feats = [...cands.values()].map((r) => ({ r, sCls: r.s_cls ?? 0, sCrop: qCrop ? r.s_crop ?? 0 : 0, sColor: qColor?.raw && r.color_sig?.raw ? signatureSimilarity(qColor.raw, r.color_sig.raw) : 0, sRgb: rgbSim(qRgb, parseRGB(r.notes)) }));
+function rank(cands: Map<string, Row>, qCls: number[], qCrop: number[] | null, qColor: ColorSignature | null, qRgb: ReturnType<typeof parseRGB>, qPattern: string | null = null) {
+  const feats = [...cands.values()].map((r) => ({ r, sCls: r.s_cls ?? 0, sCrop: qCrop ? r.s_crop ?? 0 : 0, sColor: qColor?.raw && r.color_sig?.raw ? signatureSimilarity(qColor.raw, r.color_sig.raw) : 0, sRgb: rgbSim(qRgb, parseRGB(r.notes)), pAdj: patternAdj(qPattern, r.pattern_detail) }));
   const out: Record<string, string[]> = {};
-  for (const [name, fn] of Object.entries(scorers)) out[name] = feats.map((x) => ({ id: x.r.id, s: fn(x.r, x.sCls, x.sCrop, x.sColor, x.sRgb) })).sort((a, b) => b.s - a.s).map((x) => x.id);
+  for (const [name, fn] of Object.entries(scorers)) out[name] = feats.map((x) => ({ id: x.r.id, s: fn(x.r, x.sCls, x.sCrop, x.sColor, x.sRgb, x.pAdj) })).sort((a, b) => b.s - a.s).map((x) => x.id);
   return out;
 }
 
@@ -58,11 +70,11 @@ if (mode === "golden" || mode === "both") {
   const labeled = golden.labels.map((l: { query: { id: string }; similar_ids: (string | null)[] }) => ({ ...l, similar_ids: l.similar_ids.filter((x) => x && x !== "null") as string[] })).filter((l: { similar_ids: string[] }) => l.similar_ids.length > 0);
   const agg: Record<string, { R: number; P: number; M: number; R1: number; n: number }> = {};
   for (const l of labeled) {
-    const { data: q } = await sb.from("fabrics").select("id,emb_v4,emb_v4_crop,color_sig,notes").eq("id", l.query.id).single();
+    const { data: q } = await sb.from("fabrics").select("id,emb_v4,emb_v4_crop,color_sig,notes,pattern_detail").eq("id", l.query.id).single();
     const qCls = vec(q?.emb_v4 ?? null), qCrop = vec(q?.emb_v4_crop ?? null);
     if (!qCls) { console.log("skip (no v4 yet)", l.query.id); continue; }
     const truth = new Set<string>(l.similar_ids);
-    const ranked = rank(await candidates(qCls, qCrop, l.query.id), qCls, qCrop, q!.color_sig, parseRGB(q!.notes));
+    const ranked = rank(await candidates(qCls, qCrop, l.query.id), qCls, qCrop, q!.color_sig, parseRGB(q!.notes), q!.pattern_detail);
     for (const [name, ids] of Object.entries(ranked)) {
       const a = (agg[name] ||= { R: 0, P: 0, M: 0, R1: 0, n: 0 });
       const top = ids.slice(0, 15); const h = top.filter((id) => truth.has(id)).length;
@@ -78,6 +90,7 @@ if (mode === "synth" || mode === "both") {
   const manifest = JSON.parse(fs.readFileSync(S + "/synth-manifest.json", "utf8")) as { id: string; level: string }[];
   const meta = JSON.parse(fs.readFileSync(S + "/meta.json", "utf8"));
   const nameById: Record<string, string> = Object.fromEntries(meta.rows.map((r: { id: string; name: string }) => [r.id, r.name]));
+  const patternById: Record<string, string | null> = Object.fromEntries(meta.rows.map((r: { id: string; pattern_detail: string | null }) => [r.id, r.pattern_detail]));
   const agg: Record<string, { r1: number; r15: number; d15: number; M: number; n: number }> = {};
   let i = 0;
   for (const m of manifest) {
@@ -85,7 +98,7 @@ if (mode === "synth" || mode === "both") {
     const [f, color] = await Promise.all([embedImage(buf, ["full", "crop"]), imageSignature(buf)]);
     const qCls = f.full.cls, qCrop = f.crop!.mean;
     const cands = await candidates(qCls, qCrop);
-    const ranked = rank(cands, qCls, qCrop, color, null);
+    const ranked = rank(cands, qCls, qCrop, color, null, patternById[m.id]);
     const design = new Set([...cands.values()].filter((r) => r.name === nameById[m.id]).map((r) => r.id));
     for (const [name, ids] of Object.entries(ranked)) {
       for (const key of [name, `${name} [${m.level}]`]) {

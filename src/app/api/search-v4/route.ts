@@ -24,7 +24,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const W = { cls: 0.45, crop: 0.35, color: 0.20 };
-const BONUS = { pattern: 0.03, colorName: 0.02 };
+const BONUS = { pattern: 0.05, colorName: 0.02 };
+// pattern mismatch penalties (user feedback 2026-09-17: a striped photo returned solids at the top)
+const PENALTY = { solidForPatterned: 0.12, patternMismatch: 0.05 };
 const DEFAULT_CANDIDATES = 500;
 /**
  * Colour policy (user requirement 2026-09-17: "colour must match"). "strict" (default) raises the colour weight and
@@ -80,7 +82,17 @@ export async function POST(request: NextRequest) {
       const sCls = c.s_cls ?? 0, sCrop = qCrop ? c.s_crop ?? 0 : 0;
       const sColor = qColor?.raw && c.color_sig?.raw ? signatureSimilarity(qColor.raw, c.color_sig.raw) : 0;
       let bonus = 0;
-      if (patternHint && c.pattern_detail && patternHint.split(",").some((p) => c.pattern_detail!.includes(p.trim()))) bonus += BONUS.pattern;
+      if (patternHint && c.pattern_detail) {
+        // pattern hint from Gemini (e.g. "스트라이프,기하학"): reward a match, penalise a clear mismatch — a solid
+        // ("무지") catalogue row for a patterned query is the worst case and is pushed down hardest
+        const parts = patternHint.split(",").map((p) => p.trim()).filter(Boolean);
+        const matches = parts.some((p) => c.pattern_detail!.includes(p));
+        const querySolid = parts.length === 1 && parts[0] === "무지";
+        const candSolid = c.pattern_detail.trim() === "무지";
+        if (matches) bonus += BONUS.pattern;
+        else if (!querySolid && candSolid) bonus -= PENALTY.solidForPatterned;
+        else if (querySolid !== candSolid || !matches) bonus -= PENALTY.patternMismatch;
+      }
       if (colorNames.length && c.notes && colorNames.filter((n) => n.pct >= 20).some((n) => c.notes!.includes(n.name))) bonus += BONUS.colorName;
       const embScore = qCrop ? (w.cls * sCls + w.crop * sCrop) / (w.cls + w.crop) : sCls;
       // colour gate: candidates whose colour is clearly different are pushed below every colour-consistent one

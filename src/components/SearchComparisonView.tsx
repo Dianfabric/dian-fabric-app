@@ -34,6 +34,11 @@ type Props = {
   onMainImageClick?: () => void;
   onQuickView?: () => void;  // 🎨 퀵뷰 버튼 클릭 시
   enableKeyboard?: boolean;
+  /** v4: 사용자가 고른 색상(칩). 폰 카메라 색 편향 때문에 사진 색을 못 믿을 때 직접 지정 → 재검색 */
+  selectedColor?: string | null;
+  onColorChange?: (color: string | null) => void;
+  colorOptions?: { name: string; hex: string }[];
+  colorBusy?: boolean;
 };
 
 export default function SearchComparisonView({
@@ -50,6 +55,10 @@ export default function SearchComparisonView({
   onMainImageClick,
   onQuickView,
   enableKeyboard = false,
+  selectedColor = null,
+  onColorChange,
+  colorOptions = [],
+  colorBusy = false,
 }: Props) {
   const waitlistRef = useRef<HTMLDivElement>(null);
   const active = results[activeIndex];
@@ -201,6 +210,33 @@ export default function SearchComparisonView({
                     className="h-full bg-[#4A90E2] rounded-full transition-all"
                     style={{ width: `${geminiInfo.confidence}%` }}
                   />
+                </div>
+              </div>
+            )}
+
+            {onColorChange && colorOptions.length > 0 && (
+              <div className="mt-3 rounded-xl p-4 bg-[rgba(30,42,58,0.03)]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-bold text-gray-600 tracking-wider">🎨 이 원단의 색상</div>
+                  {colorBusy && <div className="text-[11px] text-gray-400">재검색 중...</div>}
+                </div>
+                <div className="text-[11px] text-gray-400 mb-2">사진 색이 실제와 다르면 골라주세요. 고른 색상 안에서 다시 찾습니다.</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {colorOptions.map((c) => {
+                    const on = selectedColor === c.name;
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        disabled={colorBusy}
+                        onClick={() => onColorChange(on ? null : c.name)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border transition ${on ? "border-[#1e2a3a] bg-[#1e2a3a] text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"} disabled:opacity-50`}
+                      >
+                        <span className="w-3 h-3 rounded-full border border-black/10" style={{ background: c.hex }} />
+                        {c.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { getHiddenFabricIds } from "@/lib/visibility";
 import { toVectorString } from "@/lib/dino-server";
-import { signatureSimilarity, type ColorSignature } from "@/lib/color-lab";
+import { signatureSimilarity, photoColorSimilarity, type ColorSignature, type LabCluster } from "@/lib/color-lab";
+import { colorByName } from "@/lib/color-names";
 
 /**
  * POST /api/search-v4 — photo similarity search, v4 pipeline.
@@ -68,6 +69,9 @@ export async function POST(request: NextRequest) {
     const w = { ...policy.weights, ...(body.weights || {}) };
     const patternHint: string | undefined = hints.patternDetail || hints.fabricType;
     const colorNames: { name: string; pct: number }[] = Array.isArray(hints.colorNames) ? hints.colorNames : [];
+    // colour chosen by the user in the UI (2026-09-17): trusted over the photo's own colour, and used as a
+    // candidate channel (rows whose notes carry that colour name, ranked by texture) — see supabase/v4-color-channel.sql
+    const userColor = colorByName(typeof hints.userColor === "string" ? hints.userColor : null);
 
     const supabase = createServiceClient();
     const hiddenP = getHiddenFabricIds(supabase);
@@ -83,7 +87,14 @@ export async function POST(request: NextRequest) {
       if (r.error && /timeout/i.test(r.error.message)) r = await supabase.rpc("search_fabrics_v4_pair", args);
       return r;
     };
-    const lists = await Promise.all(queries.map(callRpc));
+    const callColorRpc = async (q: { cls: Vec; crop?: Vec }) => {
+      const args = { q_cls: toVectorString(q.cls), q_crop: q.crop ? toVectorString(q.crop) : null, color_like: userColor!.name, match_count: candidateCount };
+      let r = await supabase.rpc("search_fabrics_v4_color", args);
+      if (r.error && /timeout/i.test(r.error.message)) r = await supabase.rpc("search_fabrics_v4_color", args);
+      if (r.error) console.warn("colour channel unavailable:", r.error.message); // e.g. SQL not applied yet — degrade gracefully
+      return r;
+    };
+    const lists = await Promise.all([...queries.map(callRpc), ...(userColor ? queries.map(callColorRpc) : [])]);
     const hidden = await hiddenP;
     const firstError = lists.find((r) => r.error)?.error;
     if (lists.every((r) => r.error)) return NextResponse.json({ error: "후보 검색 실패: " + firstError!.message }, { status: 500 });
@@ -98,7 +109,16 @@ export async function POST(request: NextRequest) {
     // 2. soft scoring
     const scored = cands.map((c) => {
       const sCls = c.s_cls ?? 0, sCrop = qCrop ? c.s_crop ?? 0 : 0;
-      const sColor = qColor?.raw && c.color_sig?.raw ? signatureSimilarity(qColor.raw, c.color_sig.raw) : 0;
+      // colour: user-chosen colour beats the photo (camera casts); otherwise chroma-adaptive photo comparison
+      let sColor: number;
+      if (userColor) {
+        const nameMatch = !!c.notes && c.notes.includes(userColor.name);
+        const ref: LabCluster[] = [{ lab: userColor.lab, pct: 100 }];
+        const labToRef = c.color_sig?.raw ? signatureSimilarity(ref, c.color_sig.raw, 30) : 0;
+        sColor = Math.min(1, 0.6 * (nameMatch ? 1 : 0) + 0.4 * labToRef);
+      } else {
+        sColor = qColor ? photoColorSimilarity(qColor, c.color_sig) : 0;
+      }
       let bonus = 0;
       if (patternHint && c.pattern_detail) {
         // pattern hint from Gemini (e.g. "스트라이프,기하학"): reward a match, penalise a clear mismatch — a solid
@@ -135,7 +155,7 @@ export async function POST(request: NextRequest) {
       results = scored.sort((a, b) => b.similarity - a.similarity).slice(0, matchCount);
     }
 
-    return NextResponse.json({ results, total: scored.length, mode, colorMode, weights: w, gated: scored.filter((s) => s.color_gated).length, ms: Date.now() - t0 });
+    return NextResponse.json({ results, total: scored.length, mode, colorMode, userColor: userColor?.name ?? null, weights: w, gated: scored.filter((s) => s.color_gated).length, ms: Date.now() - t0 });
   } catch (e) {
     console.error("search-v4 error", e);
     return NextResponse.json({ error: "검색 실패: " + (e instanceof Error ? e.message : String(e)) }, { status: 500 });

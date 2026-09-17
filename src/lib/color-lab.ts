@@ -127,3 +127,18 @@ export function signatureSimilarity(q: LabCluster[] | null | undefined, f: LabCl
   }
   return t;
 }
+
+/** pct-weighted mean chroma of a signature (0 = neutral grey, >15 = clearly coloured). */
+export const signatureChroma = (s: LabCluster[] | null | undefined): number =>
+  !s?.length ? 0 : s.reduce((t, c) => t + Math.hypot(c.lab[1], c.lab[2]) * c.pct, 0) / s.reduce((t, c) => t + c.pct, 0);
+
+/**
+ * Query-adaptive colour comparison for phone photos. A near-neutral query (chroma < 10: ivory, grey, pale blue…)
+ * is dominated by the camera's white-balance cast, so it is compared white-balanced against the catalogue's
+ * white-balanced signature; a clearly coloured query is compared raw (grey-world would bleach it).
+ * Measured on real photos 2026-09-17: CITRON-01 ivory shot bluish → raw 0.04, this rule 0.85.
+ */
+export function photoColorSimilarity(q: ColorSignature | null | undefined, f: ColorSignature | null | undefined): number {
+  if (!q || !f) return 0;
+  return signatureChroma(q.raw) < 10 ? signatureSimilarity(q.wb, f.wb) : signatureSimilarity(q.raw, f.raw);
+}

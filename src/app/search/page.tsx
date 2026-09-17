@@ -5,6 +5,7 @@ import ImageCropSelector, { type CroppedRegion } from "@/components/ImageCropSel
 import SearchComparisonView, { type GeminiInfo } from "@/components/SearchComparisonView";
 import QuickViewPanel from "@/components/QuickViewPanel";
 import type { Fabric, SearchResult } from "@/lib/types";
+import { COLOR_NAMES } from "@/lib/color-names";
 
 const FETCH_COUNT = 50;   // 텍스트 검색용
 const IMAGE_FETCH_COUNT = 100; // 이미지 검색: 후보 100개 → Gemini 랭킹
@@ -29,6 +30,10 @@ interface SearchGroup {
   results: SearchResult[];        // 모든 매칭 결과 (정렬됨)
   activeIndex: number;            // 현재 가운데 표시 중인 인덱스
   geminiInfo?: GeminiInfo;        // 좌측 AI 분석 박스용
+  // v4: 색상 칩으로 재검색할 때 필요한 컨텍스트
+  v4?: { features: V4Features; queryBase64: string; hints: { patternDetail?: string; fabricType?: string; colorNames?: { name: string; pct: number }[] } };
+  userColor?: string | null;      // 사용자가 고른 색상 (null = 사진 색 사용)
+  colorBusy?: boolean;
   loading: boolean;
   error?: string;
 }
@@ -210,7 +215,7 @@ export default function SearchPage() {
 
   const searchV4 = async (
     features: V4Features,
-    hints: { patternDetail?: string; fabricType?: string; colorNames?: { name: string; pct: number }[] },
+    hints: { patternDetail?: string; fabricType?: string; colorNames?: { name: string; pct: number }[]; userColor?: string | null },
     matchCount: number,
   ): Promise<{ results: SearchResult[] }> => {
     const res = await fetch("/api/search-v4", {
@@ -244,6 +249,22 @@ export default function SearchPage() {
       return candidates;
     }
   };
+
+  // v4: 사용자가 색상 칩을 고르면 그 그룹만 그 색상으로 재검색 (검색 → 재랭킹)
+  const changeGroupColor = useCallback(async (groupId: string, color: string | null) => {
+    let ctx: SearchGroup["v4"] | undefined;
+    setSearchGroups((prev) => prev.map((g) => { if (g.id === groupId) { ctx = g.v4; return { ...g, userColor: color, colorBusy: true }; } return g; }));
+    if (!ctx) return;
+    try {
+      const { results } = await searchV4(ctx.features, { ...ctx.hints, userColor: color }, IMAGE_FETCH_COUNT);
+      const finalResults = results.length > 5 ? await rankV4(ctx.queryBase64, results) : results;
+      setSearchGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, results: finalResults, activeIndex: 0, colorBusy: false } : g)));
+    } catch (e) {
+      console.warn("colour re-search failed", e);
+      setSearchGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, colorBusy: false } : g)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Gemini 다중 원단 분석
   type GeminiFabric = {
@@ -393,19 +414,16 @@ export default function SearchPage() {
           ? fab.colors.map(c => ({ name: c.color, pct: c.pct }))
           : undefined;
 
+        const v4Hints = {
+          patternDetail: useFilter ? fab.patternDetail || undefined : undefined,
+          fabricType: useFilter ? fab.fabricType : undefined,
+          colorNames: geminiColorNames,
+        };
         let finalResults: SearchResult[] | null = null;
         if (v4Features) {
           // v4: 하드필터 없음 — Gemini 패턴/색상명은 보너스 점수로만 전달
           try {
-            const { results: v4Results } = await searchV4(
-              v4Features,
-              {
-                patternDetail: useFilter ? fab.patternDetail || undefined : undefined,
-                fabricType: useFilter ? fab.fabricType : undefined,
-                colorNames: geminiColorNames,
-              },
-              IMAGE_FETCH_COUNT,
-            );
+            const { results: v4Results } = await searchV4(v4Features, v4Hints, IMAGE_FETCH_COUNT);
             if (v4Results.length > 5) {
               setStatusMessage(`${fab.location} AI 최종 비교 중... (${i + 1}/${fabricsToSearch.length})`);
               finalResults = await rankV4(queryBase64, v4Results);
@@ -459,6 +477,8 @@ export default function SearchPage() {
             colors: fab.colors,
             confidence: fab.confidence,
           } : undefined,
+          v4: v4Features ? { features: v4Features, queryBase64, hints: v4Hints } : undefined,
+          userColor: null,
           loading: false,
         });
       }
@@ -864,6 +884,10 @@ export default function SearchPage() {
                     onMainImageClick={() => openLightbox(group, group.activeIndex)}
                     onQuickView={() => openQuickViewForActive(group.id)}
                     enableKeyboard={groupIdx === 0}
+                    selectedColor={group.userColor ?? null}
+                    onColorChange={group.v4 ? (c) => changeGroupColor(group.id, c) : undefined}
+                    colorOptions={COLOR_NAMES}
+                    colorBusy={group.colorBusy}
                   />
                 )}
               </div>

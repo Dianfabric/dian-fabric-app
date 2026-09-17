@@ -68,6 +68,19 @@
 - 콜드스타트 21.6초 = fp16 모델(174MB) 다운로드+로드. 웜 상태 임베딩 1.9초, 검색 1.2초, Gemini 재랭킹 10초
 - 콜드스타트를 줄이려면 DINO_DTYPE=q4f16(50MB, 골든셋 약 5점 손해) 또는 Vercel 함수 워밍 필요
 
+## 색상 우선 정책 (2026-09-17 추가, main @ 5bd75fa)
+- 사용자 요구: 색상이 비슷한 원단을 우선. 실제 DB로 색상 비중 30/40%와 게이트(유사도 기준 미만 강등)를 비교 (scripts/exp/results-db-colour.md)
+- 채택: 색상 비중 20% → 40% (CLS 35 / 크롭 25 / LAB 40). 골든셋 R@15 52.4 → 57.1%, R@1 30.7 → 40.0%, MRR 0.432 → 0.513. 합성 폰사진 R@15 88 → 80% (조명 색편향 사진에서 손해)
+- 게이트는 두 세트 모두 비중 상향보다 못해 기본 OFF (코드에 남김). 되돌리기: body.colorMode "normal" 또는 SEARCH_V4_COLOR_MODE=normal
+- 배포 후 프로덕션 스모크:
+| target | step | wall | detail |
+|---|---|---|---|
+| production | embed (cold) | 10326 ms | dtype fp16, server 7427 ms |
+| production | search-v4 (cold) | 5075 ms | 643 candidates, server 3725 ms, source rank 1, top1 DOLLAR-20 |
+| production | embed (warm) | 3477 ms | dtype fp16, server 2363 ms |
+| production | search-v4 (warm) | 1921 ms | 643 candidates, server 1128 ms, source rank 1, top1 DOLLAR-20 |
+| production | rank-v4 (Gemini, top 20) | 10959 ms | gemini-2.5-flash, server 10144 ms, source rank after rerank 1, top score 95 |
+
 ## 오프라인 실험 요약
 - 골든셋(풀 2,398, 75쿼리) R@15: 채택 조합 80.1% (DB 자체 벡터 78.7%, 독립 fp32 CLS 71.8%, 운영 q8×fp32 조합 1.8%)
 - 합성 폰사진 300장 R@15 94.3% / R@1 75.3% (mild 97.5 / medium 97.1 / hard 90.4)

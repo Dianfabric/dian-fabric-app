@@ -27,3 +27,27 @@ export const COLOR_NAMES: ColorName[] = [
 
 export const colorByName = (name: string | null | undefined): ColorName | undefined =>
   name ? COLOR_NAMES.find((c) => c.name === name.trim() || c.aliases?.includes(name.trim())) : undefined;
+
+/**
+ * Neighbouring catalogue colour names. Catalogue notes are noisy (an ivory fabric is often filed as 베이지, a navy
+ * one as 차콜), so a user-chosen colour widens to its neighbours for the candidate channel and the name bonus.
+ */
+export const COLOR_NEIGHBORS: Record<string, string[]> = {
+  화이트: ["아이보리", "그레이"],
+  아이보리: ["화이트", "베이지", "그레이"],
+  베이지: ["아이보리", "브라운", "옐로우"],
+  그레이: ["차콜", "아이보리", "화이트", "민트"],
+  차콜: ["그레이", "블랙", "네이비"],
+  블랙: ["차콜", "네이비"],
+  브라운: ["베이지", "오렌지", "레드"],
+  레드: ["핑크", "오렌지", "브라운", "퍼플"],
+  핑크: ["레드", "퍼플", "베이지"],
+  오렌지: ["레드", "옐로우", "브라운"],
+  옐로우: ["오렌지", "베이지", "그린"],
+  그린: ["민트", "옐로우"],
+  민트: ["그린", "블루", "그레이"],
+  블루: ["네이비", "민트", "퍼플"],
+  네이비: ["블루", "차콜", "블랙", "퍼플"],
+  퍼플: ["네이비", "핑크", "블루"],
+};
+export const colorFamily = (name: string): string[] => [name, ...(COLOR_NEIGHBORS[name] || [])];

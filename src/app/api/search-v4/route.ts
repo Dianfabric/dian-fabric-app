@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase";
 import { getHiddenFabricIds } from "@/lib/visibility";
 import { toVectorString } from "@/lib/dino-server";
 import { signatureSimilarity, photoColorSimilarity, type ColorSignature, type LabCluster } from "@/lib/color-lab";
-import { colorByName } from "@/lib/color-names";
+import { colorByName, colorFamily } from "@/lib/color-names";
 
 /**
  * POST /api/search-v4 — photo similarity search, v4 pipeline.
@@ -87,14 +87,17 @@ export async function POST(request: NextRequest) {
       if (r.error && /timeout/i.test(r.error.message)) r = await supabase.rpc("search_fabrics_v4_pair", args);
       return r;
     };
-    const callColorRpc = async (q: { cls: Vec; crop?: Vec }) => {
-      const args = { q_cls: toVectorString(q.cls), q_crop: q.crop ? toVectorString(q.crop) : null, color_like: userColor!.name, match_count: candidateCount };
+    const callColorRpc = async (q: { cls: Vec; crop?: Vec }, colorLike: string) => {
+      const args = { q_cls: toVectorString(q.cls), q_crop: q.crop ? toVectorString(q.crop) : null, color_like: colorLike, match_count: candidateCount };
       let r = await supabase.rpc("search_fabrics_v4_color", args);
       if (r.error && /timeout/i.test(r.error.message)) r = await supabase.rpc("search_fabrics_v4_color", args);
       if (r.error) console.warn("colour channel unavailable:", r.error.message); // e.g. SQL not applied yet — degrade gracefully
       return r;
     };
-    const lists = await Promise.all([...queries.map(callRpc), ...(userColor ? queries.map(callColorRpc) : [])]);
+    // colour channel: the chosen colour at every scale, its neighbours (catalogue names are noisy) at the plain scale
+    const family = userColor ? colorFamily(userColor.name) : [];
+    const colorCalls = userColor ? [...queries.map((q) => callColorRpc(q, userColor.name)), ...family.slice(1).map((n) => callColorRpc(queries[0], n))] : [];
+    const lists = await Promise.all([...queries.map(callRpc), ...colorCalls]);
     const hidden = await hiddenP;
     const firstError = lists.find((r) => r.error)?.error;
     if (lists.every((r) => r.error)) return NextResponse.json({ error: "후보 검색 실패: " + firstError!.message }, { status: 500 });
@@ -110,14 +113,15 @@ export async function POST(request: NextRequest) {
     const scored = cands.map((c) => {
       const sCls = c.s_cls ?? 0, sCrop = qCrop ? c.s_crop ?? 0 : 0;
       // colour: user-chosen colour beats the photo (camera casts); otherwise chroma-adaptive photo comparison
-      let sColor: number;
+      // photo colour (chroma-adaptive), plus — when the user picked a chip — an additive signal: the chip never
+      // replaces the photo colour (that cost RIDGE-31 2nd → 23rd), it only lifts rows that agree with the chip
+      let sColor = qColor ? photoColorSimilarity(qColor, c.color_sig) : 0;
       if (userColor) {
-        const nameMatch = !!c.notes && c.notes.includes(userColor.name);
+        const notes = c.notes || "";
+        const nameScore = notes.includes(userColor.name) ? 0.9 : family.some((n) => notes.includes(n)) ? 0.7 : 0;
         const ref: LabCluster[] = [{ lab: userColor.lab, pct: 100 }];
         const labToRef = c.color_sig?.raw ? signatureSimilarity(ref, c.color_sig.raw, 30) : 0;
-        sColor = Math.min(1, 0.6 * (nameMatch ? 1 : 0) + 0.4 * labToRef);
-      } else {
-        sColor = qColor ? photoColorSimilarity(qColor, c.color_sig) : 0;
+        sColor = Math.max(sColor, nameScore, 0.8 * labToRef);
       }
       let bonus = 0;
       if (patternHint && c.pattern_detail) {

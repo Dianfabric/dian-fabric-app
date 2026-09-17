@@ -17,6 +17,7 @@ const V4_RERANK_TOP = 20;
 type V4Features = {
   full: { cls: number[]; mean: number[] };
   crop?: { cls: number[]; mean: number[] };
+  scales?: { scale: number; full: { cls: number[]; mean: number[] }; crop: { cls: number[]; mean: number[] } }[]; // 2x2 / 3x3 mosaics for zoom invariance
   color?: { wb: { lab: number[]; pct: number }[]; raw: { lab: number[]; pct: number }[] };
 };
 
@@ -200,11 +201,11 @@ export default function SearchPage() {
     setStatusMessage("서버에서 임베딩 생성 중...");
     const form = new FormData();
     form.append("image", file);
-    form.append("variants", "full,crop");
+    form.append("variants", "full,crop,scales");
     const res = await fetch("/api/embed", { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "임베딩 생성 실패");
-    return { full: data.full, crop: data.crop, color: data.color };
+    return { full: data.full, crop: data.crop, scales: data.scales, color: data.color };
   };
 
   const searchV4 = async (

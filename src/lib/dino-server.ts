@@ -20,7 +20,7 @@ export const DINO_DIM = 768;
 /** Working size fed to the HF processor (it resizes to 256 / centre-crops 224 itself). */
 const WORK_SIZE = 448;
 
-export type DinoVariant = "full" | "gray" | "crop" | "tiles";
+export type DinoVariant = "full" | "gray" | "crop" | "tiles" | "scales";
 export type DinoEmbedding = {
   cls: number[];            // L2-normalised CLS token (global appearance)
   mean: number[];           // L2-normalised mean of patch tokens (texture)
@@ -30,6 +30,13 @@ export type DinoFeatures = {
   gray?: DinoEmbedding;     // grayscale input → texture without colour
   crop?: DinoEmbedding;     // centre 50 % crop (matches legacy embedding_dino_crop)
   tiles?: number[][];       // 2x2 tile CLS vectors (multi-vector matching)
+  /**
+   * Zoom-invariance for phone close-ups: the query is repeated as a 2x2 and a 3x3 mosaic so its weave appears at
+   * 1/2 and 1/3 scale, i.e. closer to how the catalogue photo was framed. Measured 2026-09-17: a 30 % close-up of
+   * FIZE-11 scores 0.40 against its catalogue vector, the 2x2 mosaic 0.87; 1720-12 0.72 → 0.98 (3x3).
+   * Each entry has the full-image CLS and the centre-crop patch mean of that mosaic.
+   */
+  scales?: { scale: number; full: DinoEmbedding; crop: DinoEmbedding }[];
 };
 
 type Loaded = { processor: (img: unknown) => Promise<unknown>; model: (inputs: unknown) => Promise<{ last_hidden_state: { dims: number[]; data: Float32Array | Float16Array | number[] } }>; RawImage: new (data: Uint8ClampedArray, w: number, h: number, c: number) => unknown };
@@ -94,6 +101,21 @@ export async function embedImage(buf: Buffer, variants: DinoVariant[] = ["full"]
     for (const [tx, ty] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
       const e = await embedSharp(base.clone().extract({ left: tx * tw, top: ty * th, width: tw, height: th }));
       out.tiles.push(e.cls);
+    }
+  }
+  if (variants.includes("scales")) {
+    // centre-square tile of the query, repeated n×n (the seams are tolerable for fabric textures)
+    const side = Math.min(w, h), sq = base.clone().extract({ left: Math.floor((w - side) / 2), top: Math.floor((h - side) / 2), width: side, height: side });
+    const tile = await sq.resize(WORK_SIZE, WORK_SIZE, { fit: "cover" }).removeAlpha().jpeg({ quality: 92 }).toBuffer();
+    out.scales = [];
+    for (const n of [2, 3]) {
+      const comps = [];
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) comps.push({ input: tile, left: x * WORK_SIZE, top: y * WORK_SIZE });
+      const mosaic = await sharp({ create: { width: WORK_SIZE * n, height: WORK_SIZE * n, channels: 3, background: "black" } }).composite(comps).jpeg({ quality: 92 }).toBuffer();
+      const mFull = await embedSharp(sharp(mosaic));
+      const c = Math.floor(WORK_SIZE * n / 4);
+      const mCrop = await embedSharp(sharp(mosaic).extract({ left: c, top: c, width: WORK_SIZE * n - 2 * c, height: WORK_SIZE * n - 2 * c }));
+      out.scales.push({ scale: 1 / n, full: mFull, crop: mCrop });
     }
   }
   return out;

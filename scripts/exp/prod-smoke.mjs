@@ -14,9 +14,9 @@ const post = async (path, body, isForm) => { const res = await fetch(base + path
 
 let features, results;
 for (const pass of ["cold", "warm"]) {
-  await step(`embed (${pass})`, async () => { const fd = new FormData(); fd.append("image", new Blob([img], { type: "image/jpeg" }), "phone.jpg"); fd.append("variants", "full,crop"); features = await post("/api/embed", fd, true); return `dtype ${features.dtype}, server ${features.ms} ms`; });
+  await step(`embed (${pass})`, async () => { const fd = new FormData(); fd.append("image", new Blob([img], { type: "image/jpeg" }), "phone.jpg"); fd.append("variants", "full,crop,scales"); features = await post("/api/embed", fd, true); return `dtype ${features.dtype}, server ${features.ms} ms`; });
   if (!features) break;
-  await step(`search-v4 (${pass})`, async () => { const r = await post("/api/search-v4", JSON.stringify({ full: features.full, crop: features.crop, color: features.color, matchCount: 100 })); results = r.results; const rank = results.findIndex((x) => x.id === ID) + 1; return `${r.total} candidates, server ${r.ms} ms, source rank ${rank || "not in top 100"}, top1 ${results[0]?.name}-${results[0]?.color_code}`; });
+  await step(`search-v4 (${pass})`, async () => { const r = await post("/api/search-v4", JSON.stringify({ full: features.full, crop: features.crop, scales: features.scales, color: features.color, matchCount: 100 })); results = r.results; const rank = results.findIndex((x) => x.id === ID) + 1; return `${r.total} candidates, server ${r.ms} ms, source rank ${rank || "not in top 100"}, top1 ${results[0]?.name}-${results[0]?.color_code}`; });
 }
 if (results) await step("rank-v4 (Gemini, top 20)", async () => { const r = await post("/api/rank-v4", JSON.stringify({ queryImageBase64: img.toString("base64"), candidates: results.slice(0, 20).map((c) => ({ id: c.id, image_url: c.image_url })) })); const top = r.ranked[0]; const src = r.ranked.findIndex((x) => x.id === ID) + 1; return `${r.model}, server ${r.ms} ms, source rank after rerank ${src || "-"}, top score ${top?.score}`; });
 console.log("| target | step | wall | detail |\n|---|---|---|---|\n" + rows.join("\n"));

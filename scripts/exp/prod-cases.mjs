@@ -17,9 +17,9 @@ for (const c of cases) {
   const { data: rows } = await sb.from("fabrics").select("id,image_url").eq("name", c.name).eq("color_code", c.color_code).limit(1);
   const q = rows?.[0]; if (!q) { console.log(c.label, "not found"); continue; }
   const img = Buffer.from(await (await fetch(q.image_url)).arrayBuffer());
-  const fd = new FormData(); fd.append("image", new Blob([img], { type: "image/jpeg" }), "q.jpg"); fd.append("variants", "full,crop");
+  const fd = new FormData(); fd.append("image", new Blob([img], { type: "image/jpeg" }), "q.jpg"); fd.append("variants", "full,crop,scales");
   const f = await post("/api/embed", fd, true);
-  const s = await post("/api/search-v4", JSON.stringify({ full: f.full, crop: f.crop, color: f.color, hints: c.hints, matchCount: 40 }));
+  const s = await post("/api/search-v4", JSON.stringify({ full: f.full, crop: f.crop, scales: f.scales, color: f.color, hints: c.hints, matchCount: 40 }));
   console.log(`\n=== ${c.label}: search-v4 top 8 (colorMode ${s.colorMode}, ${s.total} candidates, ${s.ms} ms)`);
   s.results.slice(0, 8).forEach((r, i) => console.log(`  #${i + 1} ${(r.name + "-" + r.color_code).padEnd(14)} score ${r.similarity.toFixed(3)} colour ${r.s_color.toFixed(2)} bonus ${r.bonus.toFixed(2)} pattern ${r.pattern_detail ?? "-"} | ${(r.notes || "").split("|")[0]}`));
   const r = await post("/api/rank-v4", JSON.stringify({ queryImageBase64: img.toString("base64"), candidates: s.results.slice(0, 20).map((x) => ({ id: x.id, image_url: x.image_url })) }));

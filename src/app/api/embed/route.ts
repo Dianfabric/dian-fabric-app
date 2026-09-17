@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   const t0 = Date.now();
   try {
     let buf: Buffer | null = null;
-    let variants: DinoVariant[] = ["full", "crop"]; // v4 representation: full CLS + centre-crop patch mean
+    let variants: DinoVariant[] = ["full", "crop", "scales"]; // v4 representation: full CLS + centre-crop patch mean (+ zoom-out mosaics)
     const ct = request.headers.get("content-type") || "";
     if (ct.includes("multipart/form-data")) {
       const form = await request.formData();

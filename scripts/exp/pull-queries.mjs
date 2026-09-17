@@ -20,9 +20,9 @@ const post = async (path, body, isForm) => { const res = await fetch(base + path
 const newest = files.slice(-5).reverse();
 for (const p of newest) {
   const buf = fs.readFileSync(`${dir}/${p.replace("/", "_")}`);
-  const fd = new FormData(); fd.append("image", new Blob([buf], { type: "image/jpeg" }), "q.jpg"); fd.append("variants", "full,crop");
+  const fd = new FormData(); fd.append("image", new Blob([buf], { type: "image/jpeg" }), "q.jpg"); fd.append("variants", "full,crop,scales");
   const f = await post("/api/embed", fd, true);
-  const s = await post("/api/search-v4", JSON.stringify({ full: f.full, crop: f.crop, color: f.color, matchCount: 300 }));
+  const s = await post("/api/search-v4", JSON.stringify({ full: f.full, crop: f.crop, scales: f.scales, color: f.color, matchCount: 300 }));
   console.log(`\n=== ${p} (${(buf.length / 1024).toFixed(0)} KB) — query colour ${JSON.stringify(f.color.raw.map((c) => c.lab))}`);
   s.results.slice(0, 5).forEach((r, i) => console.log(`  #${i + 1} ${(r.name + "-" + r.color_code).padEnd(14)} score ${r.similarity.toFixed(3)} cls ${r.s_cls.toFixed(2)} crop ${r.s_crop.toFixed(2)} colour ${r.s_color.toFixed(2)} ${r.pattern_detail ?? ""}`));
   for (const e of expects) { const [n, c] = e.split("-"); const i = s.results.findIndex((r) => r.name === n && String(r.color_code) === c); const r = s.results[i]; console.log(`  expect ${e}: ${i >= 0 ? `rank ${i + 1} score ${r.similarity.toFixed(3)} cls ${r.s_cls.toFixed(2)} crop ${r.s_crop.toFixed(2)} colour ${r.s_color.toFixed(2)}` : "NOT in top 300 (candidates " + s.total + ")"}`); }

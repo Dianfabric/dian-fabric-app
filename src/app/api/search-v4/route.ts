@@ -70,14 +70,30 @@ export async function POST(request: NextRequest) {
     const colorNames: { name: string; pct: number }[] = Array.isArray(hints.colorNames) ? hints.colorNames : [];
 
     const supabase = createServiceClient();
-    const rpcArgs = { q_cls: toVectorString(qCls), q_crop: qCrop ? toVectorString(qCrop) : null, match_count: candidateCount };
     const hiddenP = getHiddenFabricIds(supabase);
-    // a cold page cache can make the first scan exceed the statement timeout; the retry runs warm
-    let { data, error } = await supabase.rpc("search_fabrics_v4_pair", rpcArgs);
-    if (error && /timeout/i.test(error.message)) ({ data, error } = await supabase.rpc("search_fabrics_v4_pair", rpcArgs));
+    // Zoom invariance: besides the query itself, search with its 2x2 / 3x3 mosaic embeddings (see dino-server "scales")
+    // and keep, per candidate, the best similarity over the scales. Phone close-ups magnify the weave 2-3x compared
+    // with the catalogue photo; without this a 30 % close-up of FIZE-11 scores 0.40 against its own catalogue row.
+    const scales: { scale: number; full: { cls: Vec }; crop: { mean: Vec } }[] = Array.isArray(body.scales) ? body.scales : [];
+    const queries = [{ cls: qCls, crop: qCrop }, ...scales.filter((s) => Array.isArray(s.full?.cls)).map((s) => ({ cls: s.full.cls, crop: s.crop?.mean }))];
+    const callRpc = async (q: { cls: Vec; crop?: Vec }) => {
+      const args = { q_cls: toVectorString(q.cls), q_crop: q.crop ? toVectorString(q.crop) : null, match_count: candidateCount };
+      // a cold page cache can make the first scan exceed the statement timeout; the retry runs warm
+      let r = await supabase.rpc("search_fabrics_v4_pair", args);
+      if (r.error && /timeout/i.test(r.error.message)) r = await supabase.rpc("search_fabrics_v4_pair", args);
+      return r;
+    };
+    const lists = await Promise.all(queries.map(callRpc));
     const hidden = await hiddenP;
-    if (error) return NextResponse.json({ error: "후보 검색 실패: " + error.message }, { status: 500 });
-    const cands = ((data || []) as Candidate[]).filter((c) => !hidden.has(c.id));
+    const firstError = lists.find((r) => r.error)?.error;
+    if (lists.every((r) => r.error)) return NextResponse.json({ error: "후보 검색 실패: " + firstError!.message }, { status: 500 });
+    const merged = new Map<string, Candidate>();
+    for (const r of lists) for (const c of (r.data || []) as Candidate[]) {
+      if (hidden.has(c.id)) continue;
+      const prev = merged.get(c.id);
+      if (!prev) merged.set(c.id, { ...c }); else { prev.s_cls = Math.max(prev.s_cls ?? 0, c.s_cls ?? 0); prev.s_crop = Math.max(prev.s_crop ?? 0, c.s_crop ?? 0); }
+    }
+    const cands = [...merged.values()];
 
     // 2. soft scoring
     const scored = cands.map((c) => {

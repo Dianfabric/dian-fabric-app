@@ -39,6 +39,11 @@ const scorers: Record<string, Scorer> = {
   "crop mean only": (_r, _c, k) => k,
   "cls50 crop50": (_r, c, k) => 0.5 * c + 0.5 * k,
   "cls45 crop35 lab10 rgb10": (_r, c, k, l, g) => 0.45 * c + 0.35 * k + 0.1 * l + 0.1 * g,
+  "colour 30 (cls40 crop30 lab30)": (_r, c, k, l) => 0.40 * c + 0.30 * k + 0.30 * l,
+  "colour 40 (cls35 crop25 lab40)": (_r, c, k, l) => 0.35 * c + 0.25 * k + 0.40 * l,
+  "v4 + gate lab<0.35 → -0.3": (_r, c, k, l) => 0.45 * c + 0.35 * k + 0.20 * l - (l < 0.35 ? 0.3 : 0),
+  "v4 + gate lab<0.50 → -0.3": (_r, c, k, l) => 0.45 * c + 0.35 * k + 0.20 * l - (l < 0.50 ? 0.3 : 0),
+  "colour 30 + gate lab<0.35 → -0.3": (_r, c, k, l) => 0.40 * c + 0.30 * k + 0.30 * l - (l < 0.35 ? 0.3 : 0),
 };
 const lines: string[] = [];
 function rank(cands: Map<string, Row>, qCls: number[], qCrop: number[] | null, qColor: ColorSignature | null, qRgb: ReturnType<typeof parseRGB>) {
@@ -96,5 +101,5 @@ if (mode === "synth" || mode === "both") {
   for (const [name, a] of Object.entries(agg)) lines.push(`| ${name} | ${(a.r1 / a.n * 100).toFixed(1)}% | ${(a.r15 / a.n * 100).toFixed(1)}% | ${(a.d15 / a.n * 100).toFixed(1)}% | ${(a.M / a.n).toFixed(3)} | ${a.n} |`);
 }
 const md = `# v4 results against the full DB (${new Date().toISOString().slice(0, 10)})\n\n${lines.join("\n")}\n`;
-fs.writeFileSync("scripts/exp/results-db.md", md);
+fs.writeFileSync(process.env.OUT || "scripts/exp/results-db.md", md);
 console.log(md);

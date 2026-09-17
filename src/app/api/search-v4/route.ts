@@ -26,6 +26,19 @@ export const maxDuration = 60;
 const W = { cls: 0.45, crop: 0.35, color: 0.20 };
 const BONUS = { pattern: 0.03, colorName: 0.02 };
 const DEFAULT_CANDIDATES = 500;
+/**
+ * Colour policy (user requirement 2026-09-17: "colour must match"). "strict" (default) raises the colour weight and
+ * demotes every candidate whose LAB colour similarity is below `gateMin` by `gatePenalty` — a demotion, not a filter,
+ * so a badly lit phone photo still gets results. "normal" keeps the experiment weights. Override per request with
+ * body.colorMode, or globally with SEARCH_V4_COLOR_MODE.
+ */
+// Measured on the full DB (scripts/exp/results-db-colour.md): colour 40 % gives the best golden-set scores
+// (R@15 57.1 %, R@1 40 %, MRR 0.513 vs 52.4 / 30.7 / 0.432 at 20 %) at the cost of some recall on colour-cast
+// phone photos (synthetic R@15 80 % vs 88 %). Hard gates scored worse on both sets, so the gate is off by default.
+const COLOR_POLICY = {
+  strict: { weights: { cls: 0.35, crop: 0.25, color: 0.40 }, gateMin: 0, gatePenalty: 0.30 },
+  normal: { weights: W, gateMin: 0, gatePenalty: 0 },
+} as const;
 
 type Vec = number[];
 type Candidate = {
@@ -46,7 +59,9 @@ export async function POST(request: NextRequest) {
     const candidateCount = Math.min(+body.candidateCount || DEFAULT_CANDIDATES, 1000);
     const mode: "colorway" | "design" = body.mode === "design" ? "design" : "colorway";
     const hints = body.hints || {};
-    const w = { ...W, ...(body.weights || {}) };
+    const colorMode: keyof typeof COLOR_POLICY = body.colorMode === "normal" || (process.env.SEARCH_V4_COLOR_MODE === "normal" && !body.colorMode) ? "normal" : "strict";
+    const policy = COLOR_POLICY[colorMode];
+    const w = { ...policy.weights, ...(body.weights || {}) };
     const patternHint: string | undefined = hints.patternDetail || hints.fabricType;
     const colorNames: { name: string; pct: number }[] = Array.isArray(hints.colorNames) ? hints.colorNames : [];
 
@@ -68,8 +83,10 @@ export async function POST(request: NextRequest) {
       if (patternHint && c.pattern_detail && patternHint.split(",").some((p) => c.pattern_detail!.includes(p.trim()))) bonus += BONUS.pattern;
       if (colorNames.length && c.notes && colorNames.filter((n) => n.pct >= 20).some((n) => c.notes!.includes(n.name))) bonus += BONUS.colorName;
       const embScore = qCrop ? (w.cls * sCls + w.crop * sCrop) / (w.cls + w.crop) : sCls;
-      const score = w.cls * sCls + w.crop * sCrop + w.color * sColor + bonus;
-      return { ...c, similarity: score, s_cls: sCls, s_crop: sCrop, s_color: sColor, s_emb: embScore, bonus };
+      // colour gate: candidates whose colour is clearly different are pushed below every colour-consistent one
+      const gated = qColor?.raw && policy.gateMin > 0 && sColor < policy.gateMin;
+      const score = w.cls * sCls + w.crop * sCrop + w.color * sColor + bonus - (gated ? policy.gatePenalty : 0);
+      return { ...c, similarity: score, s_cls: sCls, s_crop: sCrop, s_color: sColor, s_emb: embScore, bonus, color_gated: !!gated };
     });
 
     let results;
@@ -86,7 +103,7 @@ export async function POST(request: NextRequest) {
       results = scored.sort((a, b) => b.similarity - a.similarity).slice(0, matchCount);
     }
 
-    return NextResponse.json({ results, total: scored.length, mode, weights: w, ms: Date.now() - t0 });
+    return NextResponse.json({ results, total: scored.length, mode, colorMode, weights: w, gated: scored.filter((s) => s.color_gated).length, ms: Date.now() - t0 });
   } catch (e) {
     console.error("search-v4 error", e);
     return NextResponse.json({ error: "검색 실패: " + (e instanceof Error ? e.message : String(e)) }, { status: 500 });

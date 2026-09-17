@@ -127,3 +127,6 @@
 - **구현 완료(코드만, DB 미변경)**: `src/lib/dino-server.ts`(fp16, DINO_DTYPE), `src/lib/color-lab.ts`, `api/embed`, `api/search-v4`(하드필터 없음, kNN 500 ∪ 500, 보너스 점수), `api/rank-v4`(상위 20개 개별이미지 Gemini 1회), `search/page.tsx`(NEXT_PUBLIC_SEARCH_V4=1 플래그), `supabase/v4-search-schema.sql`, `scripts/regen-embeddings-v4.ts`.
 - **다음**: ① Supabase SQL 적용 ② `DINO_DTYPE=fp32 DINO_CACHE_DIR=scripts/exp/hf-cache node --experimental-strip-types scripts/regen-embeddings-v4.ts` (맥미니, 약 2시간) ③ 맥미니 .env.local에 GEMINI_API_KEY 추가 ④ 플래그 켜고 실제 폰사진 20~30장 검증. Vercel 배포 시 fp16(174MB) 콜드스타트 확인, 안 되면 q4f16(50MB)로 DB까지 통일.
 - **2026-09-15 저녁 장애 기록**: v4 재생성 중 Supabase Postgres가 2회 응답 불능(18:00~21:17, 21:40~22:00 전후). 원인은 `emb_v4`/`emb_v4_crop`의 HNSW 인덱스 — 행 UPDATE마다 그래프 삽입(무작위 IO)이 일어나 인스턴스의 IO/메모리를 소진. 운영 API도 500. 조치: 쓰기 전면 중단 → `supabase/v4-drop-hnsw-and-rpc-v2.sql`(HNSW 2개 삭제, 재생성 안 함 + RPC v2) 적용 후 재개. 16.7k행은 인덱스 없이 정확 탐색 50~150ms로 충분. 재생성 12,323행 완료 시점에서 중단, 남은 4,360행은 인덱스 제거 후 `--only-missing`(쓰기 동시성 2)로 재개. 별건: fabric.diantex.kr DNS 레코드 NXDOMAIN(hostcocoa에서 CNAME 소실 추정).
+
+### 2026-09-16 v4 프로덕션 배포 (deploy-main.sh)
+- main @ 080f3b6, 프로덕션 스모크 rc=1 (scripts/exp/data/prod-smoke.md). 최종 보고 scripts/exp/final-report.md

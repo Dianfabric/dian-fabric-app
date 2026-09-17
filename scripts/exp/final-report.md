@@ -1,7 +1,7 @@
 # v4 사진 유사검색 — 최종 보고 (2026-09-16 19:01)
 
 ## 상태
-- 코드: 브랜치 v4-photo-search (main 머지·프로덕션 배포는 scripts/exp/deploy-main.sh 로 실행 — 승인 필요)
+- 배포 완료: main @ 080f3b6 → Vercel production https://dian-fabric-buttumn6q-dianfabrics-projects.vercel.app (스모크 rc=1)
 - 서버 임베딩 dtype: fp16 (DINO_DTYPE), 모델 캐시 /tmp/hf-cache, Vercel Production/Preview env 등록 완료
 - 검색 페이지: 서버 임베딩 v4 기본, 실패 시 브라우저 경로 자동 폴백 (NEXT_PUBLIC_SEARCH_V4=0 으로 강제 구경로)
 
@@ -56,6 +56,12 @@
 | local-dev | rank-v4 (Gemini, top 20) | 9492 ms | gemini-2.5-flash, server 9479 ms, source rank after rerank 1, top score 95 |
 
 
+## 프로덕션 스모크 테스트
+| target | step | wall | detail |
+|---|---|---|---|
+| production | embed (cold) | 1748 ms | FAIL: http 500 임베딩 생성 실패: Failed to load external module @huggingface/transformers-31f28a0eb9b916d1: Error: libonnxruntime.so. |
+
+
 ## 오프라인 실험 요약
 - 골든셋(풀 2,398, 75쿼리) R@15: 채택 조합 80.1% (DB 자체 벡터 78.7%, 독립 fp32 CLS 71.8%, 운영 q8×fp32 조합 1.8%)
 - 합성 폰사진 300장 R@15 94.3% / R@1 75.3% (mild 97.5 / medium 97.1 / hard 90.4)
@@ -66,7 +72,6 @@
 - Gemini 2.5 Flash 기본 thinking 토큰이 출력 한도를 잠식해 재랭킹 JSON이 잘림 → thinkingBudget 0, maxOutputTokens 8192, 파싱 실패 로그 추가. 20개 후보 재랭킹 9~17초
 
 ## 남은 일
-- scripts/exp/deploy-main.sh 실행 (main 머지 → Vercel 배포 → 프로덕션 스모크 → 보고 갱신)
 - 실제 폰사진 20~30장으로 합성셋 대비 검증 (사용자 촬영 필요)
 - fabric.diantex.kr DNS 레코드 복구 (NXDOMAIN, hostcocoa)
 - 구 검색 경로(dino-client, search-dino, rank-fabrics) 제거는 v4 안정 확인 후

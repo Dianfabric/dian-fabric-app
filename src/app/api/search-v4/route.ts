@@ -26,7 +26,9 @@ export const maxDuration = 60;
 const W = { cls: 0.45, crop: 0.35, color: 0.20 };
 const BONUS = { pattern: 0.05, colorName: 0.02 };
 // pattern mismatch penalties (user feedback 2026-09-17: a striped photo returned solids at the top)
-const PENALTY = { solidForPatterned: 0.12, patternMismatch: 0.05 };
+// kept small: catalogue pattern labels are noisy (e.g. a striped 1720 is labelled "추상"), and a full-DB test with
+// the query's own label as a perfect hint showed that larger penalties cost golden-set recall (64 % → 56 %)
+const PENALTY = { solidForPatterned: 0.08, patternMismatch: 0.03 };
 const DEFAULT_CANDIDATES = 500;
 /**
  * Colour policy (user requirement 2026-09-17: "colour must match"). "strict" (default) raises the colour weight and

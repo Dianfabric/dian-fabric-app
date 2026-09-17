@@ -6,7 +6,9 @@
 import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
 const base = (process.argv[2] || "https://dian-fabric-app.vercel.app").replace(/\/$/, "");
-const expects = process.argv.slice(3);
+const argsIn = process.argv.slice(3);
+const userColor = (argsIn.find((a) => a.startsWith("--color=")) || "").replace("--color=", "") || null;
+const expects = argsIn.filter((a) => !a.startsWith("--"));
 const env = {}; for (const line of fs.readFileSync(".env.local", "utf-8").split(/\r?\n/)) { const m = line.match(/^([A-Z_]+)=(.*)$/); if (m) env[m[1]] = m[2].trim().replace(/^"(.*)"$/, "$1"); }
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 const dir = "scripts/exp/data/queries"; fs.mkdirSync(dir, { recursive: true });
@@ -23,7 +25,7 @@ for (const p of newest) {
   const fd = new FormData(); fd.append("image", new Blob([buf], { type: "image/jpeg" }), "q.jpg"); fd.append("variants", "full,crop,scales");
   const f = await post("/api/embed", fd, true);
   const s = await post("/api/search-v4", JSON.stringify({ full: f.full, crop: f.crop, scales: f.scales, color: f.color, matchCount: 300 }));
-  console.log(`\n=== ${p} (${(buf.length / 1024).toFixed(0)} KB) — query colour ${JSON.stringify(f.color.raw.map((c) => c.lab))}`);
+  console.log(`\n=== ${p} (${(buf.length / 1024).toFixed(0)} KB) — query colour ${JSON.stringify(f.color.raw.map((c) => c.lab))}${userColor ? " userColor=" + userColor : ""} (${s.total} candidates, colour channel ${s.userColor ? "on" : "off"})`);
   s.results.slice(0, 5).forEach((r, i) => console.log(`  #${i + 1} ${(r.name + "-" + r.color_code).padEnd(14)} score ${r.similarity.toFixed(3)} cls ${r.s_cls.toFixed(2)} crop ${r.s_crop.toFixed(2)} colour ${r.s_color.toFixed(2)} ${r.pattern_detail ?? ""}`));
   for (const e of expects) { const [n, c] = e.split("-"); const i = s.results.findIndex((r) => r.name === n && String(r.color_code) === c); const r = s.results[i]; console.log(`  expect ${e}: ${i >= 0 ? `rank ${i + 1} score ${r.similarity.toFixed(3)} cls ${r.s_cls.toFixed(2)} crop ${r.s_crop.toFixed(2)} colour ${r.s_color.toFixed(2)}` : "NOT in top 300 (candidates " + s.total + ")"}`); }
 }

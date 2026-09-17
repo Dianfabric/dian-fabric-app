@@ -118,10 +118,12 @@ export async function POST(request: NextRequest) {
       let sColor = qColor ? photoColorSimilarity(qColor, c.color_sig) : 0;
       if (userColor) {
         const notes = c.notes || "";
-        const nameScore = notes.includes(userColor.name) ? 0.9 : family.some((n) => notes.includes(n)) ? 0.7 : 0;
+        // measured catalogue colour (LAB) is more reliable than the typed colour name, so the reference-LAB match
+        // leads and the name only adds a modest lift (a navy fabric filed as 차콜 must not lose to every "네이비" row)
+        const nameScore = notes.includes(userColor.name) ? 0.75 : family.some((n) => notes.includes(n)) ? 0.65 : 0;
         const ref: LabCluster[] = [{ lab: userColor.lab, pct: 100 }];
         const labToRef = c.color_sig?.raw ? signatureSimilarity(ref, c.color_sig.raw, 30) : 0;
-        sColor = Math.max(sColor, nameScore, 0.8 * labToRef);
+        sColor = Math.max(sColor, nameScore, 0.95 * labToRef);
       }
       let bonus = 0;
       if (patternHint && c.pattern_detail) {

@@ -38,8 +38,8 @@ const DEFAULT_CANDIDATES = 500;
 // (R@15 57.1 %, R@1 40 %, MRR 0.513 vs 52.4 / 30.7 / 0.432 at 20 %) at the cost of some recall on colour-cast
 // phone photos (synthetic R@15 80 % vs 88 %). Hard gates scored worse on both sets, so the gate is off by default.
 const COLOR_POLICY = {
-  strict: { weights: { cls: 0.35, crop: 0.25, color: 0.40 }, gateMin: 0, gatePenalty: 0.30 },
-  normal: { weights: W, gateMin: 0, gatePenalty: 0 },
+  strict: { weights: { cls: 0.32, crop: 0.23, color: 0.45 }, gateMin: 0, gatePenalty: 0.30, softPenalty: 0.10 },
+  normal: { weights: W, gateMin: 0, gatePenalty: 0, softPenalty: 0 },
 } as const;
 
 type Vec = number[];
@@ -97,7 +97,9 @@ export async function POST(request: NextRequest) {
       const embScore = qCrop ? (w.cls * sCls + w.crop * sCrop) / (w.cls + w.crop) : sCls;
       // colour gate: candidates whose colour is clearly different are pushed below every colour-consistent one
       const gated = qColor?.raw && policy.gateMin > 0 && sColor < policy.gateMin;
-      const score = w.cls * sCls + w.crop * sCrop + w.color * sColor + bonus - (gated ? policy.gatePenalty : 0);
+      // graded (continuous) colour penalty: nothing above 0.5, up to -softPenalty at 0 — no hard threshold
+      const soft = qColor?.raw ? policy.softPenalty * Math.max(0, 0.5 - sColor) / 0.5 : 0;
+      const score = w.cls * sCls + w.crop * sCrop + w.color * sColor + bonus - (gated ? policy.gatePenalty : 0) - soft;
       return { ...c, similarity: score, s_cls: sCls, s_crop: sCrop, s_color: sColor, s_emb: embScore, bonus, color_gated: !!gated };
     });
 

@@ -86,7 +86,8 @@ export async function imageSignature(buf: Buffer): Promise<ColorSignature> {
 }
 
 /**
- * CIE94-style colour difference (graphic-arts weights, kL = 2): lightness counts half, chroma and hue count fully.
+ * CIE94-style colour difference with lightness de-emphasised (kL = 4): a darker or lighter shade of the same hue stays
+ * "related", while chroma and hue differences count fully.
  * A purple (54,7,-12) vs a grey (54,1,-4) of the same lightness is ΔE94 ≈ 8.7, while a phone-lit shot of the
  * same fabric (L +8, small a/b drift) is ≈ 5 — so hue/chroma differences separate colours while lighting does not.
  */
@@ -95,7 +96,7 @@ export function deltaE94(l1: number[], l2: number[]): number {
   const C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2);
   const dL = L1 - L2, dC = C1 - C2, da = a1 - a2, db = b1 - b2;
   const dH2 = Math.max(0, da * da + db * db - dC * dC);
-  const sL = dL / 2, sC = dC / (1 + 0.045 * C1), sH = Math.sqrt(dH2) / (1 + 0.015 * C1);
+  const sL = dL / 4, sC = dC / (1 + 0.045 * C1), sH = Math.sqrt(dH2) / (1 + 0.015 * C1);
   return Math.sqrt(sL * sL + sC * sC + sH * sH);
 }
 

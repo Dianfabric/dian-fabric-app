@@ -3,6 +3,7 @@
 # smoke-test production (embed → search-v4 → rank-v4, cold + warm) and update the final report.
 # CHANGES PRODUCTION — run only after an explicit go-ahead.
 set -u
+exec > >(tee -a scripts/exp/data/deploy.log) 2>&1
 cd "$(dirname "$0")/../.."
 log() { echo "[$(date '+%m-%d %H:%M:%S')] $*"; }
 PROD="https://dian-fabric-app.vercel.app"
